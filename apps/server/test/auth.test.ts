@@ -234,3 +234,148 @@ describe('auth phase 1', () => {
     }
   });
 });
+
+describe('auth regression coverage (planner review)', () => {
+  let dataDir2: string;
+  let app2: Awaited<ReturnType<typeof buildApp>>;
+  let ownerCookie: string;
+  let ownerCsrf: string;
+  let dbFile: string;
+
+  beforeAll(async () => {
+    dataDir2 = mkdtempSync(path.join(tmpdir(), 'hwui-auth-reg-'));
+    dbFile = path.join(dataDir2, 'webui.sqlite3');
+    app2 = await buildApp({
+      dataDir: dataDir2,
+      config: loadConfig({ HERMES_WEBUI_TRUST_PROXY: '127.0.0.1' }),
+    });
+    const token = fs.readFileSync(path.join(dataDir2, 'setup-token'), 'utf8').trim();
+    const setup = await app2.inject({
+      method: 'POST',
+      url: '/api/auth/setup',
+      payload: { setupToken: token, username: 'owner', password: 'correct-horse-battery' },
+    });
+    expect(setup.statusCode).toBe(200);
+    ownerCookie = cookieFrom(setup);
+    ownerCsrf = setup.json().csrfToken;
+  });
+
+  afterAll(() => {
+    app2.close();
+    fs.rmSync(dataDir2, { recursive: true, force: true });
+  });
+
+  it('expired reauth window rejects a recent-only route', async () => {
+    // Drive reauth_until into the past directly in the session store.
+    const Database = (await import('better-sqlite3')).default;
+    const raw = new Database(dbFile);
+    raw.prepare('UPDATE sessions SET reauth_until = ? WHERE revoked_at IS NULL').run(1);
+    raw.close();
+
+    const response = await app2.inject({
+      method: 'POST',
+      url: '/api/auth/password',
+      headers: { cookie: ownerCookie, 'x-csrf-token': ownerCsrf },
+      payload: { currentPassword: 'correct-horse-battery', newPassword: 'another-long-password-1' },
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error.code).toBe('AUTH_REAUTH_REQUIRED');
+  });
+
+  it('sessions of another user are not revocable (404, no oracle)', async () => {
+    const Database = (await import('better-sqlite3')).default;
+    const raw = new Database(dbFile);
+    const now = Date.now();
+    raw
+      .prepare(
+        `INSERT INTO users (id, username, username_normalized, password_hash, role, created_at, updated_at, password_changed_at)
+         VALUES ('other-user', 'other', 'other', 'x', 'member', ?, ?, ?)`,
+      )
+      .run(now, now, now);
+    raw
+      .prepare(
+        `INSERT INTO sessions (id, token_hash, user_id, csrf_token, created_at, last_seen_at, idle_expires_at, absolute_expires_at)
+         VALUES ('other-session', 'other-hash', 'other-user', 'other-csrf', ?, ?, ?, ?)`,
+      )
+      .run(now, now, now + 86_400_000, now + 86_400_000);
+    raw.close();
+
+    const response = await app2.inject({
+      method: 'DELETE',
+      url: '/api/auth/sessions/other-session',
+      headers: { cookie: ownerCookie, 'x-csrf-token': ownerCsrf },
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
+  it('trusted proxy HTTPS marks the session cookie Secure; direct HTTP does not', async () => {
+    const login = await app2.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { username: 'owner', password: 'correct-horse-battery' },
+      headers: { 'x-forwarded-for': '127.0.0.1', 'x-forwarded-proto': 'https' },
+    });
+    const setCookie = login.headers['set-cookie'];
+    const secureCookie = [].concat(setCookie as never).join(' ');
+    expect(secureCookie).toContain('Secure');
+    await app2.inject({
+      method: 'POST',
+      url: '/api/auth/logout',
+      headers: { cookie: cookieFrom(login), 'x-csrf-token': login.json().csrfToken },
+    });
+
+    const direct = await app2.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { username: 'owner', password: 'correct-horse-battery' },
+    });
+    const plain = [].concat(direct.headers['set-cookie'] as never).join(' ');
+    expect(plain).not.toContain('Secure');
+    const directCookie = cookieFrom(direct);
+    const csrf = direct.json().csrfToken;
+    await app2.inject({
+      method: 'POST',
+      url: '/api/auth/logout',
+      headers: { cookie: directCookie, 'x-csrf-token': csrf },
+    });
+  });
+
+  it('password change revokes every old session and keeps the current one', async () => {
+    const owner = cookieFrom(
+      await app2.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { username: 'owner', password: 'correct-horse-battery' },
+      }),
+    );
+    // A second session for the same user.
+    const second = await app2.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { username: 'owner', password: 'correct-horse-battery' },
+    });
+    const secondCookie = cookieFrom(second);
+
+    const change = await app2.inject({
+      method: 'POST',
+      url: '/api/auth/password',
+      headers: { cookie: secondCookie, 'x-csrf-token': second.json().csrfToken },
+      payload: { currentPassword: 'correct-horse-battery', newPassword: 'another-long-password-1' },
+    });
+    expect(change.statusCode).toBe(200);
+
+    // The older session must now be dead; the fresh cookie works.
+    const oldSession = await app2.inject({
+      method: 'GET',
+      url: '/api/app/status',
+      headers: { cookie: owner },
+    });
+    expect(oldSession.statusCode).toBe(401);
+    const fresh = await app2.inject({
+      method: 'GET',
+      url: '/api/app/status',
+      headers: { cookie: cookieFrom(change) },
+    });
+    expect(fresh.statusCode).toBe(200);
+  });
+});

@@ -96,6 +96,11 @@ export function resolveRoutePolicy(request: FastifyRequest): RouteAuthPolicy {
   return request.url.startsWith('/api/') ? 'required' : 'public';
 }
 
+/** Single source of truth for recent-auth (spec: null reauth is never recent). */
+export function isRecentlyAuthenticated(session: SessionRow, now = Date.now()): boolean {
+  return session.reauth_until !== null && session.reauth_until > now;
+}
+
 export function clientIpHash(request: FastifyRequest, salt: string): string | null {
   if (salt === '') return null;
   const ip = request.ip;
@@ -187,15 +192,7 @@ async function fastifyAuthPlugin(
         console.log(`[auth-debug] ${request.method} ${request.url} cookie=${cookieToken.slice(0, 8)}… rowFound=${row !== undefined} session=${session !== null} invalid=${sessionExistsButInvalid}`);
       }
     }
-    request.requestAuthState = {
-      session,
-      user,
-      recent:
-        session !== null &&
-        session.reauth_until !== null &&
-        session.reauth_until > Date.now(),
-    };
-
+    request.requestAuthState = { session, user, recent: false };
     // Origin validation applies to EVERY mutation — public or not — so
     // cross-origin browser posts to /login or /setup are rejected too
     // (spec 2.13). Non-browser clients (no Origin header) are unaffected.
@@ -247,7 +244,7 @@ async function fastifyAuthPlugin(
     request.auth = {
       session,
       user,
-      recent: session.reauth_until === null || session.reauth_until > now,
+      recent: isRecentlyAuthenticated(session, now),
     };
 
     if (policy === 'recent' && !request.auth.recent) {

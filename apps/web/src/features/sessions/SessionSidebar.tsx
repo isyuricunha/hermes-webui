@@ -245,22 +245,24 @@ export function SessionSidebar({
 
       <div
         className={[
-          'flex items-center border-t border-border-subtle py-3',
-          collapsed ? 'flex-col gap-2 px-2' : 'justify-between gap-2 px-3',
+          'flex flex-wrap items-center gap-2 border-t border-border-subtle py-3 px-3',
+          collapsed ? 'flex-col' : 'justify-between',
         ].join(' ')}
       >
         {collapsed ? null : <HermesStatusPill />}
-        <div className="flex items-center gap-1.5">
-          <ThemeToggle />
-          {collapsed ? null : (
-            <Link
-              to="/settings"
-              onClick={onNavigate}
-              className="text-xs font-medium text-text-secondary hover:text-text-primary"
-            >
-              Settings
-            </Link>
-          )}
+        <div className="flex items-center justify-between gap-2 w-full">
+          <div className="flex items-center gap-1.5">
+            <ThemeToggle />
+            {collapsed ? null : (
+              <Link
+                to="/settings"
+                onClick={onNavigate}
+                className="text-xs font-medium text-text-secondary hover:text-text-primary"
+              >
+                Settings
+              </Link>
+            )}
+          </div>
           <AccountMenu />
         </div>
       </div>

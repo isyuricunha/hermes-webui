@@ -48,7 +48,7 @@ export interface AuthResult {
 export interface LoginRateLimiter {
   /** Returns true when the attempt is allowed (limit = max failures in window). */
   attempt(key: string, limit: number, windowMs?: number): boolean;
-  failure(key: string): void;
+  failure(key: string, windowMs?: number): void;
   success(key: string): void;
 }
 
@@ -73,17 +73,30 @@ export class AuthService {
     return this.store.isClaimed();
   }
 
-  /** Spec 2.7: one-time token pair (DB hash + file) must be consistent. */
+  /**
+   * Spec 2.7 (planner closure): the DB hash and the file must agree. Read the
+   * file, hash it, constant-time compare against the DB hash — reuse only on
+   * a match. Any absence/mismatch regenerates the pair.
+   */
   ensureBootstrapToken(): string {
     const tokenFile = this.setupTokenFile();
     const dbHash = this.store.getBootstrapTokenHash();
-    const fileExists = fs.existsSync(tokenFile);
-    if (dbHash !== null && fileExists) {
+    let fileToken: string | null = null;
+    if (fs.existsSync(tokenFile)) {
+      fileToken = fs.readFileSync(tokenFile, 'utf8').trim();
+    }
+    if (
+      dbHash !== null &&
+      fileToken !== null &&
+      fileToken !== '' &&
+      constantTimeEqual(sha256Hex(fileToken), dbHash)
+    ) {
       return tokenFile;
     }
-    // Missing or inconsistent pair (stale file, wiped DB row): regenerate both.
+    // Missing or inconsistent pair: regenerate both.
     const token = this.store.rotateBootstrapToken();
-    fs.writeFileSync(tokenFile, token + '\n', { mode: 0o600 });
+    fs.writeFileSync(tokenFile, token + '\n');
+    fs.chmodSync(tokenFile, 0o600);
     return tokenFile;
   }
 
@@ -132,7 +145,7 @@ export class AuthService {
     }
     const storedHash = this.store.getBootstrapTokenHash();
     if (storedHash === null || !constantTimeEqual(sha256Hex(input.setupToken.trim()), storedHash)) {
-      this.rateLimiter.failure(`setup:${input.context.clientIpHash ?? 'unknown'}`);
+      this.rateLimiter.failure(`setup:${input.context.clientIpHash ?? 'unknown'}`, SETUP_WINDOW_MS);
       this.store.appendAudit({
         event: 'setup.failure',
         outcome: 'failure',
