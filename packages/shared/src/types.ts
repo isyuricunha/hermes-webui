@@ -14,7 +14,8 @@ export interface AppStatus {
 }
 
 export type HermesConnectivity =
-  | { state: 'connected'; baseUrl: string; probe: string }
+  | { state: 'connected'; baseUrl: string; version: string }
+  | { state: 'degraded'; baseUrl: string; reason: 'auth_failed' }
   | { state: 'offline'; baseUrl: string; error: string };
 
 export interface ApiErrorBody {

@@ -13,8 +13,11 @@ function HermesStatusPill() {
   if (isPending) {
     return <span className="text-xs text-text-secondary">Hermes: Connecting…</span>;
   }
-  if (isError || data.hermes.state !== 'connected') {
+  if (isError || data.hermes.state === 'offline') {
     return <span className="text-xs font-medium text-danger">Hermes: Offline</span>;
+  }
+  if (data.hermes.state === 'degraded') {
+    return <span className="text-xs font-medium text-warning">Hermes: Degraded</span>;
   }
   return (
     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">

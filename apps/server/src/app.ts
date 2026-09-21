@@ -1,7 +1,9 @@
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
-import type { AppStatus } from '@hermes-webui/shared';
+import type { AppStatus, HermesConnectivity } from '@hermes-webui/shared';
 import type { ServerConfig } from './config';
-import { HermesClient } from './hermes/client';
+import { HermesClient, HermesHttpError } from './hermes/client';
+import { sessionRoutes } from './routes/sessions';
+import { runRoutes } from './routes/runs';
 
 export interface BuildAppOptions {
   config: ServerConfig;
@@ -14,14 +16,15 @@ export interface BuildAppOptions {
  */
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
   const { config } = options;
-  const hermes = options.hermesClient ?? new HermesClient(config.hermesBaseUrl);
+  const hermes =
+    options.hermesClient ?? new HermesClient(config.hermesBaseUrl, config.hermesApiKey);
 
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
       redact: {
         // Defense in depth: never let credential-shaped fields reach logs.
-        paths: ['req.headers.authorization', 'req.headers.cookie'],
+        paths: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-hermes-session-token"]'],
         censor: '[REDACTED]',
       },
     },
@@ -54,18 +57,43 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
 
   app.get('/api/healthz', async () => ({ ok: true }));
 
-  app.get<{ Reply: AppStatus }>('/api/app/status', async (_request, reply) => {
-    const probe = await hermes.checkReachable();
+  /**
+   * Connection states per PRD 40: connected (gateway healthy + auth ok),
+   * degraded (reachable but our key was rejected), offline (unreachable).
+   */
+  app.get('/api/app/status', async (_request, reply) => {
+    let connectivity: HermesConnectivity;
+    try {
+      const health = await hermes.health();
+      if (config.hermesApiKey) {
+        try {
+          await hermes.capabilities();
+          connectivity = { state: 'connected', baseUrl: hermes.gatewayUrl, version: health.version };
+        } catch (error) {
+          if (error instanceof HermesHttpError && (error.status === 401 || error.status === 403)) {
+            connectivity = { state: 'degraded', baseUrl: hermes.gatewayUrl, reason: 'auth_failed' };
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        connectivity = { state: 'connected', baseUrl: hermes.gatewayUrl, version: health.version };
+      }
+    } catch (error) {
+      const message =
+        error instanceof HermesHttpError ? error.message : 'Hermes gateway did not answer.';
+      connectivity = { state: 'offline', baseUrl: hermes.gatewayUrl, error: message };
+    }
     const body: AppStatus = {
       app: 'hermes-webui',
       version: config.appVersion,
-      hermes:
-        probe.reachable
-          ? { state: 'connected', baseUrl: hermes.baseUrl, probe: probe.probe }
-          : { state: 'offline', baseUrl: hermes.baseUrl, error: probe.error },
+      hermes: connectivity,
     };
     return void reply.send(body);
   });
+
+  await app.register(sessionRoutes, { client: hermes });
+  await app.register(runRoutes, { client: hermes });
 
   return app;
 }
