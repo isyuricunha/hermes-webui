@@ -1,4 +1,8 @@
-import { Link, Outlet, useLocation } from '@tanstack/react-router';
+import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { fetchConfigSchema } from '../../lib/api';
+import { searchSchema } from '../../lib/settingsSearch';
 
 const NAV = [
   { to: '/settings/models', label: 'Models' },
@@ -19,6 +23,15 @@ const NAV = [
  */
 export function SettingsLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [query, setQuery] = useState('');
+  const schemaQuery = useQuery({
+    queryKey: ['settings-schema'],
+    queryFn: fetchConfigSchema,
+    staleTime: 5 * 60_000,
+  });
+  const hits = query.trim() === '' ? [] : searchSchema(schemaQuery.data?.fields ?? {}, query, 12);
+
   return (
     <div className="flex h-full min-h-0 w-full">
       <nav
@@ -28,6 +41,41 @@ export function SettingsLayout() {
         <p className="px-2 pb-2 text-xs font-semibold tracking-wide text-text-secondary uppercase">
           Settings
         </p>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search settings…"
+          aria-label="Search settings"
+          className="mb-3 h-8 w-full rounded-lg border border-border-subtle bg-surface-elevated px-2.5 text-xs outline-none focus:border-accent"
+        />
+        {query.trim() !== '' ? (
+          <ul className="mb-3 space-y-0.5">
+            {hits.map((hit) => (
+              <li key={hit.path}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('');
+                    void navigate({
+                      to: '/settings/field',
+                      search: { path: hit.path },
+                    });
+                  }}
+                  className="block w-full truncate rounded-lg px-2 py-1.5 text-left text-xs hover:bg-surface-elevated"
+                  title={hit.path}
+                >
+                  <span className="font-medium">{hit.label}</span>
+                  <span className="block truncate font-mono text-[10px] text-text-secondary">
+                    {hit.path}
+                  </span>
+                </button>
+              </li>
+            ))}
+            {hits.length === 0 ? (
+              <li className="px-2 py-1 text-xs text-text-secondary">No matches.</li>
+            ) : null}
+          </ul>
+        ) : (
         <ul className="space-y-0.5">
           {NAV.map((item) => {
             const active = location.pathname === item.to;
@@ -48,6 +96,7 @@ export function SettingsLayout() {
             );
           })}
         </ul>
+        )}
       </nav>
       <div className="min-w-0 flex-1 overflow-y-auto">
         <Outlet />

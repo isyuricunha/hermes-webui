@@ -201,10 +201,25 @@ export function putConfigRaw(yamlText: string): Promise<{ ok: boolean }> {
 }
 
 export function fetchConfigSchema(): Promise<{
-  fields: Record<string, unknown>;
+  fields: Record<string, { type: string; description?: string; category?: string }>;
   category_order: string[];
 }> {
   return requestJson('/api/settings/schema');
+}
+
+export function fetchSettingsConfig(): Promise<Record<string, unknown>> {
+  return requestJson<Record<string, unknown>>('/api/settings/config');
+}
+
+export function fetchSettingsDefaults(): Promise<Record<string, unknown>> {
+  return requestJson<Record<string, unknown>>('/api/settings/defaults');
+}
+
+export function putSettingsConfig(config: Record<string, unknown>): Promise<unknown> {
+  return requestJson('/api/settings/config', {
+    method: 'PUT',
+    body: JSON.stringify({ config }),
+  });
 }
 
 export interface EnvVarInfo {
@@ -252,6 +267,13 @@ export interface McpServer {
 
 export function fetchMcpServers(): Promise<{ servers: McpServer[] }> {
   return requestJson<{ servers: McpServer[] }>('/api/settings/mcp/servers');
+}
+
+export function forkSession(sessionId: string): Promise<{ session: { id: string } }> {
+  return requestJson<{ session: { id: string } }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/fork`,
+    { method: 'POST', body: JSON.stringify({}) },
+  );
 }
 
 export interface SkillInfo {

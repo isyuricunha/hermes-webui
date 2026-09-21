@@ -94,6 +94,14 @@ export class HermesClient {
     });
   }
 
+  /** PRD 11.1: fork/branch when supported (gateway POST /api/sessions/{id}/fork). */
+  forkSession(sessionId: string): Promise<unknown> {
+    return this.request(`/api/sessions/${encodeURIComponent(sessionId)}/fork`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
   /**
    * Durable run submission (PRD run lifecycle). The WebUI generates the
    * Idempotency-Key so client retries never double-submit.

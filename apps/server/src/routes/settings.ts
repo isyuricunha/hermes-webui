@@ -74,6 +74,30 @@ export async function settingsRoutes(
     }
   });
 
+  // Mutating: deep-merge write over the real config.yaml (PRD 77). The UI
+  // re-reads after saving to confirm the change landed.
+  app.put(
+    '/api/settings/config',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['config'],
+          properties: { config: { type: 'object' } },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { config: patch } = request.body as { config: Record<string, unknown> };
+        return await reply.send(await dashboard.putConfig(patch));
+      } catch (error) {
+        return sendHermesError(reply, request.id, error);
+      }
+    },
+  );
+
   // -- Environment / secrets --------------------------------------------------
 
   app.get('/api/settings/env', async (request, reply) => {

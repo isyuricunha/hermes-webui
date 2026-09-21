@@ -102,4 +102,13 @@ export async function sessionRoutes(
       return sendHermesError(reply, request.id, error);
     }
   });
+
+  app.post('/api/sessions/:sessionId/fork', async (request, reply) => {
+    const { sessionId } = request.params as { sessionId: string };
+    try {
+      return await reply.send(await client.forkSession(sessionId));
+    } catch (error) {
+      return sendHermesError(reply, request.id, error);
+    }
+  });
 }

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { createSession, deleteSession, fetchAppStatus, fetchSessions, patchSession } from '../../lib/api';
+import { createSession, deleteSession, fetchAppStatus, fetchSessions, forkSession, patchSession } from '../../lib/api';
 import { ThemeToggle } from './ThemeToggle';
 
 function HermesStatusPill() {
@@ -73,6 +73,17 @@ export function SessionSidebar({ onNavigate }: { onNavigate?: () => void }) {
     onSuccess: invalidate,
   });
 
+  const fork = useMutation({
+    mutationFn: (id: string) => forkSession(id),
+    onSuccess: (created) => {
+      invalidate();
+      if (created?.session?.id) {
+        void navigate({ to: '/chat/$sessionId', params: { sessionId: created.session.id } });
+      }
+      onNavigate?.();
+    },
+  });
+
   const sessions = [...(sessionsQuery.data?.data ?? [])].sort((a, b) => b.started_at - a.started_at);
   const groups = new Map<'Today' | 'Earlier', typeof sessions>();
   for (const session of sessions) {
@@ -115,7 +126,7 @@ export function SessionSidebar({ onNavigate }: { onNavigate?: () => void }) {
                         to="/chat/$sessionId"
                         params={{ sessionId: session.id }}
                         onClick={onNavigate}
-                        className="block truncate rounded-lg px-2 py-1.5 pr-14 text-sm hover:bg-surface-elevated"
+                        className="block truncate rounded-lg px-2 py-1.5 pr-20 text-sm hover:bg-surface-elevated"
                         title={sessionLabel(session.id, session.title)}
                       >
                         {sessionLabel(session.id, session.title)}
@@ -133,6 +144,15 @@ export function SessionSidebar({ onNavigate }: { onNavigate?: () => void }) {
                           }}
                         >
                           ✎
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Fork ${sessionLabel(session.id, session.title)}`}
+                          className="rounded px-1 text-xs text-text-secondary hover:text-text-primary"
+                          title="Fork this conversation"
+                          onClick={() => fork.mutate(session.id)}
+                        >
+                          ⑂
                         </button>
                         <button
                           type="button"

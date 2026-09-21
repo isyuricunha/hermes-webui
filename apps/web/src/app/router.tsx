@@ -11,6 +11,7 @@ import { SystemPage } from '../features/settings/SystemPage';
 import { RawConfigPage } from '../features/settings/RawConfigPage';
 import { EnvPage } from '../features/settings/EnvPage';
 import { CliPage } from '../features/settings/CliPage';
+import { FieldDetailPage } from '../features/settings/FieldDetailPage';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -96,6 +97,18 @@ const cliRoute = createRoute({
   component: CliPage,
 });
 
+const fieldRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: 'field',
+  validateSearch: (search: Record<string, unknown>): { path: string } => ({
+    path: typeof search.path === 'string' ? search.path : '',
+  }),
+  component: () => {
+    const { path } = fieldRoute.useSearch();
+    return <FieldDetailPage path={path} />;
+  },
+});
+
 const settingsIndexRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: '/',
@@ -116,6 +129,7 @@ const routeTree = rootRoute.addChildren([
     rawConfigRoute,
     environmentRoute,
     cliRoute,
+    fieldRoute,
   ]),
 ]);
 

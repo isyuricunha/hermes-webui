@@ -117,6 +117,14 @@ export class HermesDashboardClient {
     return this.request('/api/config/defaults');
   }
 
+  /**
+   * Deep-merge write (PRD 77): body {config} merges over disk config; the
+   * caller re-reads to confirm. Mutating.
+   */
+  putConfig(config: Record<string, unknown>): Promise<unknown> {
+    return this.request('/api/config', { method: 'PUT', body: JSON.stringify({ config }) });
+  }
+
   // -- Environment / secrets (PRD 32) -----------------------------------------
 
   listEnv(): Promise<Record<string, unknown>> {
