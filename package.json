@@ -1,0 +1,17 @@
+{
+  "name": "hermes-webui",
+  "private": true,
+  "version": "0.1.0-alpha.0",
+  "description": "A modern, chat-first web interface for Hermes Agent. Self-hosted sidecar that runs alongside Hermes.",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

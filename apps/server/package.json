@@ -1,0 +1,26 @@
+{
+  "name": "@hermes-webui/server",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsup src/main.ts --format esm --outDir dist --sourcemap",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'eslint pending' && exit 0"
+  },
+  "dependencies": {
+    "@hermes-webui/shared": "workspace:*",
+    "@sinclair/typebox": "^0.34.52",
+    "fastify": "^5.12.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}

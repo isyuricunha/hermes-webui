@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+
+# esbuild ships a postinstall validation script; keep its binary working.
+allowBuilds:
+  esbuild: true
