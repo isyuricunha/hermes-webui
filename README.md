@@ -42,7 +42,7 @@ See `apps/server/.env.example`. The WebUI keeps its own tiny configuration; Herm
 
 - **Chat-first home** with real Hermes sessions (list, create, rename, delete), streaming responses over SSE, Markdown + code blocks, tool-call cards, interim commentary, stop, steer, inline approvals, drafts and reconnect after reload.
 - **Status awareness**: Connected / Degraded / Offline pill driven by gateway health + capability checks.
-- **Settings backend** (UI in progress): raw config read/write with dashboard-side YAML validation, config schema (864 fields), masked env/secrets management, model catalog, MCP servers, skills, messaging platforms, doctor — all proxied through the WebUI backend to the official Hermes dashboard API on loopback.
+- **Settings workspace**: semantic navigation with Models (main model + provider readiness), MCP servers, Skills, Cron (run/pause/resume/delete), Messaging platforms, System (status, doctor, update check), **Raw Config** editor with pre-apply diff and dashboard-side YAML validation, and masked **Environment/secrets** management (set/remove with confirmation).
 - **Cron**: job list/create/update/delete/pause/resume/run via the gateway API.
 - **Command palette** (Ctrl/Cmd+K), dark/light/system theme, mobile drawer.
 

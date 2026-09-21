@@ -144,3 +144,142 @@ export function resolveApproval(
     body: JSON.stringify(body),
   });
 }
+
+// --- Cron --------------------------------------------------------------------
+
+export interface CronJob {
+  id: string;
+  name: string;
+  prompt?: string;
+  script?: string | null;
+  no_agent?: boolean;
+  schedule?: { kind?: string; expr?: string; display?: string };
+  schedule_display?: string;
+  paused?: boolean;
+}
+
+export interface CronJobList {
+  jobs: CronJob[];
+}
+
+export function fetchCronJobs(): Promise<CronJobList> {
+  return requestJson<CronJobList>('/api/cron/jobs');
+}
+
+export function runCronJob(jobId: string): Promise<unknown> {
+  return requestJson(`/api/cron/jobs/${encodeURIComponent(jobId)}/run`, { method: 'POST' });
+}
+
+export function pauseCronJob(jobId: string): Promise<unknown> {
+  return requestJson(`/api/cron/jobs/${encodeURIComponent(jobId)}/pause`, { method: 'POST' });
+}
+
+export function resumeCronJob(jobId: string): Promise<unknown> {
+  return requestJson(`/api/cron/jobs/${encodeURIComponent(jobId)}/resume`, { method: 'POST' });
+}
+
+export function deleteCronJob(jobId: string): Promise<unknown> {
+  return requestJson(`/api/cron/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+}
+
+// --- Settings (dashboard-backed) ---------------------------------------------
+
+export interface RawConfig {
+  yaml: string;
+  path: string;
+}
+
+export function fetchConfigRaw(): Promise<RawConfig> {
+  return requestJson<RawConfig>('/api/settings/config/raw');
+}
+
+export function putConfigRaw(yamlText: string): Promise<{ ok: boolean }> {
+  return requestJson<{ ok: boolean }>('/api/settings/config/raw', {
+    method: 'PUT',
+    body: JSON.stringify({ yaml_text: yamlText }),
+  });
+}
+
+export function fetchConfigSchema(): Promise<{
+  fields: Record<string, unknown>;
+  category_order: string[];
+}> {
+  return requestJson('/api/settings/schema');
+}
+
+export interface EnvVarInfo {
+  is_set: boolean;
+  redacted_value: string | null;
+  description: string | null;
+  category?: string;
+  is_password?: boolean;
+}
+
+export function fetchEnv(): Promise<Record<string, EnvVarInfo>> {
+  return requestJson<Record<string, EnvVarInfo>>('/api/settings/env');
+}
+
+export function putEnv(key: string, value: string): Promise<unknown> {
+  return requestJson('/api/settings/env', {
+    method: 'PUT',
+    body: JSON.stringify({ key, value }),
+  });
+}
+
+export function deleteEnv(key: string): Promise<unknown> {
+  return requestJson('/api/settings/env', { method: 'DELETE', body: JSON.stringify({ key }) });
+}
+
+export function fetchModelInfo(): Promise<{
+  model: string;
+  provider: string;
+  effective_context_length?: number;
+}> {
+  return requestJson('/api/settings/model/info');
+}
+
+export function fetchModelOptions(): Promise<unknown> {
+  return requestJson('/api/settings/model/options');
+}
+
+export interface McpServer {
+  name: string;
+  transport: string;
+  url?: string | null;
+  enabled: boolean;
+  auth?: string | null;
+}
+
+export function fetchMcpServers(): Promise<{ servers: McpServer[] }> {
+  return requestJson<{ servers: McpServer[] }>('/api/settings/mcp/servers');
+}
+
+export interface SkillInfo {
+  name: string;
+  description?: string;
+}
+
+export function fetchSkills(): Promise<SkillInfo[]> {
+  return requestJson<SkillInfo[]>('/api/settings/skills');
+}
+
+export interface MessagingPlatforms {
+  platforms: { id: string; name: string; description?: string }[];
+}
+
+export function fetchMessagingPlatforms(): Promise<MessagingPlatforms> {
+  return requestJson<MessagingPlatforms>('/api/settings/messaging/platforms');
+}
+
+export function runDoctor(): Promise<unknown> {
+  return requestJson<unknown>('/api/settings/ops/doctor', { method: 'POST' });
+}
+
+export function fetchUpdateCheck(): Promise<{
+  current_version?: string;
+  update_available?: boolean;
+  can_apply?: boolean;
+  message?: string;
+}> {
+  return requestJson('/api/settings/update/check');
+}
