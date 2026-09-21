@@ -11,11 +11,24 @@ import { expect, test, type Page } from '@playwright/test';
 
 const TOOL_ECHO = 'hello-webui-toolcard';
 
+/** Phase 1 auth: mutating API calls need the session CSRF token. */
+async function csrfHeaders(page: Page): Promise<Record<string, string>> {
+  const state = await page.request.get('/api/auth/state');
+  const body = (await state.json()) as { csrfToken?: string };
+  return body.csrfToken !== undefined ? { 'x-csrf-token': body.csrfToken } : {};
+}
+
 async function createRealSession(page: Page): Promise<string> {
-  const response = await page.request.post('/api/sessions', { data: {} });
+  const headers = await csrfHeaders(page);
+  const response = await page.request.post('/api/sessions', { headers, data: {} });
   expect(response.ok()).toBeTruthy();
   const payload = (await response.json()) as { session: { id: string } };
   return payload.session.id;
+}
+
+async function deleteSession(page: Page, sessionId: string): Promise<void> {
+  const headers = await csrfHeaders(page);
+  await page.request.delete(`/api/sessions/${sessionId}`, { headers });
 }
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
@@ -64,7 +77,7 @@ test.describe('slash command discoverability', () => {
       await expect(picker).not.toBeVisible();
       await expectNoHorizontalOverflow(page);
     } finally {
-      await page.request.delete(`/api/sessions/${sessionId}`);
+      await deleteSession(page, sessionId);
     }
   });
 
@@ -127,7 +140,7 @@ test.describe('real tool run', () => {
       await expect(sidebar).toContainText(/echo|Use the terminal/i);
       await expect(sidebar.getByRole('link', { name: new RegExp(sessionId) })).toHaveCount(0);
     } finally {
-      await page.request.delete(`/api/sessions/${sessionId}`);
+      await deleteSession(page, sessionId);
     }
   });
 });

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import os from 'node:os';
 
 /**
  * WebUI process configuration.
@@ -22,6 +23,23 @@ export interface ServerConfig {
   webDistDir: string;
   /** WebUI version reported by /api/app/status. */
   appVersion: string;
+  /**
+   * WebUI-owned data directory (SQLite database, setup token file).
+   * Phase 1 auth (spec 2.2): never mixed with ~/.hermes state.
+   */
+  dataDir: string;
+  /**
+   * Trusted reverse proxy addresses (spec 2.14). Default: none — client IP,
+   * HTTPS detection and rate limiting never trust forwarded headers unless
+   * an explicit IP/CIDR list is configured.
+   */
+  trustProxy: string[];
+  /** Session lifetimes (spec 2.6). */
+  session: {
+    idleMs: number;
+    absoluteMs: number;
+    recentAuthMs: number;
+  };
 }
 
 function intFromEnv(value: string | undefined, fallback: number): number {
@@ -30,6 +48,33 @@ function intFromEnv(value: string | undefined, fallback: number): number {
   }
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function defaultDataDir(env: NodeJS.ProcessEnv): string {
+  if (env.HERMES_WEBUI_DATA_DIR !== undefined && env.HERMES_WEBUI_DATA_DIR !== '') {
+    return env.HERMES_WEBUI_DATA_DIR;
+  }
+  const xdg = env.XDG_DATA_HOME ?? path.join(os.homedir(), '.local', 'share');
+  return path.join(xdg, 'hermes-webui');
+}
+
+/**
+ * Trusted proxy list: comma-separated IPs/CIDRs. A literal "true" is
+ * deliberately rejected (spec 2.14) — trusting every hop would let any
+ * client spoof its address.
+ */
+function trustProxyFromEnv(env: NodeJS.ProcessEnv): string[] {
+  const raw = env.HERMES_WEBUI_TRUST_PROXY;
+  if (raw === undefined || raw.trim() === '' || raw.trim().toLowerCase() === 'false') {
+    return [];
+  }
+  if (raw.trim().toLowerCase() === 'true') {
+    return [];
+  }
+  return raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== '');
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -43,5 +88,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     hermesBin: env.HERMES_BIN ?? 'hermes',
     webDistDir: env.WEB_DIST_DIR ?? path.resolve(process.cwd(), '../web/dist'),
     appVersion: env.npm_package_version ?? '0.0.0-dev',
+    dataDir: defaultDataDir(env),
+    trustProxy: trustProxyFromEnv(env),
+    session: {
+      idleMs: intFromEnv(env.HERMES_WEBUI_SESSION_IDLE_HOURS, 24 * 7) * 60 * 60 * 1000,
+      absoluteMs: intFromEnv(env.HERMES_WEBUI_SESSION_ABSOLUTE_DAYS, 30) * 24 * 60 * 60 * 1000,
+      recentAuthMs: intFromEnv(env.HERMES_WEBUI_REAUTH_MINUTES, 10) * 60 * 1000,
+    },
   };
 }

@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
+    "auth-cli": "node apps/server/dist/auth-cli.js",
     "test": "pnpm -r test",
     "e2e": "playwright test",
     "lint": "eslint .",

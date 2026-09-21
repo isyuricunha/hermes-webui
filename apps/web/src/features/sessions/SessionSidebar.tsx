@@ -9,6 +9,7 @@ import {
   patchSession,
 } from '../../lib/api';
 import { ThemeToggle } from './ThemeToggle';
+import { AccountMenu } from '../auth/AccountMenu';
 import { derivedTitle } from '../../lib/sessionTitles';
 
 function HermesStatusPill() {
@@ -260,6 +261,7 @@ export function SessionSidebar({
               Settings
             </Link>
           )}
+          <AccountMenu />
         </div>
       </div>
     </div>

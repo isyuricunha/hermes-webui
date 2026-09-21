@@ -56,6 +56,9 @@ export async function runRoutes(
     request.raw.on('close', () => {
       abort.abort();
     });
+    if (request.auth?.session !== undefined && request.auth.session !== null) {
+      app.registerSessionStream(request.auth.session.id, () => abort.abort());
+    }
     try {
       const upstream = await client.openRunEvents(runId, abort.signal);
       if (!upstream.ok || !upstream.body) {

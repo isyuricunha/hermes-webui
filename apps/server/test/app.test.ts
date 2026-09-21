@@ -26,11 +26,13 @@ describe('app', () => {
     vi.unstubAllGlobals();
   });
 
-  it('exposes /api/healthz', async () => {
-    const app = await buildApp({ config: loadConfig({}) });
-    const response = await app.inject({ method: 'GET', url: '/api/healthz' });
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ ok: true });
+  it('exposes /healthz and /api/healthz with the minimal public payload', async () => {
+    const app = await buildApp({ disableAuth: true, config: loadConfig({}) });
+    for (const url of ['/healthz', '/api/healthz']) {
+      const response = await app.inject({ method: 'GET', url });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ ok: true, service: 'hermes-webui' });
+    }
   });
 
   it('reports hermes connected when health and capabilities answer', async () => {
@@ -45,6 +47,7 @@ describe('app', () => {
     });
 
     const app = await buildApp({
+      disableAuth: true,
       config: loadConfig({
         HERMES_API_KEY: 'test-key',
         HERMES_BASE_URL: 'http://127.0.0.1:59999',
@@ -70,6 +73,7 @@ describe('app', () => {
     });
 
     const app = await buildApp({
+      disableAuth: true,
       config: loadConfig({
         HERMES_API_KEY: 'wrong',
         HERMES_BASE_URL: 'http://127.0.0.1:59999',
@@ -87,6 +91,7 @@ describe('app', () => {
     });
 
     const app = await buildApp({
+      disableAuth: true,
       config: loadConfig({ HERMES_BASE_URL: 'http://127.0.0.1:59999' }),
     });
     const response = await app.inject({ method: 'GET', url: '/api/app/status' });
@@ -101,7 +106,7 @@ describe('app', () => {
     // dist dir explicitly so the test does not depend on build order.
     const distDir = mkdtempSync(path.join(tmpdir(), 'hwui-dist-'));
     writeFileSync(path.join(distDir, 'index.html'), '<!doctype html><title>Hermes WebUI</title>');
-    const app = await buildApp({ config: { ...loadConfig({}), webDistDir: distDir } });
+    const app = await buildApp({ disableAuth: true, config: { ...loadConfig({}), webDistDir: distDir } });
 
     const api = await app.inject({ method: 'GET', url: '/api/definitely/not/here' });
     expect(api.statusCode).toBe(404);
@@ -123,6 +128,7 @@ describe('app', () => {
   it('returns structured 404 for every route when no web build is present', async () => {
     const emptyDir = mkdtempSync(path.join(tmpdir(), 'hwui-nodist-'));
     const app = await buildApp({
+      disableAuth: true,
       config: { ...loadConfig({}), webDistDir: path.join(emptyDir, 'missing') },
     });
     const response = await app.inject({ method: 'GET', url: '/some/spa/route' });

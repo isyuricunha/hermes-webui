@@ -5,19 +5,24 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsup src/main.ts --format esm --outDir dist --sourcemap",
+    "build": "tsup src/main.ts src/auth-cli.ts --format esm --outDir dist --sourcemap",
     "start": "node dist/main.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.2",
     "@fastify/static": "^10.1.4",
     "@hermes-webui/shared": "workspace:*",
+    "@node-rs/argon2": "^2.2.1",
     "@sinclair/typebox": "^0.34.52",
-    "fastify": "^5.12.5"
+    "better-sqlite3": "^13.0.3",
+    "fastify": "^5.12.5",
+    "fastify-plugin": "^6.0.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.6.2",
     "tsup": "^8.5.1",
     "tsx": "^4.23.13",

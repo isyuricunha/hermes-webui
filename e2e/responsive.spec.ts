@@ -20,7 +20,7 @@ const SETTINGS_PAGES = [
   { path: '/settings/cron', mustContain: 'cron' },
   { path: '/settings/messaging', mustContain: 'Telegram' },
   { path: '/settings/system', mustContain: 'Restart Hermes' },
-  { path: '/settings/advanced/config', mustContain: 'model:' },
+  { path: '/settings/advanced/config', mustContain: 'raw config' },
   { path: '/settings/advanced/environment', mustContain: 'Environment' },
   { path: '/settings/advanced/cli', mustContain: 'lsp.status' },
 ] as const;

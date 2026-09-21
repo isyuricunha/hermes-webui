@@ -1,5 +1,13 @@
-import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  redirect,
+} from '@tanstack/react-router';
 import type { RouterHistory } from '@tanstack/react-router';
+import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from './AppShell';
 import { ChatView } from '../features/chat/ChatView';
 import { SettingsLayout } from '../features/settings/SettingsLayout';
@@ -13,8 +21,80 @@ import { RawConfigPage } from '../features/settings/RawConfigPage';
 import { EnvPage } from '../features/settings/EnvPage';
 import { CliPage } from '../features/settings/CliPage';
 import { FieldDetailPage } from '../features/settings/FieldDetailPage';
+import { LoginPage } from '../features/auth/LoginPage';
+import { SetupPage } from '../features/auth/SetupPage';
+import { AUTH_REQUIRED_EVENT, fetchAuthState } from '../lib/auth';
 
 const rootRoute = createRootRoute({
+  component: () => <Outlet />,
+});
+
+/**
+ * Public surfaces (Phase 1, spec 2.21): /login and /setup render without the
+ * app shell. A listener re-runs protected loaders when a 401 happens later.
+ */
+function PublicAuthListener(): null {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const handler = () => {
+      queryClient.removeQueries({ queryKey: ['auth-state'] });
+      const next = window.location.pathname + window.location.search;
+      window.location.assign(next === '/' ? '/login' : `/login?next=${encodeURIComponent(next)}`);
+    };
+    window.addEventListener(AUTH_REQUIRED_EVENT, handler);
+    return () => window.removeEventListener(AUTH_REQUIRED_EVENT, handler);
+  }, [queryClient]);
+  return null;
+}
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  validateSearch: (search: Record<string, unknown>): { next?: string } => ({
+    next: typeof search.next === 'string' ? search.next : undefined,
+  }),
+  component: () => (
+    <>
+      <PublicAuthListener />
+      <LoginPage />
+    </>
+  ),
+});
+
+const setupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/setup',
+  component: () => (
+    <>
+      <PublicAuthListener />
+      <SetupPage />
+    </>
+  ),
+});
+
+/**
+ * Protected layout (Phase 1, spec 2.20): before every protected route, the
+ * auth state decides — unclaimed goes to /setup, signed out goes to
+ * /login?next=… (same-origin paths only). Uses the router's own redirect so
+ * browser Back/Forward and deep links keep working.
+ */
+const protectedLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: 'protected',
+  beforeLoad: async () => {
+    const state = await fetchAuthState();
+    if (!state.claimed) {
+      throw redirect({ to: '/setup' });
+    }
+    if (!state.authenticated) {
+      const next = window.location.pathname + window.location.search;
+      throw redirect({
+        to: '/login',
+        search: next === '/' ? {} : { next },
+      });
+    }
+    return { auth: state };
+  },
   component: () => (
     <AppShell>
       <Outlet />
@@ -24,13 +104,13 @@ const rootRoute = createRootRoute({
 
 /** Chat is the home route (PRD 6.1, 10.1). */
 const chatRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/',
   component: () => <ChatView />,
 });
 
 const chatSessionRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/chat/$sessionId',
   component: () => {
     const { sessionId } = chatSessionRoute.useParams();
@@ -40,7 +120,7 @@ const chatSessionRoute = createRoute({
 
 /** Settings workspace (PRD 19): its own shell with semantic navigation. */
 const settingsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => protectedLayoutRoute,
   path: '/settings',
   component: SettingsLayout,
 });
@@ -118,20 +198,24 @@ const settingsIndexRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
-  chatRoute,
-  chatSessionRoute,
-  settingsRoute.addChildren([
-    settingsIndexRoute,
-    modelsRoute,
-    mcpRoute,
-    skillsRoute,
-    cronRoute,
-    messagingRoute,
-    systemRoute,
-    rawConfigRoute,
-    environmentRoute,
-    cliRoute,
-    fieldRoute,
+  loginRoute,
+  setupRoute,
+  protectedLayoutRoute.addChildren([
+    chatRoute,
+    chatSessionRoute,
+    settingsRoute.addChildren([
+      settingsIndexRoute,
+      modelsRoute,
+      mcpRoute,
+      skillsRoute,
+      cronRoute,
+      messagingRoute,
+      systemRoute,
+      rawConfigRoute,
+      environmentRoute,
+      cliRoute,
+      fieldRoute,
+    ]),
   ]),
 ]);
 

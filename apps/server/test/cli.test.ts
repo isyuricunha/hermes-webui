@@ -112,7 +112,7 @@ describe('bridge execution against a stub binary', () => {
 describe('cli bridge routes', () => {
   it('executes a registry command and enforces the free-form allowlist', async () => {
     const bin = makeStubBinary('#!/bin/sh\necho "stub ran: $*"\n');
-    const app = await buildApp({ config: loadConfig({ HERMES_BIN: bin }) });
+    const app = await buildApp({ config: loadConfig({ HERMES_BIN: bin }), disableAuth: true });
 
     const registry = await app.inject({ method: 'POST', url: '/api/cli/commands/lsp.status/run' });
     expect(registry.statusCode).toBe(200);

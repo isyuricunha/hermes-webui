@@ -31,6 +31,7 @@ describe('gateway proxy routes', () => {
       }),
     );
     app = await buildApp({
+      disableAuth: true,
       config: loadConfig({ HERMES_API_KEY: 'test-key', HERMES_BASE_URL: 'http://gateway.test' }),
     });
   });

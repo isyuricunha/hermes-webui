@@ -29,7 +29,7 @@ describe('dashboard settings routes', () => {
       }),
     );
     app = await buildApp(
-      { config: loadConfig({ HERMES_DASHBOARD_SESSION_TOKEN: 'dash-token' }) },
+      { disableAuth: true, config: loadConfig({ HERMES_DASHBOARD_SESSION_TOKEN: 'dash-token' }) },
     );
   });
 

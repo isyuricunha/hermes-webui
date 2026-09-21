@@ -1,4 +1,5 @@
 import type { AppStatus, NormalizedCommand } from '@hermes-webui/shared';
+import { getCsrfToken, notifyAuthRequired } from './auth';
 
 /**
  * Browser-side access to the WebUI backend. The browser never talks to
@@ -7,25 +8,41 @@ import type { AppStatus, NormalizedCommand } from '@hermes-webui/shared';
  */
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      accept: 'application/json',
-      ...(init?.body !== undefined ? { 'content-type': 'application/json' } : {}),
-      ...init?.headers,
-    },
-  });
+  const method = (init?.method ?? 'GET').toUpperCase();
+  const headers: Record<string, string> = {
+    accept: 'application/json',
+    ...(init?.body !== undefined ? { 'content-type': 'application/json' } : {}),
+    ...((init?.headers as Record<string, string>) ?? {}),
+  };
+  // Phase 1 auth: session-bound CSRF token on every mutation (spec 2.12).
+  if (method !== 'GET' && method !== 'HEAD') {
+    const token = getCsrfToken();
+    console.info(`[csrf-debug] ${method} ${url} token=${token === null ? 'NULL' : 'present'}`);
+    if (token !== null) {
+      headers['x-csrf-token'] = token;
+    }
+  }
+  const response = await fetch(url, { ...init, headers });
+  if (response.status === 401 && !url.startsWith('/api/auth/')) {
+    // Central 401 handling (spec 2.26): surface the login redirect globally.
+    notifyAuthRequired();
+  }
   if (!response.ok) {
     let message = `Request to ${url} failed with ${response.status}`;
+    let code: string | undefined;
     try {
-      const body = (await response.json()) as { error?: { message?: string } };
+      const body = (await response.json()) as { error?: { message?: string; code?: string } };
       if (body.error?.message) {
         message = body.error.message;
       }
+      code = body.error?.code;
     } catch {
       // keep default message
     }
-    throw new Error(message);
+    const error = new Error(message) as Error & { statusCode?: number; errorCode?: string };
+    error.statusCode = response.status;
+    error.errorCode = code;
+    throw error;
   }
   return (await response.json()) as T;
 }

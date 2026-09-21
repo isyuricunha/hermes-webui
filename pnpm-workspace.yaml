@@ -4,4 +4,6 @@ packages:
 
 # esbuild ships a postinstall validation script; keep its binary working.
 allowBuilds:
+  better-sqlite3: true
+  '@node-rs/argon2': true
   esbuild: true

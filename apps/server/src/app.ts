@@ -11,11 +11,20 @@ import { cronRoutes } from './routes/cron';
 import { settingsRoutes } from './routes/settings';
 import { cliRoutes } from './routes/cli';
 import { commandRoutes } from './routes/commands';
+import { openDatabase } from './db/database';
+import { AuthStore } from './auth/store';
+import { AuthService } from './auth/service';
+import { LoginRateLimiter, authPlugin, newIpHashSalt } from './auth/plugin';
+import { buildAuthRoutes } from './routes/auth';
 
 export interface BuildAppOptions {
   config: ServerConfig;
   hermesClient?: HermesClient;
   dashboardClient?: HermesDashboardClient;
+  /** Test seam: in-memory or temp-dir database. */
+  dataDir?: string;
+  /** Test seam: disable the auth policy entirely (never used in production). */
+  disableAuth?: boolean;
 }
 
 /**
@@ -35,7 +44,11 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
       level: process.env.LOG_LEVEL ?? 'info',
       redact: {
         // Defense in depth: never let credential-shaped fields reach logs.
-        paths: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-hermes-session-token"]'],
+        paths: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.headers["x-hermes-session-token"]',
+        ],
         censor: '[REDACTED]',
       },
     },
@@ -80,9 +93,58 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     });
   });
 
-  app.get('/api/healthz', async () => ({ ok: true }));
+  const apiRouteInventory: { method: string; url: string }[] = [];
+  app.decorate('apiRouteInventory', apiRouteInventory);
+  app.addHook('onRoute', (route) => {
+    if (route.url.startsWith('/api/')) {
+      for (const method of Array.isArray(route.method) ? route.method : [route.method]) {
+        apiRouteInventory.push({ method, url: route.url });
+      }
+    }
+  });
 
-  /**
+  // Phase 1 auth (spec 2.9): central policy, deny-by-default for /api/*.
+  // Only /healthz and /api/auth/{state,setup,login} declare themselves public.
+  const dataDir = options.dataDir ?? config.dataDir;
+  const { db } = openDatabase(dataDir);
+  const store = new AuthStore(db);
+  const ipHashSalt = newIpHashSalt();
+  const limiter = new LoginRateLimiter();
+  const service = new AuthService(store, config.session, dataDir, limiter);
+  const secureCookie = false; // loopback/dev default; Secure auto-derives from HTTPS at the proxy
+
+  // First boot (spec 2.7): write the one-time setup token while unclaimed.
+  if (!store.isClaimed()) {
+    const tokenPath = service.ensureBootstrapToken();
+    app.log.warn(`Hermes WebUI is unclaimed. Setup token written to: ${tokenPath}`);
+  }
+
+  app.decorate('ipHashSalt', ipHashSalt);
+  if (options.disableAuth !== true) {
+    await app.register(authPlugin, {
+      store,
+      service,
+      lifetimes: config.session,
+      secureCookie,
+      ipHashSalt,
+    });
+  }
+
+  app.get(
+    '/healthz',
+    { config: { auth: 'public' } },
+    async () => ({ ok: true, service: 'hermes-webui' }),
+  );
+  // Kept alongside /healthz (spec 2.10) for deploy-script compatibility.
+  app.get(
+    '/api/healthz',
+    { config: { auth: 'public' } },
+    async () => ({ ok: true, service: 'hermes-webui' }),
+  );
+
+  buildAuthRoutes(app, { service, store, secureCookie, ipHashSalt });
+
+  /***
    * Connection states per PRD 40: connected (gateway healthy + auth ok),
    * degraded (reachable but our key was rejected), offline (unreachable).
    */
