@@ -23,6 +23,19 @@ Hermes Agent (gateway, sessions, runtime)   <- source of truth
 
 The browser never talks to Hermes directly (PRD 47): auth, secrets, normalization, audit and the CLI bridge all live behind the WebUI backend.
 
+## Two upstream surfaces
+
+The capability matrix (docs/HERMES-CAPABILITY-MATRIX.md) established that Hermes exposes admin capability on two HTTP surfaces, and the WebUI uses both:
+
+| Surface | Transport | Auth | Used for |
+|---|---|---|---|
+| Gateway API server (`:8642`) | aiohttp + SSE, `Authorization: Bearer API_SERVER_KEY` | `API_SERVER_KEY` from Hermes `.env` | chat, sessions, runs, streaming, stop/steer/approvals, cron, health, capabilities |
+| Dashboard API (`:49173`, loopback) | FastAPI, `X-Hermes-Session-Token` | shared session token (systemd drop-in) | config reads/writes + schema, env/secrets, models, MCP, skills, messaging, ops/doctor, update |
+
+The dashboard runs as a companion service bound to loopback; the browser never
+reaches it. When it is unavailable, chat keeps working and the settings areas
+degrade to `HERMES_DASHBOARD_UNREACHABLE` errors instead of breaking the app.
+
 ## Foundry rules
 
 1. **Hermes is the source of truth.** Sessions, messages, runs, config, credentials, models, MCP, skills, memory, cron and messaging belong to Hermes. The WebUI persists only presentation state (theme, pins, drafts, panel state) and its own audit log.

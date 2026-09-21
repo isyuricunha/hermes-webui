@@ -137,6 +137,43 @@ export class HermesClient {
     });
   }
 
+  // -- Cron (capability matrix section 16; live-verified /api/jobs) -----------
+
+  listJobs(): Promise<unknown> {
+    return this.request('/api/jobs', { method: 'GET' });
+  }
+
+  createJob(body: Record<string, unknown>): Promise<unknown> {
+    return this.request('/api/jobs', { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  getJob(jobId: string): Promise<unknown> {
+    return this.request(`/api/jobs/${encodeURIComponent(jobId)}`, { method: 'GET' });
+  }
+
+  updateJob(jobId: string, body: Record<string, unknown>): Promise<unknown> {
+    return this.request(`/api/jobs/${encodeURIComponent(jobId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  }
+
+  deleteJob(jobId: string): Promise<unknown> {
+    return this.request(`/api/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+  }
+
+  pauseJob(jobId: string): Promise<unknown> {
+    return this.request(`/api/jobs/${encodeURIComponent(jobId)}/pause`, { method: 'POST' });
+  }
+
+  resumeJob(jobId: string): Promise<unknown> {
+    return this.request(`/api/jobs/${encodeURIComponent(jobId)}/resume`, { method: 'POST' });
+  }
+
+  runJob(jobId: string): Promise<unknown> {
+    return this.request(`/api/jobs/${encodeURIComponent(jobId)}/run`, { method: 'POST' });
+  }
+
   /**
    * Opens the run event stream (SSE). Returns the raw Response; the caller
    * owns piping and abort. The gateway does not replay events on late

@@ -2,12 +2,16 @@ import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import type { AppStatus, HermesConnectivity } from '@hermes-webui/shared';
 import type { ServerConfig } from './config';
 import { HermesClient, HermesHttpError } from './hermes/client';
+import { HermesDashboardClient } from './hermes/dashboard';
 import { sessionRoutes } from './routes/sessions';
 import { runRoutes } from './routes/runs';
+import { cronRoutes } from './routes/cron';
+import { settingsRoutes } from './routes/settings';
 
 export interface BuildAppOptions {
   config: ServerConfig;
   hermesClient?: HermesClient;
+  dashboardClient?: HermesDashboardClient;
 }
 
 /**
@@ -18,6 +22,9 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const { config } = options;
   const hermes =
     options.hermesClient ?? new HermesClient(config.hermesBaseUrl, config.hermesApiKey);
+  const dashboard =
+    options.dashboardClient ??
+    new HermesDashboardClient(config.hermesDashboardUrl, config.hermesDashboardToken);
 
   const app = Fastify({
     logger: {
@@ -94,6 +101,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
 
   await app.register(sessionRoutes, { client: hermes });
   await app.register(runRoutes, { client: hermes });
+  await app.register(cronRoutes, { client: hermes });
+  await app.register(settingsRoutes, { dashboard });
 
   return app;
 }

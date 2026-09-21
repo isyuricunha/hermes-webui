@@ -32,6 +32,20 @@ export function mapHermesError(reply: FastifyReply, requestId: string, error: un
       };
     }
     if (error.status === 401 || error.status === 403) {
+      if (error.code.startsWith('HERMES_DASHBOARD')) {
+        return {
+          status: 502,
+          body: {
+            error: {
+              code: 'HERMES_DASHBOARD_AUTH',
+              message:
+                'The WebUI could not authenticate to the Hermes dashboard API. Check HERMES_DASHBOARD_SESSION_TOKEN in the WebUI server configuration.',
+              details: error.body,
+            },
+            requestId,
+          },
+        };
+      }
       return {
         status: 502,
         body: {
