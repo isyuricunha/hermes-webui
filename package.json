@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.1.0-alpha.0",
+  "license": "AGPL-3.0-or-later",
   "description": "A modern, chat-first web interface for Hermes Agent. Self-hosted sidecar that runs alongside Hermes.",
   "packageManager": "pnpm@12.3.4",
   "engines": {

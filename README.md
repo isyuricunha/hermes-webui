@@ -56,4 +56,4 @@ PRD.md         Product requirements (authority for scope and UX)
 
 ## License
 
-To be decided by the project owner.
+[AGPL-3.0](LICENSE) © YC Inc.
