@@ -22,6 +22,7 @@ import {
 import { loadActiveRunId, saveActiveRunId } from './runRegistry';
 import { useRunStream } from './useRunStream';
 import { Composer } from './Composer';
+import { rememberChatSession } from '../../lib/navigation';
 
 // --- Subcomponents -----------------------------------------------------------
 
@@ -248,6 +249,12 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [nearBottom, setNearBottom] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Remember the last visited session so "Back to Chat" from Settings
+  // restores this conversation (navigation.ts).
+  useEffect(() => {
+    rememberChatSession(sessionId);
+  }, [sessionId]);
 
   // History
   const messagesQuery = useQuery({

@@ -12,7 +12,7 @@ import { createAppRouter } from '../../app/router';
  * interactive contract (open/close/navigation) and the real route tree.
  */
 
-function renderSettingsAt(path = '/settings/models'): void {
+function renderSettingsAt(path = '/settings/models'): ReturnType<typeof createAppRouter> {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const history = createMemoryHistory({ initialEntries: [path] });
   const router = createAppRouter(history);
@@ -21,6 +21,7 @@ function renderSettingsAt(path = '/settings/models'): void {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return router;
 }
 
 describe('SettingsLayout mobile shell', () => {
@@ -94,5 +95,31 @@ describe('SettingsLayout mobile shell', () => {
       'aria-expanded',
       'false',
     );
+  });
+
+  it('exposes a Back to Chat action in the mobile top bar', async () => {
+    renderSettingsAt('/settings/models');
+    const back = await screen.findByRole('button', { name: 'Back to Chat' });
+    expect(back).toBeInTheDocument();
+  });
+
+  it('drawer and desktop nav both contain a Chat destination', async () => {
+    const user = userEvent.setup();
+    renderSettingsAt('/settings/models');
+    const hamburger = await screen.findByRole('button', {
+      name: 'Open Settings navigation',
+    });
+    await user.click(hamburger);
+    expect(await screen.findByRole('button', { name: '← Chat' })).toBeInTheDocument();
+  });
+
+  it('Back to Chat restores the last active session when one is remembered', async () => {
+    window.localStorage.setItem('hermes-webui:last-chat-session', 'session-abc123');
+    const user = userEvent.setup();
+    const router = renderSettingsAt('/settings/models');
+    const back = await screen.findByRole('button', { name: 'Back to Chat' });
+    await user.click(back);
+    expect(router.state.location.pathname).toBe('/chat/session-abc123');
+    window.localStorage.removeItem('hermes-webui:last-chat-session');
   });
 });

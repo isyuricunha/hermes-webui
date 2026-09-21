@@ -2,6 +2,15 @@
 
 All notable changes to Hermes WebUI are documented here.
 
+## Post-RC1
+
+### Added
+- **Top-level navigation is never a dead end**: Settings now exposes a clear path back to Chat everywhere.
+  - Mobile: `←` back action in the Settings top bar (44px tap target, accessible label) and a Chat entry at the bottom of the Settings drawer; selecting it closes the drawer.
+  - Desktop: Chat destination at the bottom of the Settings navigation column.
+  - The Hermes WebUI brand in the mobile top bar is now a link back to Chat home.
+  - Returning to Chat restores the last active session whenever one was visited (plain localStorage; normal browser Back/Forward and deep links are untouched).
+
 ## 0.1.0-rc.1 (RC1)
 
 ### Fixed (independent review findings)

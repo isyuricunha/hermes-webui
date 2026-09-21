@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { fetchConfigSchema } from '../../lib/api';
 import { searchSchema } from '../../lib/settingsSearch';
+import { goToChat } from '../../lib/navigation';
 
 const NAV = [
   { to: '/settings/models', label: 'Models' },
@@ -119,13 +120,35 @@ export function SettingsLayout() {
           })}
         </ul>
       )}
+      {/* Workspace switch back to Chat: mirrors Settings in the chat sidebar
+          footer (SessionSidebar). Closes the drawer on mobile. */}
+      <div className="mt-auto border-t border-border-subtle pt-2">
+        <button
+          type="button"
+          onClick={() => {
+            setDrawerOpen(false);
+            goToChat(navigate);
+          }}
+          className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
+        >
+          ← Chat
+        </button>
+      </div>
     </div>
   );
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col md:flex-row">
-      {/* Mobile top bar: hamburger + current section (PRD mobile spec) */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-2 border-b border-border-subtle bg-surface px-3 md:hidden">
+      {/* Mobile top bar: back to Chat + hamburger + current section (PRD mobile spec) */}
+      <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-1.5 border-b border-border-subtle bg-surface px-2 md:hidden">
+        <button
+          type="button"
+          className="min-h-[44px] min-w-[44px] rounded-md text-lg text-text-secondary hover:text-text-primary"
+          aria-label="Back to Chat"
+          onClick={() => goToChat(navigate)}
+        >
+          ←
+        </button>
         <button
           type="button"
           className="min-h-[44px] min-w-[44px] rounded-md border border-border-subtle text-sm"
@@ -135,7 +158,7 @@ export function SettingsLayout() {
         >
           ☰
         </button>
-        <span className="truncate text-sm font-medium">{activeSection}</span>
+        <span className="min-w-0 truncate text-sm font-medium">{activeSection}</span>
       </header>
 
       {/* Mobile drawer backdrop */}

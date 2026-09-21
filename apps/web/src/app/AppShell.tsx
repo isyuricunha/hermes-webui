@@ -34,7 +34,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           ☰
         </button>
-        <span className="text-sm font-medium">Hermes WebUI</span>
+        <span className="text-sm font-medium">
+          <Link to="/" className="hover:text-text-primary" aria-label="Hermes WebUI home">
+            Hermes WebUI
+          </Link>
+        </span>
       </header>
 
       {/* Backdrop for the mobile drawer */}
