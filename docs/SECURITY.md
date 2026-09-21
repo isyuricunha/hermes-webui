@@ -36,12 +36,12 @@ Controls, all enforced server-side:
 1. **`execFile` only, never `shell: true`.** Argv is an array; no string is ever handed to a shell.
 2. **Two entry points, both closed:**
    - registry commands (`apps/server/src/cli/registry.ts`) with fixed argv declared in code;
-   - the Advanced escape hatch, where free-form text must (a) contain no shell operator (`; | & < > ( ) $ \` && ||`), (b) start with `hermes`, and (c) match a read-only allowlist prefix.
+   - the Advanced escape hatch, where free-form text must (a) contain no shell operator (`; | & < > ( ) $ \` && ||`), (b) start with `hermes`, and (c) match a read-only allowlist entry **exactly** (same command, same arity — extra flags like `--fix` are refused).
 3. **Mutating commands require `{ confirm: true }`** and are logged at warn level with an audit line (`action: cli.run`).
 4. **`hermes update` can never run through the bridge**: it is not in the registry and not on the allowlist. The dedicated update-apply route is additionally deny-by-default (`HERMES_WEBUI_ALLOW_UPDATE_APPLY=1` to opt in) because a custom-patched install must update through its own flow.
 5. **Timeouts and output caps**: each command declares `timeoutMs` and `maxOutputBytes`; truncation is reported to the UI instead of being hidden.
-6. **Redaction**: stdout/stderr pass through credential-shaped pattern scrubbing (`sk-…`, `ghp_…`, `xox…`, `Bearer …`, `api_key=…`) before leaving the server; the response flags `redacted: true`.
-7. **Sanitized child environment**: only `PATH`, `HOME`, `LANG`, `TERM`, `USER`, `SHELL` are passed to the child. No credential variables are inherited.
+6. **Redaction**: stdout/stderr pass through credential-pattern scrubbing (`sk-…`, `sk_live_…`, `github_pat_…`, `glpat-…`, `AKIA…`, `AIza…`, `xox…`, `Bearer …`, PEM key blocks, `api_key=…`) before leaving the server; the response flags `redacted: true`. Pattern coverage is best-effort — unknown secret shapes are not caught.
+7. **Sanitized child environment**: only `PATH`, `HOME`, `LANG`, `TERM`, `USER`, `SHELL` are passed to the child, with a controlled working directory (`$HOME`). No credential variables are inherited.
 8. **No sudo, no privilege escalation.** The bridge runs as the WebUI process user.
 
 Verified live against the real Hermes install: allowed commands execute (`hermes lsp status`, `hermes gateway status`), while `hermes update` (403 `NOT_ALLOWLISTED`), `hermes status; rm -rf /` (400 `SHELL_OPERATOR_FORBIDDEN`), `hermes status $(id)` (400) and `curl …` (400 `HERMES_BINARY_ONLY`) are all refused.

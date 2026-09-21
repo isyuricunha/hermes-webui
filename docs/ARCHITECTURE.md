@@ -11,17 +11,18 @@ Browser
   |  HTTP (same origin)
   v
 WebUI server (Fastify, this repo)
-  |- hermes/api-client    Hermes HTTP API adapter (single place that talks to Hermes)
-  |- hermes/capability    capability negotiation across Hermes versions
-  |- hermes/config        config/schema/env adapters (PRD 45.3, 45.4)
-  |- hermes/cli           restricted CLI bridge (PRD 34, 50; allowlist, execFile only)
-  |- actions              action registry: UI action -> API / config / CLI
-  |- audit                mutation audit log (no secret values)
+  |- hermes/client          gateway adapter: sessions/runs/SSE/cron/health/capabilities
+  |- hermes/dashboard       dashboard adapter: config/schema/env/models/MCP/skills/ops
+  |- hermes/errors          gateway error mapping (HERMES_AUTH_FAILED / HERMES_UNREACHABLE)
+  |- cli/                   restricted CLI bridge (PRD 34, 50; exact-match allowlist, execFile only)
+  |- routes/*               request-schema-validated proxies (/api/sessions, /api/runs, /api/cron, /api/settings/*, /api/cli/*)
   v
-Hermes Agent (gateway, sessions, runtime)   <- source of truth
+Hermes Agent (gateway + dashboard API, sessions, runtime)   <- source of truth
 ```
 
-The browser never talks to Hermes directly (PRD 47): auth, secrets, normalization, audit and the CLI bridge all live behind the WebUI backend.
+Roadmap components (designed, not yet built): capability negotiation layer, action registry, SQLite audit store, per-install-mode restart adapters.
+
+The browser never talks to Hermes directly (PRD 47): auth, secrets, normalization and the CLI bridge all live behind the WebUI backend.
 
 ## Two upstream surfaces
 
@@ -49,7 +50,7 @@ degrade to `HERMES_DASHBOARD_UNREACHABLE` errors instead of breaking the app.
 | Path | Role |
 |---|---|
 | `apps/web` | React 19 + Vite + Tailwind + TanStack Query/Router. Chat-first shell, session sidebar, settings workspace, tool renderers. |
-| `apps/server` | Fastify 5 + TypeBox. Static assets, `/api/*`, Hermes adapters, CLI bridge, audit. |
+| `apps/server` | Fastify 5 + JSON Schema validation. Static assets, `/api/*`, Hermes adapters, CLI bridge, structured logging. |
 | `packages/shared` | Types and normalized event protocol shared by both apps. |
 
 ## Error model
@@ -64,7 +65,7 @@ Messages are human-readable, technical detail is preserved in logs and details v
 
 ## Connection and restart model
 
-The server probes the Hermes gateway (`HERMES_BASE_URL`) and reports connectivity (`/api/app/status`). When Hermes goes down (including intentional restarts driven through the UI), the WebUI stays up, flips to `restarting`/`offline`, retries with backoff, and restores the active view when Hermes returns (PRD 29.4, 40). Restart adapters are chosen by detected install mode (API, CLI, systemd unit) and never kill processes by PID as a primary strategy (PRD 54).
+The server probes the Hermes gateway (`HERMES_BASE_URL`) and reports connectivity (`/api/app/status`). Gateway restart is triggered through the dashboard API (`POST /api/gateway/restart`, which supervises the handoff); the WebUI stays up, keeps polling status, and reports recovery when the gateway answers again (PRD 29.4, 40). Restart adapters for other install modes (systemd direct, launchd) are roadmap.
 
 ## Testing strategy
 

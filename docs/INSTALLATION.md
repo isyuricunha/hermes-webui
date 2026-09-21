@@ -76,14 +76,16 @@ After=network-online.target hermes-gateway.service
 Type=simple
 WorkingDirectory=%h/ella-repos/hermes-webui/apps/server
 EnvironmentFile=-%h/ella-repos/hermes-webui/apps/server/.env
-ExecStart=%h/ella-repos/hermes-webui/apps/server/node_modules/.bin/node dist/main.js
+ExecStart=/usr/bin/node dist/main.js
 Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
 
 [Install]
 WantedBy=default.target
 ```
 
-> Adjust `WorkingDirectory`/`ExecStart` to where you cloned the repository. Run as the same user as Hermes.
+> Adjust `WorkingDirectory` to where you cloned the repository and confirm the node path with `command -v node`. Run as the same user as Hermes.
 
 ### Development
 
