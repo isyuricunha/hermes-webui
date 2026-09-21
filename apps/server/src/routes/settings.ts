@@ -178,6 +178,75 @@ export async function settingsRoutes(
     }
   });
 
+  // Mutating: toggles enabled on the real config (applies next session).
+  app.put(
+    '/api/settings/mcp/servers/:name/enabled',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['enabled'],
+          properties: { enabled: { type: 'boolean' } },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { name } = request.params as { name: string };
+      try {
+        const { enabled } = request.body as { enabled: boolean };
+        request.log.warn({ action: 'mcp.enabled', name, enabled }, 'mcp server toggle');
+        return await reply.send(await dashboard.setMcpServerEnabled(name, enabled));
+      } catch (error) {
+        return sendHermesError(reply, request.id, error);
+      }
+    },
+  );
+
+  app.post('/api/settings/mcp/servers/:name/test', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    try {
+      return await reply.send(await dashboard.testMcpServer(name));
+    } catch (error) {
+      return sendHermesError(reply, request.id, error);
+    }
+  });
+
+  // Mutating: assigns the main model slot (PRD 22.2). May return
+  // confirm_required for expensive models — the UI surfaces the warning.
+  app.post(
+    '/api/settings/model/set',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['scope', 'model'],
+          properties: {
+            scope: { enum: ['main', 'auxiliary'] },
+            provider: { type: 'string' },
+            model: { type: 'string', minLength: 1 },
+            confirm_expensive_model: { type: 'boolean' },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const body = request.body as {
+          scope: 'main' | 'auxiliary';
+          provider?: string;
+          model: string;
+          confirm_expensive_model?: boolean;
+        };
+        request.log.warn({ action: 'model.set', model: body.model }, 'model assignment via WebUI');
+        return await reply.send(await dashboard.setModelAssignment(body));
+      } catch (error) {
+        return sendHermesError(reply, request.id, error);
+      }
+    },
+  );
+
   app.get('/api/settings/skills', async (request, reply) => {
     try {
       return await reply.send(await dashboard.listSkills());
@@ -241,7 +310,10 @@ export async function settingsRoutes(
       const { file, lines } = request.query;
       const allowed = ['agent', 'gateway', 'errors'];
       const selected = file !== undefined && allowed.includes(file) ? file : 'agent';
-      const count = lines !== undefined && Number.isFinite(Number(lines)) ? Math.min(Number(lines), 500) : 50;
+      const count =
+        lines !== undefined && Number.isFinite(Number(lines)) && Number(lines) > 0
+          ? Math.min(Number(lines), 500)
+          : 50;
       return await reply.send(await dashboard.logs(selected, count));
     } catch (error) {
       return sendHermesError(reply, request.id, error);

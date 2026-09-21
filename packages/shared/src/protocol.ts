@@ -101,12 +101,16 @@ export function parseGatewayFrame(raw: string): NormalizedRunEvent | null {
       return null;
     }
     try {
-      const parsed = JSON.parse(payload) as { event?: unknown } & Record<string, unknown>;
+      const parsed = JSON.parse(payload) as {
+        event?: unknown;
+        run_id?: unknown;
+      } & Record<string, unknown>;
       if (typeof parsed.event !== 'string') {
         return null;
       }
-      const { event, ...rest } = parsed;
-      return { type: event, ...rest } as unknown as NormalizedRunEvent;
+      const { event, run_id, ...rest } = parsed;
+      // Gateway sends snake_case run_id; normalize to the protocol shape.
+      return { type: event, runId: run_id, ...rest } as unknown as NormalizedRunEvent;
     } catch {
       return null;
     }

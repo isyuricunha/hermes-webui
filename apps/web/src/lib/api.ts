@@ -109,6 +109,7 @@ export interface RunStatus {
   status: string;
   session_id?: string;
   output?: string;
+  error?: string;
   last_event?: string;
   completed?: boolean;
 }
@@ -267,6 +268,33 @@ export interface McpServer {
 
 export function fetchMcpServers(): Promise<{ servers: McpServer[] }> {
   return requestJson<{ servers: McpServer[] }>('/api/settings/mcp/servers');
+}
+
+export function setMcpServerEnabled(name: string, enabled: boolean): Promise<unknown> {
+  return requestJson(`/api/settings/mcp/servers/${encodeURIComponent(name)}/enabled`, {
+    method: 'PUT',
+    body: JSON.stringify({ enabled }),
+  });
+}
+
+export function testMcpServer(name: string): Promise<unknown> {
+  return requestJson(`/api/settings/mcp/servers/${encodeURIComponent(name)}/test`, {
+    method: 'POST',
+  });
+}
+
+export interface ModelAssignment {
+  scope: 'main' | 'auxiliary';
+  provider?: string;
+  model: string;
+  confirm_expensive_model?: boolean;
+}
+
+export function setModelAssignment(assignment: ModelAssignment): Promise<unknown> {
+  return requestJson('/api/settings/model/set', {
+    method: 'POST',
+    body: JSON.stringify(assignment),
+  });
 }
 
 export function forkSession(sessionId: string): Promise<{ session: { id: string } }> {

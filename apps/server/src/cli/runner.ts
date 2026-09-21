@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import os from 'node:os';
 
 /**
  * CLI bridge runner (PRD 34, 50): executes the Hermes binary with execFile
@@ -32,10 +33,17 @@ export interface BridgeResult {
 /** Credential-shaped values are scrubbed from bridge output (PRD 50.8). */
 const REDACTION_PATTERNS: RegExp[] = [
   /sk-[A-Za-z0-9_-]{8,}/g,
+  /sk_(?:live|test)_[A-Za-z0-9]{10,}/g,
+  /rk_(?:live|test)_[A-Za-z0-9]{10,}/g,
   /ghp_[A-Za-z0-9]{20,}/g,
   /gho_[A-Za-z0-9]{20,}/g,
+  /github_pat_[A-Za-z0-9_]{20,}/g,
+  /glpat-[A-Za-z0-9_-]{10,}/g,
   /xox[baprs]-[A-Za-z0-9-]{10,}/g,
+  /AKIA[0-9A-Z]{16}/g,
+  /AIza[0-9A-Za-z_-]{30,}/g,
   /Bearer\s+\S+/gi,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
   /\b(?:api[_-]?key|token|password|secret)\s*[=:]\s*\S+/gi,
 ];
 
@@ -77,6 +85,8 @@ export function runHermesArgv(
         maxBuffer: options.maxOutputBytes,
         env: childEnv(),
         windowsHide: true,
+        // PRD 50.4: controlled working directory (review F4).
+        cwd: os.homedir(),
       },
       (error, stdout, stderr) => {
         const truncated =

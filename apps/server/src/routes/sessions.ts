@@ -15,9 +15,14 @@ export async function sessionRoutes(
   app.get('/api/sessions', async (request, reply) => {
     try {
       const { limit, offset } = request.query as { limit?: string; offset?: string };
+      const parseCount = (value: string | undefined): number | undefined => {
+        if (value === undefined || value === '') return undefined;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      };
       const payload = await client.listSessions({
-        limit: limit !== undefined && limit !== '' ? Number(limit) : undefined,
-        offset: offset !== undefined && offset !== '' ? Number(offset) : undefined,
+        limit: parseCount(limit),
+        offset: parseCount(offset),
       });
       return await reply.send(payload);
     } catch (error) {

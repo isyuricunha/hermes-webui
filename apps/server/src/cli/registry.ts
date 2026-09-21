@@ -98,8 +98,10 @@ export const FREE_FORM_ALLOWED_PREFIXES: readonly (readonly string[])[] = [
 ];
 
 export function matchesAllowlist(argv: readonly string[]): boolean {
+  // EXACT match only (review F1): prefix matching admitted mutating flags
+  // (e.g. `hermes doctor --fix`) through the read-only escape hatch.
   return FREE_FORM_ALLOWED_PREFIXES.some(
     (prefix) =>
-      argv.length >= prefix.length && prefix.every((token, index) => argv[index] === token),
+      argv.length === prefix.length && prefix.every((token, index) => argv[index] === token),
   );
 }

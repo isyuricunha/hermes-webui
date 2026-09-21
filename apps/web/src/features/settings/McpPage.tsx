@@ -1,10 +1,41 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchMcpServers } from '../../lib/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import {
+  fetchMcpServers,
+  setMcpServerEnabled,
+  testMcpServer,
+} from '../../lib/api';
 import { SettingsError, SettingsPage } from './SettingsLayout';
 
-/** MCP servers (PRD 24): list with transport, enabled state and auth shape. */
+/** MCP servers (PRD 24): list + enable/disable + test. Add/remove via Raw Config. */
 export function McpPage() {
+  const queryClient = useQueryClient();
   const serversQuery = useQuery({ queryKey: ['mcp-servers'], queryFn: fetchMcpServers });
+  const [message, setMessage] = useState<string | null>(null);
+
+  const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
+
+  const toggle = useMutation({
+    mutationFn: ({ name, enabled }: { name: string; enabled: boolean }) =>
+      setMcpServerEnabled(name, enabled),
+    onSuccess: (_data, variables) => {
+      setMessage(`${variables.name}: ${variables.enabled ? 'enabled' : 'disabled'}.`);
+      invalidate();
+    },
+    onError: (error) => setMessage(error.message),
+  });
+
+  const test = useMutation({
+    mutationFn: (name: string) => testMcpServer(name),
+    onSuccess: (data, name) => {
+      const result = data as { ok?: boolean; error?: string };
+      setMessage(
+        `${name}: ${result.ok ? 'test ok' : `test failed${result.error ? ` (${result.error})` : ''}`}`,
+      );
+      invalidate();
+    },
+    onError: (error) => setMessage(error.message),
+  });
 
   if (serversQuery.isPending) {
     return (
@@ -24,6 +55,7 @@ export function McpPage() {
   const servers = serversQuery.data.servers ?? [];
   return (
     <SettingsPage title="MCP">
+      {message ? <p className="mb-3 text-xs text-text-secondary">{message}</p> : null}
       {servers.length === 0 ? (
         <p className="text-sm text-text-secondary">No MCP servers configured.</p>
       ) : (
@@ -49,13 +81,30 @@ export function McpPage() {
                 {server.url ? ` · ${server.url}` : ''}
                 {server.auth ? ` · auth: ${server.auth}` : ''}
               </p>
+              <div className="mt-2 flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => toggle.mutate({ name: server.name, enabled: !server.enabled })}
+                  className="rounded-lg border border-border-subtle px-2.5 py-1 text-xs"
+                >
+                  {server.enabled ? 'Disable' : 'Enable'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => test.mutate(server.name)}
+                  disabled={test.isPending}
+                  className="rounded-lg border border-border-subtle px-2.5 py-1 text-xs"
+                >
+                  Test
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       )}
       <p className="mt-4 text-xs text-text-secondary">
-        Add/remove/test arrives with the MCP detail editor; Raw Config edits
-        mcp_servers directly meanwhile.
+        Add/remove and per-tool selection: edit mcp_servers in Raw Config (applies on next agent
+        build).
       </p>
     </SettingsPage>
   );

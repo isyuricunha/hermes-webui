@@ -206,6 +206,11 @@ type ChatAction =
 function transcriptReducer(state: TranscriptState, action: ChatAction): TranscriptState {
   switch (action.type) {
     case 'reset':
+      // Don't wipe a run in progress: history arriving mid-stream must not
+      // discard live deltas (review F9a).
+      if (state.items.some((item) => item.kind === 'message' && item.streaming)) {
+        return state;
+      }
       return { ...emptyTranscript, items: action.items };
     case 'event':
       return applyEvent(state, action.frame);
@@ -305,14 +310,17 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       void fetchRun(activeRunId)
         .then((status) => {
           if (
-            status.output !== undefined &&
             ['completed', 'failed', 'cancelled', 'interrupted'].includes(status.status)
           ) {
             dispatch({
               type: 'event',
               frame:
                 status.status === 'failed'
-                  ? { type: 'run.failed', runId: activeRunId, error: 'The run failed.' }
+                  ? {
+                      type: 'run.failed',
+                      runId: activeRunId,
+                      error: status.error ?? 'The run failed.',
+                    }
                   : { type: 'run.completed', runId: activeRunId, output: status.output ?? '' },
             });
             saveActiveRunId(sessionId, null);
@@ -351,8 +359,12 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     }
   });
 
+  const [sending, setSending] = useState(false);
+
   const send = async (text: string) => {
+    if (sending) return;
     setError(null);
+    setSending(true);
     try {
       let targetSession = sessionId;
       if (targetSession === undefined) {
@@ -368,6 +380,8 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       }
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : 'Failed to start the run.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -486,7 +500,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         ) : null}
         <Composer
           key={sessionId ?? 'new'}
-          running={running}
+          running={running || sending}
           onSend={(text) => void send(text)}
           onStop={() => void stop()}
           draftKey={sessionId ?? 'new'}

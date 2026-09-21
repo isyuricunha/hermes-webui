@@ -155,6 +155,30 @@ export class HermesDashboardClient {
     return this.request('/api/mcp/servers');
   }
 
+  setMcpServerEnabled(name: string, enabled: boolean): Promise<unknown> {
+    return this.request(`/api/mcp/servers/${encodeURIComponent(name)}/enabled`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
+  testMcpServer(name: string): Promise<unknown> {
+    return this.request(`/api/mcp/servers/${encodeURIComponent(name)}/test`, { method: 'POST' });
+  }
+
+  /** PRD 22.2: assign the main/auxiliary model slot (mutating; dashboard validates). */
+  setModelAssignment(assignment: {
+    scope: 'main' | 'auxiliary';
+    provider?: string;
+    model: string;
+    confirm_expensive_model?: boolean;
+  }): Promise<unknown> {
+    return this.request('/api/model/set', {
+      method: 'POST',
+      body: JSON.stringify(assignment),
+    });
+  }
+
   listSkills(): Promise<unknown[]> {
     return this.request('/api/skills');
   }
