@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { createSession, deleteSession, fetchAppStatus, fetchSessions, forkSession, patchSession } from '../../lib/api';
+import {
+  createSession,
+  deleteSession,
+  fetchAppStatus,
+  fetchSessions,
+  forkSession,
+  patchSession,
+} from '../../lib/api';
 import { ThemeToggle } from './ThemeToggle';
 
 function HermesStatusPill() {
@@ -37,12 +44,24 @@ function groupLabel(startedAt: number): 'Today' | 'Earlier' {
   return start.toDateString() === now.toDateString() ? 'Today' : 'Earlier';
 }
 
+interface SessionSidebarProps {
+  collapsed?: boolean;
+  onCollapseToggle?: () => void;
+  onNavigate?: () => void;
+}
+
 /**
  * Sidebar structure follows PRD 9.1: new chat, grouped conversations,
  * connection status and Settings at the bottom. Sessions are real Hermes
  * sessions; pins/archive and sidebar width are WebUI-owned (PRD 11.3, 51).
+ * Collapsed mode keeps only the primary actions (PRD 6.6 progressive
+ * disclosure).
  */
-export function SessionSidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function SessionSidebar({
+  collapsed = false,
+  onCollapseToggle,
+  onNavigate,
+}: SessionSidebarProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const sessionsQuery = useQuery({
@@ -95,97 +114,142 @@ export function SessionSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="p-3">
+      <div className={collapsed ? 'flex justify-center p-2' : 'p-3'}>
         <button
           type="button"
           onClick={() => newChat.mutate()}
           disabled={newChat.isPending}
-          className="w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2 text-left text-sm font-medium hover:bg-surface disabled:opacity-50"
+          aria-label="New chat"
+          title="New chat"
+          className={[
+            'rounded-lg border border-border-subtle bg-surface-elevated font-medium hover:bg-surface disabled:opacity-50',
+            collapsed ? 'w-full px-2 py-2 text-base' : 'w-full px-3 py-2 text-left text-sm',
+          ].join(' ')}
         >
-          + New chat
+          {collapsed ? '+' : '+ New chat'}
         </button>
       </div>
-      <nav className="flex-1 overflow-y-auto px-3" aria-label="Conversations">
-        {sessionsQuery.isPending ? (
-          <p className="px-1 py-2 text-sm text-text-secondary">Loading sessions…</p>
-        ) : sessions.length === 0 ? (
-          <p className="px-1 py-2 text-sm text-text-secondary">No conversations yet.</p>
-        ) : (
-          (['Today', 'Earlier'] as const).map((label) => {
-            const list = groups.get(label) ?? [];
-            if (list.length === 0) return null;
-            return (
-              <div key={label}>
-                <p className="px-1 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-text-secondary uppercase">
-                  {label}
-                </p>
-                <ul>
-                  {list.map((session) => (
-                    <li key={session.id} className="group relative">
-                      <Link
-                        to="/chat/$sessionId"
-                        params={{ sessionId: session.id }}
-                        onClick={onNavigate}
-                        className="block truncate rounded-lg px-2 py-1.5 pr-20 text-sm hover:bg-surface-elevated"
-                        title={sessionLabel(session.id, session.title)}
-                      >
-                        {sessionLabel(session.id, session.title)}
-                      </Link>
-                      <span className="absolute top-1.5 right-2 hidden gap-1 group-hover:flex group-focus-within:flex">
-                        <button
-                          type="button"
-                          aria-label={`Rename ${sessionLabel(session.id, session.title)}`}
-                          className="rounded px-1 text-xs text-text-secondary hover:text-text-primary"
-                          onClick={() => {
-                            const title = window.prompt('New title:', session.title ?? '');
-                            if (title !== null && title.trim() !== '') {
-                              rename.mutate({ id: session.id, title: title.trim() });
-                            }
-                          }}
-                        >
-                          ✎
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Fork ${sessionLabel(session.id, session.title)}`}
-                          className="rounded px-1 text-xs text-text-secondary hover:text-text-primary"
-                          title="Fork this conversation"
-                          onClick={() => fork.mutate(session.id)}
-                        >
-                          ⑂
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Delete ${sessionLabel(session.id, session.title)}`}
-                          className="rounded px-1 text-xs text-text-secondary hover:text-danger"
-                          onClick={() => {
-                            if (window.confirm(`Delete "${sessionLabel(session.id, session.title)}"?`)) {
-                              remove.mutate(session.id);
-                            }
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })
-        )}
-      </nav>
-      <div className="flex items-center justify-between gap-2 border-t border-border-subtle px-3 py-3">
-        <HermesStatusPill />
+
+      {collapsed ? (
+        <div className="flex justify-center pb-2">
+          <button
+            type="button"
+            onClick={onCollapseToggle}
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+            className="rounded-md border border-border-subtle px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
+          >
+            »
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-end px-3 pb-1">
+            <button
+              type="button"
+              onClick={onCollapseToggle}
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+              className="rounded-md border border-border-subtle px-2 py-0.5 text-xs text-text-secondary hover:text-text-primary"
+            >
+              «
+            </button>
+          </div>
+          <nav className="flex-1 overflow-y-auto px-3" aria-label="Conversations">
+            {sessionsQuery.isPending ? (
+              <p className="px-1 py-2 text-sm text-text-secondary">Loading sessions…</p>
+            ) : sessions.length === 0 ? (
+              <p className="px-1 py-2 text-sm text-text-secondary">No conversations yet.</p>
+            ) : (
+              (['Today', 'Earlier'] as const).map((label) => {
+                const list = groups.get(label) ?? [];
+                if (list.length === 0) return null;
+                return (
+                  <div key={label}>
+                    <p className="px-1 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-text-secondary uppercase">
+                      {label}
+                    </p>
+                    <ul>
+                      {list.map((session) => (
+                        <li key={session.id} className="group relative">
+                          <Link
+                            to="/chat/$sessionId"
+                            params={{ sessionId: session.id }}
+                            onClick={onNavigate}
+                            className="block truncate rounded-lg px-2 py-1.5 pr-20 text-sm hover:bg-surface-elevated"
+                            title={sessionLabel(session.id, session.title)}
+                          >
+                            {sessionLabel(session.id, session.title)}
+                          </Link>
+                          <span className="absolute top-1.5 right-2 hidden gap-1 group-hover:flex group-focus-within:flex">
+                            <button
+                              type="button"
+                              aria-label={`Rename ${sessionLabel(session.id, session.title)}`}
+                              className="rounded px-1 text-xs text-text-secondary hover:text-text-primary"
+                              onClick={() => {
+                                const title = window.prompt('New title:', session.title ?? '');
+                                if (title !== null && title.trim() !== '') {
+                                  rename.mutate({ id: session.id, title: title.trim() });
+                                }
+                              }}
+                            >
+                              ✎
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Fork ${sessionLabel(session.id, session.title)}`}
+                              className="rounded px-1 text-xs text-text-secondary hover:text-text-primary"
+                              title="Fork this conversation"
+                              onClick={() => fork.mutate(session.id)}
+                            >
+                              ⑂
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Delete ${sessionLabel(session.id, session.title)}`}
+                              className="rounded px-1 text-xs text-text-secondary hover:text-danger"
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Delete "${sessionLabel(session.id, session.title)}"?`,
+                                  )
+                                ) {
+                                  remove.mutate(session.id);
+                                }
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })
+            )}
+          </nav>
+        </>
+      )}
+
+      <div
+        className={[
+          'flex items-center border-t border-border-subtle py-3',
+          collapsed ? 'flex-col gap-2 px-2' : 'justify-between gap-2 px-3',
+        ].join(' ')}
+      >
+        {collapsed ? null : <HermesStatusPill />}
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
-          <Link
-            to="/settings"
-            onClick={onNavigate}
-            className="text-xs font-medium text-text-secondary hover:text-text-primary"
-          >
-            Settings
-          </Link>
+          {collapsed ? null : (
+            <Link
+              to="/settings"
+              onClick={onNavigate}
+              className="text-xs font-medium text-text-secondary hover:text-text-primary"
+            >
+              Settings
+            </Link>
+          )}
         </div>
       </div>
     </div>

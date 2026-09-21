@@ -25,7 +25,7 @@ describe('App shell', () => {
     await waitFor(() => {
       expect(screen.getByText('Hermes: Offline')).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: '+ New chat' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /New chat/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Theme:/i })).toBeInTheDocument();
 
     vi.unstubAllGlobals();

@@ -9,10 +9,10 @@ test.describe('mobile', () => {
     await expect(page.getByRole('heading', { name: 'New chat' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Open conversations' }).click();
-    await expect(page.getByRole('button', { name: '+ New chat' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'New chat', exact: true })).toBeVisible();
     await expect(page.getByText('Hermes: Connected').or(page.getByText('Hermes: Offline'))).toBeVisible();
 
-    await page.getByRole('button', { name: '+ New chat' }).click();
+    await page.getByRole('button', { name: 'New chat', exact: true }).click();
     // Drawer closed, chat still visible.
     await expect(page.getByRole('heading', { name: 'New chat' })).toBeVisible();
 

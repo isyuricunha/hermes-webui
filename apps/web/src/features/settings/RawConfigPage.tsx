@@ -68,6 +68,8 @@ export function RawConfigPage() {
     onSuccess: () => {
       setSaved(true);
       setEdited(null);
+      // Raw config replaces the whole file; a restart is likely required.
+      window.dispatchEvent(new CustomEvent('hermes-webui:restart-required'));
       void queryClient.invalidateQueries({ queryKey: ['config-raw'] });
     },
   });

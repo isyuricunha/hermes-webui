@@ -45,6 +45,8 @@ export function FieldDetailPage({ path }: { path: string }) {
         setConfirmed(false);
       } else {
         setConfirmed(true);
+        // PRD 30: config changes may need a gateway restart; surface it.
+        window.dispatchEvent(new CustomEvent('hermes-webui:restart-required'));
       }
       void queryClient.invalidateQueries({ queryKey: ['settings-config'] });
     },
