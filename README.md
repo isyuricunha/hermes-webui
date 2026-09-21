@@ -1,0 +1,57 @@
+# Hermes WebUI
+
+A modern, chat-first interface for Hermes Agent. It runs alongside your existing Hermes installation and gives you native chat, session management, structured tool activity, and full configuration/control from the browser.
+
+> Status: pre-release (working toward RC1). The product specification lives in [PRD.md](PRD.md). Hermes Agent remains the runtime and the single source of truth; this UI never duplicates sessions, runs, memory, cron, skills, MCP or configuration.
+
+## Requirements
+
+- Node.js 22+ (24 recommended) with pnpm 12 (via `corepack enable`)
+- A running Hermes Agent gateway on the same host (default `http://127.0.0.1:8642`)
+
+## Development
+
+```bash
+pnpm install
+pnpm dev        # server on :8789 + web on :5173 with /api proxy
+```
+
+Open http://localhost:5173.
+
+| Command | What it does |
+|---|---|
+| `pnpm dev` | Run server (tsx watch) and web (Vite) in parallel |
+| `pnpm lint` | ESLint (flat config, whole repo) |
+| `pnpm typecheck` | `tsc --noEmit` per workspace |
+| `pnpm test` | Vitest suites (Fastify `inject()` for the server, jsdom + RTL for web) |
+| `pnpm build` | Production build: Fastify server bundle + static web assets |
+
+### Configuration (WebUI's own, env)
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `HOST` | `127.0.0.1` | Bind address of the WebUI server |
+| `PORT` | `8789` | Bind port of the WebUI server |
+| `HERMES_BASE_URL` | `http://127.0.0.1:8642` | Hermes gateway base URL |
+
+The WebUI keeps its own tiny configuration; Hermes settings stay in Hermes (`config.yaml` / `.env`) and are accessed through adapters.
+
+## Repository layout
+
+```
+apps/web       React + TypeScript + Vite + Tailwind frontend (chat-first shell)
+apps/server    Node + TypeScript + Fastify backend (API adapter, auth boundary, CLI bridge)
+packages/shared  Shared types and the normalized event protocol
+docs/          Architecture and compatibility documentation
+PRD.md         Product requirements (authority for scope and UX)
+```
+
+## Documentation
+
+- [PRD.md](PRD.md) — product requirements
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — technical architecture (draft, refined by the capability matrix)
+- `docs/HERMES-CAPABILITY-MATRIX.md` — API vs config vs CLI parity per Hermes capability (in progress)
+
+## License
+
+To be decided by the project owner.

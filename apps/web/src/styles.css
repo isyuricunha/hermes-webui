@@ -2,7 +2,8 @@
 
 /*
  * Design tokens (PRD 74). Components reference these via Tailwind theme
- * utilities; no hardcoded per-component colors.
+ * utilities; no hardcoded per-component colors. Theme resolution: explicit
+ * data-theme wins, otherwise the system preference applies (PRD 57).
  */
 :root {
   --color-background: #ffffff;
@@ -18,8 +19,22 @@
   --color-running: #4a5cf0;
 }
 
+[data-theme='dark'] {
+  --color-background: #131318;
+  --color-surface: #1a1a21;
+  --color-surface-elevated: #20202a;
+  --color-text-primary: #ececf1;
+  --color-text-secondary: #9b9ba7;
+  --color-border-subtle: #2a2a35;
+  --color-accent: #7b8cff;
+  --color-success: #4ec98d;
+  --color-warning: #e2b455;
+  --color-danger: #ef6b65;
+  --color-running: #7b8cff;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --color-background: #131318;
     --color-surface: #1a1a21;
     --color-surface-elevated: #20202a;
@@ -67,4 +82,13 @@ body {
     Arial,
     sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
