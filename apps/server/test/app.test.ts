@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app';
 import { loadConfig } from '../src/config';
@@ -94,7 +97,11 @@ describe('app', () => {
   });
 
   it('returns structured 404 for unknown API routes, and the SPA for non-API GETs', async () => {
-    const app = await buildApp({ config: loadConfig({}) });
+    // The SPA fallback only exists when the web app has been built; pin the
+    // dist dir explicitly so the test does not depend on build order.
+    const distDir = mkdtempSync(path.join(tmpdir(), 'hwui-dist-'));
+    writeFileSync(path.join(distDir, 'index.html'), '<!doctype html><title>Hermes WebUI</title>');
+    const app = await buildApp({ config: { ...loadConfig({}), webDistDir: distDir } });
 
     const api = await app.inject({ method: 'GET', url: '/api/definitely/not/here' });
     expect(api.statusCode).toBe(404);
@@ -111,6 +118,16 @@ describe('app', () => {
     const root = await app.inject({ method: 'GET', url: '/' });
     expect(root.statusCode).toBe(200);
     expect(root.headers['content-type']).toContain('text/html');
+  });
+
+  it('returns structured 404 for every route when no web build is present', async () => {
+    const emptyDir = mkdtempSync(path.join(tmpdir(), 'hwui-nodist-'));
+    const app = await buildApp({
+      config: { ...loadConfig({}), webDistDir: path.join(emptyDir, 'missing') },
+    });
+    const response = await app.inject({ method: 'GET', url: '/some/spa/route' });
+    expect(response.statusCode).toBe(404);
+    expect(response.json().error.code).toBe('NOT_FOUND');
   });
 
   it('gateway client maps transport failure to HERMES_UNREACHABLE', async () => {

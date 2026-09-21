@@ -1,7 +1,6 @@
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import { existsSync } from 'node:fs';
-import path from 'node:path';
 import type { AppStatus, HermesConnectivity } from '@hermes-webui/shared';
 import type { ServerConfig } from './config';
 import { HermesClient, HermesHttpError } from './hermes/client';
@@ -44,8 +43,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
 
   // Production static serving (PRD 42.5): one process serves the API and the
   // built web assets. In dev the Vite dev server proxies /api instead.
-  const webDist =
-    process.env.WEB_DIST_DIR ?? path.resolve(process.cwd(), '../web/dist');
+  const webDist = config.webDistDir;
   const webDistReady = existsSync(webDist);
   if (webDistReady) {
     await app.register(fastifyStatic, {

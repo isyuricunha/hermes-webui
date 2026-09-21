@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 /**
  * WebUI process configuration.
  *
@@ -16,6 +18,8 @@ export interface ServerConfig {
   hermesApiKey?: string;
   /** Hermes binary for the restricted CLI bridge. */
   hermesBin: string;
+  /** Built web assets directory; served in production (PRD 42.5). */
+  webDistDir: string;
   /** WebUI version reported by /api/app/status. */
   appVersion: string;
 }
@@ -37,6 +41,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     hermesDashboardToken: env.HERMES_DASHBOARD_SESSION_TOKEN,
     hermesApiKey: env.HERMES_API_KEY,
     hermesBin: env.HERMES_BIN ?? 'hermes',
+    webDistDir: env.WEB_DIST_DIR ?? path.resolve(process.cwd(), '../web/dist'),
     appVersion: env.npm_package_version ?? '0.0.0-dev',
   };
 }
