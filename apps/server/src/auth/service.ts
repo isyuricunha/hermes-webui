@@ -91,6 +91,8 @@ export class AuthService {
       fileToken !== '' &&
       constantTimeEqual(sha256Hex(fileToken), dbHash)
     ) {
+      // Valid pair; still enforce private permissions on a preexisting file.
+      fs.chmodSync(tokenFile, 0o600);
       return tokenFile;
     }
     // Missing or inconsistent pair: regenerate both.
@@ -106,7 +108,8 @@ export class AuthService {
     }
     const token = this.store.rotateBootstrapToken();
     const tokenFile = this.setupTokenFile();
-    fs.writeFileSync(tokenFile, token + '\n', { mode: 0o600 });
+    fs.writeFileSync(tokenFile, token + '\n');
+    fs.chmodSync(tokenFile, 0o600);
     return tokenFile;
   }
 
@@ -141,7 +144,7 @@ export class AuthService {
         requestId: input.requestId,
         metadata: { reason: 'rate_limited' },
       });
-      throw new AuthError('AUTH_RATE_LIMITED', 'Too many attempts. Try again later.', 429, 600);
+      throw new AuthError('AUTH_RATE_LIMITED', 'Too many attempts. Try again later.', 429, 900);
     }
     const storedHash = this.store.getBootstrapTokenHash();
     if (storedHash === null || !constantTimeEqual(sha256Hex(input.setupToken.trim()), storedHash)) {
@@ -153,7 +156,7 @@ export class AuthService {
         requestId: input.requestId,
         metadata: { reason: 'invalid_token' },
       });
-      throw new AuthError('SETUP_TOKEN_INVALID', 'Invalid setup token.', 403);
+      throw new AuthError('SETUP_TOKEN_INVALID', 'Invalid setup token.', 403, 900);
     }
     const usernameError = validateUsername(input.username);
     if (usernameError !== null) {

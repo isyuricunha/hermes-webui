@@ -15,6 +15,34 @@ import type { AuthService } from './service';
 export const SESSION_COOKIE = 'hermes_webui_session';
 export const CSRF_HEADER = 'x-csrf-token';
 
+/** Registry of live SSE streams per auth session (spec 2.18). */
+export class SessionStreamRegistry {
+  private streams = new Map<string, Set<() => void>>();
+
+  register(sessionId: string, abort: () => void): () => void {
+    const set = this.streams.get(sessionId) ?? new Set<() => void>();
+    set.add(abort);
+    this.streams.set(sessionId, set);
+    return () => {
+      this.streams.get(sessionId)?.delete(abort);
+    };
+  }
+
+  /** Aborts every stream bound to the session. Returns how many were aborted. */
+  invalidate(sessionId: string): number {
+    const set = this.streams.get(sessionId);
+    if (set === undefined) return 0;
+    const count = set.size;
+    for (const abort of set) {
+      abort();
+    }
+    this.streams.delete(sessionId);
+    return count;
+  }
+}
+
+const sessionStreamRegistry = new SessionStreamRegistry();
+
 export type RouteAuthPolicy = 'public' | 'required' | 'recent';
 
 declare module 'fastify' {
@@ -189,7 +217,7 @@ async function fastifyAuthPlugin(
         }
       }
       if (process.env.AUTH_DEBUG === '1') {
-        console.log(`[auth-debug] ${request.method} ${request.url} cookie=${cookieToken.slice(0, 8)}… rowFound=${row !== undefined} session=${session !== null} invalid=${sessionExistsButInvalid}`);
+        console.log(`[auth-debug] ${request.method} ${request.url} cookiePresent=${cookieToken !== undefined && cookieToken !== ''} rowFound=${row !== undefined} session=${session !== null} invalid=${sessionExistsButInvalid}`);
       }
     }
     request.requestAuthState = { session, user, recent: false };
@@ -289,24 +317,12 @@ async function fastifyAuthPlugin(
   });
 
   // Session invalidation: abort streams bound to the session (spec 2.18).
-  const sessionStreams = new Map<string, Set<() => void>>();
   app.decorate('registerSessionStream', (sessionId: string, abort: () => void) => {
-    const set = sessionStreams.get(sessionId) ?? new Set<() => void>();
-    set.add(abort);
-    sessionStreams.set(sessionId, set);
-    // Unregister keeps the registry from leaking after normal stream close.
-    return () => {
-      sessionStreams.get(sessionId)?.delete(abort);
-    };
+    const unregister = sessionStreamRegistry.register(sessionId, abort);
+    return () => unregister();
   });
   app.decorate('invalidateSessionStreams', (sessionId: string) => {
-    const set = sessionStreams.get(sessionId);
-    if (set !== undefined) {
-      for (const abort of set) {
-        abort();
-      }
-      sessionStreams.delete(sessionId);
-    }
+    sessionStreamRegistry.invalidate(sessionId);
     options.onSessionInvalidated?.(sessionId);
     lastTouch.delete(sessionId);
   });
