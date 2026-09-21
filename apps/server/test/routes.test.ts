@@ -105,9 +105,11 @@ describe('gateway proxy routes', () => {
   });
 
   it('streams run events through as SSE', async () => {
+    // Real gateway frames: data-only JSON with the event name inside .event
+    // (api_server_runs.py `_sse_frame`), verified against v0.21.3.
     const sseBody =
-      'event: message.delta\ndata: {"delta":"hel"}\n\n' +
-      'event: run.completed\ndata: {"run_id":"r1"}\n\n';
+      'data: {"event":"message.delta","run_id":"r1","delta":"hel"}\n\n' +
+      'data: {"event":"run.completed","run_id":"r1","output":"done"}\n\n';
     handler = (url) => {
       expect(url.pathname).toBe('/v1/runs/r1/events');
       return new Response(
@@ -124,7 +126,7 @@ describe('gateway proxy routes', () => {
     const response = await app.inject({ method: 'GET', url: '/api/runs/r1/events' });
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toContain('text/event-stream');
-    expect(response.body).toContain('message.delta');
+    expect(response.body).toContain('"event":"message.delta"');
     expect(response.body).toContain('run.completed');
   });
 

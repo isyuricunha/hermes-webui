@@ -9,13 +9,20 @@ import { runHermesArgv, tokenizeCommandLine } from '../cli/runner';
  * 1. POST /api/cli/commands/:id/run — registry commands (declared, typed).
  * 2. POST /api/cli/run — the Advanced escape hatch: free-form text is
  *    tokenized, shell operators are rejected, and the resulting argv must
- *    match a read-only allowlist prefix. `hermes update` can never pass.
+ *    match a read-only allowlist entry EXACTLY (same commands, same arity —
+ *    extra flags like `--fix` are refused). `hermes update` can never pass.
  */
 export async function cliRoutes(
   app: FastifyInstance,
   opts: { hermesBin: string },
 ): Promise<void> {
-  const runnerOptions = { hermesBin: opts.hermesBin, timeoutMs: 15_000, maxOutputBytes: 1024 * 1024 };
+  // Free-form escape hatch gets a longer window (doctor on this host needs
+  // >15s); registry commands keep their declared timeouts.
+  const runnerOptions = {
+    hermesBin: opts.hermesBin,
+    timeoutMs: 60_000,
+    maxOutputBytes: 1024 * 1024,
+  };
 
   app.get('/api/cli/commands', async (_request, reply) => {
     return await reply.send({
@@ -121,7 +128,7 @@ export async function cliRoutes(
           requestId: request.id,
         });
       }
-      const result = await runHermesArgv(runnerOptions, argv);
+      const result = await runHermesArgv({ ...runnerOptions, timeoutMs: 15_000 }, argv);
       request.log.info(
         { action: 'cli.freeform', argv, exitCode: result.exitCode, durationMs: result.durationMs },
         'cli bridge execution',

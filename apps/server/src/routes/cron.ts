@@ -21,14 +21,33 @@ export async function cronRoutes(
     }
   });
 
-  app.post('/api/cron/jobs', async (request, reply) => {
-    try {
-      const body = request.body as Record<string, unknown>;
-      return await reply.send(await client.createJob(body));
-    } catch (error) {
-      return sendHermesError(reply, request.id, error);
-    }
-  });
+  app.post(
+    '/api/cron/jobs',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['name'],
+          properties: {
+            name: { type: 'string', minLength: 1 },
+            prompt: { type: 'string' },
+            schedule: { type: 'object' },
+            script: { type: 'string' },
+            model: { type: ['string', 'null'] },
+            no_agent: { type: 'boolean' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const body = request.body as Record<string, unknown>;
+        return await reply.send(await client.createJob(body));
+      } catch (error) {
+        return sendHermesError(reply, request.id, error);
+      }
+    },
+  );
 
   app.get('/api/cron/jobs/:jobId', async (request, reply) => {
     const { jobId } = request.params as { jobId: string };
@@ -39,15 +58,31 @@ export async function cronRoutes(
     }
   });
 
-  app.patch('/api/cron/jobs/:jobId', async (request, reply) => {
-    const { jobId } = request.params as { jobId: string };
-    try {
-      const body = request.body as Record<string, unknown>;
-      return await reply.send(await client.updateJob(jobId, body));
-    } catch (error) {
-      return sendHermesError(reply, request.id, error);
-    }
-  });
+  app.patch(
+    '/api/cron/jobs/:jobId',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            prompt: { type: 'string' },
+            schedule: { type: 'object' },
+            paused: { type: 'boolean' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { jobId } = request.params as { jobId: string };
+      try {
+        const body = request.body as Record<string, unknown>;
+        return await reply.send(await client.updateJob(jobId, body));
+      } catch (error) {
+        return sendHermesError(reply, request.id, error);
+      }
+    },
+  );
 
   app.delete('/api/cron/jobs/:jobId', async (request, reply) => {
     const { jobId } = request.params as { jobId: string };

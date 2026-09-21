@@ -20,6 +20,8 @@ export function McpPage() {
       setMcpServerEnabled(name, enabled),
     onSuccess: (_data, variables) => {
       setMessage(`${variables.name}: ${variables.enabled ? 'enabled' : 'disabled'}.`);
+      // MCP server config lives in config.yaml; flag the restart notice.
+      window.dispatchEvent(new CustomEvent('hermes-webui:restart-required'));
       invalidate();
     },
     onError: (error) => setMessage(error.message),

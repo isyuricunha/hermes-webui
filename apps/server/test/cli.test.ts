@@ -42,13 +42,31 @@ describe('cli bridge registry', () => {
     expect(matchesAllowlist(['status'])).toBe(true);
     expect(matchesAllowlist(['update'])).toBe(false);
   });
+
+  it('exact-arity matching refuses extra flags on allowlisted commands (review F1)', () => {
+    // `hermes doctor --fix` is mutating (attempt auto-fixes); prefix matching
+    // used to admit it through the read-only escape hatch.
+    expect(matchesAllowlist(['doctor', '--fix'])).toBe(false);
+    expect(matchesAllowlist(['doctor', '--ack', 'x'])).toBe(false);
+    expect(matchesAllowlist(['lsp', 'status', '--json'])).toBe(false);
+  });
 });
 
 describe('runner security helpers', () => {
   it('redacts credential-shaped output', () => {
-    const { text, redacted } = redact('key is sk-abcdef1234567890 and Authorization: Bearer abc.def');
+    const { text, redacted } = redact(
+      'key is sk-abcdef1234567890 and Authorization: Bearer abc.def ' +
+        'aws AKIAIOSFODNN7EXAMPLE stripe sk_live_51H8xYz1234567890123 ' +
+        'pat github_pat_11ABCDEF0123456789012345 gitlab glpat-AbCdEf123456 ' +
+        'google AIzaSyA1234567890abcdefghijklmnopqrstuv',
+    );
     expect(redacted).toBe(true);
     expect(text).not.toContain('sk-abcdef1234567890');
+    expect(text).not.toContain('AKIAIOSFODNN7EXAMPLE');
+    expect(text).not.toContain('sk_live_51H8xYz1234567890123');
+    expect(text).not.toContain('github_pat_11ABCDEF0123456789012345');
+    expect(text).not.toContain('glpat-AbCdEf123456');
+    expect(text).not.toContain('AIzaSyA1234567890');
     expect(text).toContain('[REDACTED]');
   });
 

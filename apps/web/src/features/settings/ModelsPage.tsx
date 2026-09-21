@@ -25,18 +25,16 @@ export function ModelsPage() {
   const [needsConfirm, setNeedsConfirm] = useState<string | null>(null);
 
   const assign = useMutation({
-    mutationFn: (input: { provider: string; model: string; confirm: boolean }) =>
-      setModelAssignment({
-        scope: 'main',
-        provider: input.provider,
-        model: input.model,
-        confirm_expensive_model: input.confirm,
-      }),
+    mutationFn: (input: {
+      provider: string;
+      model: string;
+      confirm_expensive_model: boolean;
+    }) => setModelAssignment({ scope: 'main', ...input }),
     onSuccess: (data, input) => {
       const result = data as { ok?: boolean; confirm_required?: boolean; confirm_message?: string };
-      if (result?.confirm_required) {
+      if (result?.confirm_required && !input.confirm_expensive_model) {
         setNeedsConfirm(input.model);
-        setMessage(result.confirm_message ?? 'This model may be expensive. Confirm to apply.');
+        setMessage(result.confirm_message ?? 'This model may be expensive. Click Apply to proceed.');
       } else {
         setNeedsConfirm(null);
         setMessage('Model assigned. Applies to new sessions.');
@@ -45,6 +43,11 @@ export function ModelsPage() {
     },
     onError: (assignError) => setMessage(assignError.message),
   });
+
+  const apply = (confirm: boolean) => {
+    if (provider === '' || model === '') return;
+    assign.mutate({ provider, model, confirm_expensive_model: confirm });
+  };
 
   if (infoQuery.isPending || optionsQuery.isPending) {
     return (
@@ -130,10 +133,14 @@ export function ModelsPage() {
           <button
             type="button"
             disabled={assign.isPending}
-            onClick={() => assign.mutate({ provider, model, confirm: true })}
+            onClick={() => apply(needsConfirm !== null)}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
-            {assign.isPending ? 'Applying…' : 'Apply'}
+            {assign.isPending
+              ? 'Applying…'
+              : needsConfirm !== null
+                ? 'Confirm and apply'
+                : 'Apply'}
           </button>
         ) : null}
         {message !== null ? <p className="text-xs text-text-secondary">{message}</p> : null}
