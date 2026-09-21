@@ -7,7 +7,7 @@
   "description": "A modern, chat-first web interface for Hermes Agent. Self-hosted sidecar that runs alongside Hermes.",
   "packageManager": "pnpm@12.3.4",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "pnpm -r --parallel dev",

@@ -12,6 +12,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@fastify/static": "^10.1.4",
     "@hermes-webui/shared": "workspace:*",
     "@sinclair/typebox": "^0.34.52",
     "fastify": "^5.12.5"

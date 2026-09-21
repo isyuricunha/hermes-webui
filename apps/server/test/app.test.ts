@@ -93,13 +93,24 @@ describe('app', () => {
     expect(body.hermes.error).toContain('Could not reach Hermes gateway');
   });
 
-  it('returns a structured 404, never a bare error', async () => {
+  it('returns structured 404 for unknown API routes, and the SPA for non-API GETs', async () => {
     const app = await buildApp({ config: loadConfig({}) });
-    const response = await app.inject({ method: 'GET', url: '/definitely/not/here' });
-    expect(response.statusCode).toBe(404);
-    const body = response.json();
+
+    const api = await app.inject({ method: 'GET', url: '/api/definitely/not/here' });
+    expect(api.statusCode).toBe(404);
+    const body = api.json();
     expect(body.error.code).toBe('NOT_FOUND');
     expect(body.requestId).toBeTruthy();
+
+    // Non-API GETs fall back to the SPA shell (PRD 42.5).
+    const spa = await app.inject({ method: 'GET', url: '/some/spa/route' });
+    expect(spa.statusCode).toBe(200);
+    expect(spa.headers['content-type']).toContain('text/html');
+
+    // The root serves the SPA index, never a directory listing or 403.
+    const root = await app.inject({ method: 'GET', url: '/' });
+    expect(root.statusCode).toBe(200);
+    expect(root.headers['content-type']).toContain('text/html');
   });
 
   it('gateway client maps transport failure to HERMES_UNREACHABLE', async () => {

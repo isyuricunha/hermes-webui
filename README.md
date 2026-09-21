@@ -6,7 +6,7 @@ A modern, chat-first interface for Hermes Agent. It runs alongside your existing
 
 ## Requirements
 
-- Node.js 22+ (24 recommended) with pnpm 12 (via `corepack enable`)
+- Node.js 24+ with pnpm 12 (via `corepack enable`)
 - A running Hermes Agent gateway on the same host (default `http://127.0.0.1:8642`)
 
 ## Development

@@ -5,7 +5,7 @@ Hermes WebUI is a sidecar for an **existing Hermes Agent installation** on the s
 ## Requirements
 
 - Linux (tested on ARM64 and AMD64)
-- Node.js 22+ and pnpm 12 (`corepack enable`)
+- Node.js 24+ and pnpm 12 (`corepack enable`)
 - A running Hermes Agent gateway (`hermes gateway run`) with `API_SERVER_KEY` configured
 - The Hermes **dashboard companion** running for Settings features (`hermes dashboard`; see below)
 

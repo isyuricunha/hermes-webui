@@ -1,4 +1,7 @@
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
+import fastifyStatic from '@fastify/static';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import type { AppStatus, HermesConnectivity } from '@hermes-webui/shared';
 import type { ServerConfig } from './config';
 import { HermesClient, HermesHttpError } from './hermes/client';
@@ -39,6 +42,19 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     genReqId: () => crypto.randomUUID(),
   });
 
+  // Production static serving (PRD 42.5): one process serves the API and the
+  // built web assets. In dev the Vite dev server proxies /api instead.
+  const webDist =
+    process.env.WEB_DIST_DIR ?? path.resolve(process.cwd(), '../web/dist');
+  const webDistReady = existsSync(webDist);
+  if (webDistReady) {
+    await app.register(fastifyStatic, {
+      root: webDist,
+      prefix: '/',
+      index: ['index.html'],
+    });
+  }
+
   app.setErrorHandler((error: FastifyError, request, reply) => {
     const statusCode = error.statusCode ?? 500;
     if (statusCode >= 500) {
@@ -54,11 +70,13 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   });
 
   app.setNotFoundHandler((request, reply) => {
+    // SPA fallback (PRD 42.5): non-API GETs serve the built web app.
+    if (webDistReady && request.method === 'GET' && !request.url.startsWith('/api/')) {
+      void reply.type('text/html').sendFile('index.html');
+      return;
+    }
     void reply.status(404).send({
-      error: {
-        code: 'NOT_FOUND',
-        message: `No route for ${request.method} ${request.url}`,
-      },
+      error: { code: 'NOT_FOUND', message: `No route for ${request.method} ${request.url}` },
       requestId: request.id,
     });
   });
