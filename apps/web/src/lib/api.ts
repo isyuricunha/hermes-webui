@@ -1,4 +1,4 @@
-import type { AppStatus } from '@hermes-webui/shared';
+import type { AppStatus, NormalizedCommand } from '@hermes-webui/shared';
 
 /**
  * Browser-side access to the WebUI backend. The browser never talks to
@@ -32,6 +32,28 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 export function fetchAppStatus(): Promise<AppStatus> {
   return requestJson<AppStatus>('/api/app/status');
+}
+
+// --- Command catalog + session model (Chat UX) -------------------------------
+
+export function fetchCommands(): Promise<{ commands: NormalizedCommand[] }> {
+  return requestJson<{ commands: NormalizedCommand[] }>('/api/commands');
+}
+
+export function fetchSessionModel(
+  sessionId: string,
+): Promise<{ model: string | null; provider: string | null }> {
+  return requestJson(`/api/sessions/${encodeURIComponent(sessionId)}/model`);
+}
+
+export function setSessionModel(
+  sessionId: string,
+  input: { model: string; provider?: string },
+): Promise<unknown> {
+  return requestJson(`/api/sessions/${encodeURIComponent(sessionId)}/model`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
 }
 
 // --- Sessions ----------------------------------------------------------------
@@ -80,7 +102,7 @@ export function deleteSession(sessionId: string): Promise<unknown> {
 
 export interface MessageRow {
   id: number;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool' | 'system' | 'commentary';
   content: string;
   timestamp: number;
   reasoning: string | null;

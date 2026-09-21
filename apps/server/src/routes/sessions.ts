@@ -12,6 +12,50 @@ export async function sessionRoutes(
   opts: { client: HermesClient },
 ): Promise<void> {
   const client = opts.client;
+
+  // Session-scoped model lock (gateway POST /api/sessions/:id/model). This is
+  // the ONLY supported model change from a chat session; global changes go
+  // through Settings and are never triggered from here.
+  app.get('/api/sessions/:sessionId/model', async (request, reply) => {
+    const { sessionId } = request.params as { sessionId: string };
+    try {
+      const session = await client.getSession(sessionId);
+      return await reply.send({
+        model: (session.model as string | undefined) ?? null,
+        provider: (session.provider as string | undefined) ?? null,
+      });
+    } catch (error) {
+      return sendHermesError(reply, request.id, error);
+    }
+  });
+
+  app.put(
+    '/api/sessions/:sessionId/model',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['model'],
+          properties: {
+            model: { type: 'string', minLength: 1 },
+            provider: { type: 'string' },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { sessionId } = request.params as { sessionId: string };
+      const { model, provider } = request.body as { model: string; provider?: string };
+      try {
+        const payload = await client.lockSessionModel(sessionId, { model, provider });
+        return await reply.send(payload);
+      } catch (error) {
+        return sendHermesError(reply, request.id, error);
+      }
+    },
+  );
+
   app.get('/api/sessions', async (request, reply) => {
     try {
       const { limit, offset } = request.query as { limit?: string; offset?: string };

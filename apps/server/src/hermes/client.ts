@@ -81,8 +81,20 @@ export class HermesClient {
     return this.request('/api/sessions', { method: 'POST', body: JSON.stringify(body) });
   }
 
-  getSession(sessionId: string): Promise<unknown> {
+  /** Gateway session detail (includes the stored session model lock). */
+  getSession(sessionId: string): Promise<Record<string, unknown>> {
     return this.request(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: 'GET' });
+  }
+
+  /** Session-scoped model lock (gateway POST /api/sessions/:id/model). */
+  lockSessionModel(
+    sessionId: string,
+    input: { model: string; provider?: string },
+  ): Promise<unknown> {
+    return this.request(`/api/sessions/${encodeURIComponent(sessionId)}/model`, {
+      method: 'POST',
+      body: JSON.stringify({ provider: input.provider, model: input.model, require_model_lock: true }),
+    });
   }
 
   patchSession(sessionId: string, body: Record<string, unknown>): Promise<unknown> {

@@ -5,6 +5,12 @@ All notable changes to Hermes WebUI are documented here.
 ## Post-RC1
 
 ### Added
+- **Native slash commands in Chat**: typing "/" opens a Hermes-derived command palette (118 registry commands) with filter-as-you-type, keyboard navigation and touch support. Recognized commands never reach the LLM as user text.
+  - Native handlers: `/new`, `/model`, `/status`, `/sessions`, `/settings`, `/skills`, `/stop`, `/help`.
+  - Unsupported registry commands render an explanatory system card instead of silently forwarding text.
+- **Native model picker** (composer chip or `/model`): real provider -> model catalog, session-scoped lock only, global default explicitly delegated to Settings > Models. Prompt-identity labeling is unchanged.
+- **Compact tool cards**: tool calls and persisted tool results render as collapsed cards (name, action summary, status, duration) with formatted, expandable detail (pretty JSON, normalized newlines). Reasoning renders as its own collapsible block, separate from tool output.
+- **Human-readable session titles**: first meaningful user message becomes the display title (WebUI-side); raw `api_*` ids remain only in tooltips. Hermes-provided titles always win.
 - **Top-level navigation is never a dead end**: Settings now exposes a clear path back to Chat everywhere.
   - Mobile: `←` back action in the Settings top bar (44px tap target, accessible label) and a Chat entry at the bottom of the Settings drawer; selecting it closes the drawer.
   - Desktop: Chat destination at the bottom of the Settings navigation column.

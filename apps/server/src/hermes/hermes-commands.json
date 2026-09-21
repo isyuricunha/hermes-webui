@@ -1,0 +1,1190 @@
+{
+ "$provenance": {
+  "source": "hermes_cli/commands.py COMMANDS_BY_CATEGORY (installed Hermes v0.21.3, upstream 30de041b)",
+  "generated": "2026-09-21",
+  "note": "Derived from the installed Hermes command registry; regenerate after Hermes updates."
+ },
+ "commands": [
+  {
+   "name": "/settings",
+   "description": "Open the WebUI Settings workspace",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "navigate-settings",
+   "webuiOnly": true
+  },
+  {
+   "name": "/new",
+   "description": "Start a new session (fresh session ID + history) (usage: /new [name])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "new-chat"
+  },
+  {
+   "name": "/reset",
+   "description": "Start a new session (fresh session ID + history) (alias for /new)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/clear",
+   "description": "Clear screen and start a new session",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/redraw",
+   "description": "Force a full UI repaint (recovers from terminal drift)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/history",
+   "description": "Show conversation history",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/save",
+   "description": "Export the current conversation (bare /save shows usage) (usage: /save <json|md|html> [filename] [redact])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/retry",
+   "description": "Retry the last message (resend to agent)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/prompt",
+   "description": "Compose your next prompt in $EDITOR (markdown), then send it (usage: /prompt [initial text])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/compose",
+   "description": "Compose your next prompt in $EDITOR (markdown), then send it (alias for /prompt)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/undo",
+   "description": "Back up N user turns and re-prompt (default 1) (usage: /undo [N])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/title",
+   "description": "Set a title for the current session (usage: /title [name])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/handoff",
+   "description": "Hand off this session to a messaging platform (Telegram, Discord, etc.) (usage: /handoff <platform>)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/branch",
+   "description": "Branch the current session (explore a different path) (usage: /branch [name])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/fork",
+   "description": "Branch the current session (explore a different path) (alias for /branch)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/worktree",
+   "description": "Show, list, create, or prune isolated git worktrees (usage: /worktree [new [name]|list|prune [--dry-run]])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/compress",
+   "description": "Compress conversation context (add 'here [N]' to keep recent N turns; --preview shows what would happen) (usage: /compress [here [N] | focus topic | --preview|--dry-run])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/compact",
+   "description": "Compress conversation context (add 'here [N]' to keep recent N turns; --preview shows what would happen) (alias for /compress)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/rollback",
+   "description": "List or restore filesystem checkpoints (restores keep your hand-edits; --all overrides) (usage: /rollback [number] [--all])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/snapshot",
+   "description": "Create or restore state snapshots of Hermes config/state (usage: /snapshot [create|restore <id>|prune])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/snap",
+   "description": "Create or restore state snapshots of Hermes config/state (alias for /snapshot)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/stop",
+   "description": "Kill all running background processes",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "stop-run"
+  },
+  {
+   "name": "/bg",
+   "description": "Run a prompt in a separate background session (usage: /bg <prompt>)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/btw",
+   "description": "Ask a side question about the current conversation without interrupting it (usage: /btw <question>)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/agents",
+   "description": "Show active agents and running tasks",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/tasks",
+   "description": "Show active agents and running tasks (alias for /agents)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/journey",
+   "description": "Open the learning journey timeline (usage: /journey [list|delete <id>|edit <id>])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/learning",
+   "description": "Open the learning journey timeline (alias for /journey)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/memory-graph",
+   "description": "Open the learning journey timeline (alias for /journey)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/queue",
+   "description": "Queue a prompt for the next turn, or list/edit/rm/move/clear queued prompts (usage: /queue [<prompt>|list|edit N <prompt>|rm N|move A B|clear])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/q",
+   "description": "Queue a prompt for the next turn, or list/edit/rm/move/clear queued prompts (alias for /queue)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/steer",
+   "description": "Inject a message after the next tool call without interrupting (usage: /steer <prompt>)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/goal",
+   "description": "Set a standing goal Hermes works on across turns until achieved (usage: /goal [text | draft <text> | show | gate add <cmd> | pause | resume | clear | status | wait <pid> | unwait])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/heartbeat",
+   "description": "Set a recurring prompt that re-enters this session when idle (usage: /heartbeat [every <interval> <prompt> | status | pause | resume | clear])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/hb",
+   "description": "Set a recurring prompt that re-enters this session when idle (alias for /heartbeat)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/refine",
+   "description": "Review this conversation now and save lessons to memory/skills (usage: /refine [focus instructions])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/review",
+   "description": "Spawn an independent subagent to review the work just discussed (PR, code, docs) (usage: /review [review instructions])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/loop",
+   "description": "Re-run a prompt on a recurring interval in this session (usage: /loop [interval] <prompt> [--times N] [--until <condition>] | status | pause | resume | stop)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/proactive",
+   "description": "Re-run a prompt on a recurring interval in this session (alias for /loop)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/plan",
+   "description": "Write a markdown implementation plan to .hermes/plans/ without executing anything (usage: /plan [task])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/moa",
+   "description": "Run one prompt through the default Mixture of Agents preset, then restore your model (usage: /moa <prompt>)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/subgoal",
+   "description": "Add or manage extra criteria on the active goal (usage: /subgoal [text | remove N | clear])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/status",
+   "description": "Show session, model, token, and context info",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "status-card"
+  },
+  {
+   "name": "/egress",
+   "description": "Show Docker egress proxy status (usage: /egress [status])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/context",
+   "description": "Show detailed context window view with usage gauge, category breakdown, compression stats, and throughput (usage: /context [all])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/ctx",
+   "description": "Show detailed context window view with usage gauge, category breakdown, compression stats, and throughput (alias for /context)",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/resume",
+   "description": "Resume a previously-named session (usage: /resume [name])",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/sessions",
+   "description": "Browse and resume previous sessions",
+   "category": "Session",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "open-sessions"
+  },
+  {
+   "name": "/export",
+   "description": "Export a profile (config, skills, theme) to a shareable archive (usage: /export [profile] [-o output.tar.gz])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/import",
+   "description": "Import a shared profile archive as a new profile (usage: /import <archive.tar.gz> [--name <name>])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/config",
+   "description": "Show current configuration",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/model",
+   "description": "Switch model (session-scoped; --global to persist) (usage: /model [model] [--provider name] [--reasoning level] [--global|--session] [--refresh])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "model-picker"
+  },
+  {
+   "name": "/codex-runtime",
+   "description": "Toggle codex app-server runtime for OpenAI/Codex models (usage: /codex-runtime [auto|codex_app_server])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/codex_runtime",
+   "description": "Toggle codex app-server runtime for OpenAI/Codex models (alias for /codex-runtime)",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/personality",
+   "description": "Set a predefined personality (usage: /personality [name])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/statusbar",
+   "description": "Toggle the context/model status bar",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/sb",
+   "description": "Toggle the context/model status bar (alias for /statusbar)",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/battery",
+   "description": "Toggle a color-coded battery indicator in the status bar (usage: /battery [on|off|status])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/timestamps",
+   "description": "Toggle [HH:MM] timestamps on messages and /history (usage: /timestamps [on|off|status])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/ts",
+   "description": "Toggle [HH:MM] timestamps on messages and /history (alias for /timestamps)",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/verbose",
+   "description": "Cycle tool progress display: off -> new -> all -> verbose",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/focus",
+   "description": "Toggle focus view — show only your prompt and the final response (usage: /focus [on|off|status])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/footer",
+   "description": "Toggle gateway runtime-metadata footer on final replies (usage: /footer [on|off|status])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/yolo",
+   "description": "Toggle YOLO mode (skip all dangerous command approvals)",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/approvals",
+   "description": "Show or set the persistent dangerous-command approval mode (usage: /approvals [manual|smart|off])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/reasoning",
+   "description": "Manage reasoning effort and display (usage: /reasoning [level|show|hide|full|clamp] [--global])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/fast",
+   "description": "Fast mode — OpenAI Priority Processing / Anthropic Fast Mode (normal/fast/auto/cold) (usage: /fast [normal|fast|auto|cold|status] [--global])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/skin",
+   "description": "Show or change the display skin/theme (usage: /skin [name])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/indicator",
+   "description": "Pick the TUI busy-indicator style (usage: /indicator [ascii|emoji|kaomoji|unicode])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/voice",
+   "description": "Toggle voice mode (usage: /voice [on|off|tts|status])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/wake",
+   "description": "Toggle the 'Hey Hermes' wake word listener (usage: /wake [on|off|status])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/busy",
+   "description": "Control how messages behave while Hermes is working (usage: /busy [queue|steer|interrupt|status])",
+   "category": "Configuration",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/whoami",
+   "description": "Show your slash command access (admin / user)",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/profile",
+   "description": "Show active profile name and home directory",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/diff",
+   "description": "Show git changes in the working directory (usage: /diff [staged|all|session] [--stat] [path...])",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/help",
+   "description": "Show available commands (/help skills lists skill commands, /help <text> filters) (usage: /help [skills|<filter>])",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "help-card"
+  },
+  {
+   "name": "/palette",
+   "description": "Open the fuzzy command palette (also Ctrl+P)",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/usage",
+   "description": "Show token usage and rate limits; `reset` redeems a banked Codex limit reset (usage: /usage [reset [--force]])",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/subscription",
+   "description": "View your Nous plan and change it in the browser",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/upgrade",
+   "description": "View your Nous plan and change it in the browser (alias for /subscription)",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/login",
+   "description": "Sign in with a Nous account (keeps your connectors)",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/topup",
+   "description": "Show your Nous balance and manage billing on the portal",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/insights",
+   "description": "Show usage insights and analytics (usage: /insights [days])",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/platforms",
+   "description": "Show gateway/messaging platform status",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/gateway",
+   "description": "Show gateway/messaging platform status (alias for /platforms)",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/copy",
+   "description": "Copy the last assistant response to clipboard (usage: /copy [number])",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/paste",
+   "description": "Attach clipboard image from your clipboard",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/image",
+   "description": "Attach a local image file for your next prompt (usage: /image <path>)",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/update",
+   "description": "Update Hermes Agent to the latest version",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/version",
+   "description": "Show Hermes Agent version",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/v",
+   "description": "Show Hermes Agent version (alias for /version)",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/debug",
+   "description": "Upload debug report (system info + logs) and get shareable links (usage: /debug [nous|local])",
+   "category": "Info",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/tools",
+   "description": "Manage tools: /tools [list|disable|enable] [name...] (usage: /tools [list|disable|enable] [name...])",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/toolsets",
+   "description": "List available toolsets",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/skills",
+   "description": "Search, install, inspect, or manage skills",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "navigate-skills"
+  },
+  {
+   "name": "/memory",
+   "description": "Review pending memory writes / toggle the approval gate (usage: /memory [pending|approve|reject|approval] [id|on|off])",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/bundles",
+   "description": "List skill bundles (aliases /<name> for multiple skills)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/pet",
+   "description": "Toggle or adopt a petdex mascot (/pet, /pet list, /pet <slug>) (usage: /pet [toggle|list|scale <n>|<slug>])",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/hatch",
+   "description": "Generate a new petdex pet from a description (usage: /hatch [description])",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/generate-pet",
+   "description": "Generate a new petdex pet from a description (alias for /hatch)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/learn",
+   "description": "Learn a reusable skill from anything you describe (dirs, URLs, this chat, notes) (usage: /learn <what to learn from>)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/init",
+   "description": "Generate or update AGENTS.md project instructions from a repo scan (usage: /init [notes])",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/cron",
+   "description": "Manage scheduled tasks (usage: /cron [subcommand])",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/suggestions",
+   "description": "Review suggested automations (accept/dismiss) (usage: /suggestions [accept|dismiss N | catalog])",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/suggest",
+   "description": "Review suggested automations (accept/dismiss) (alias for /suggestions)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/blueprint",
+   "description": "Set up an automation from a blueprint template (usage: /blueprint [name] [slot=value ...])",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/bp",
+   "description": "Set up an automation from a blueprint template (alias for /blueprint)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/curator",
+   "description": "Background skill maintenance (status, run, pin, archive, list-archived) (usage: /curator [subcommand])",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/kanban",
+   "description": "Multi-profile collaboration board (tasks, links, comments) (usage: /kanban [subcommand])",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/reload",
+   "description": "Reload .env variables into the running session",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/reload-mcp",
+   "description": "Reload MCP servers from config",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/reload_mcp",
+   "description": "Reload MCP servers from config (alias for /reload-mcp)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/reload-skills",
+   "description": "Re-scan ~/.hermes/skills/ for newly installed or removed skills",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/reload_skills",
+   "description": "Re-scan ~/.hermes/skills/ for newly installed or removed skills (alias for /reload-skills)",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/browser",
+   "description": "Connect browser tools to your live Chromium-family browser via CDP, or switch to Browser Use mode (usage: /browser [connect|disconnect|status|use])",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/plugins",
+   "description": "List installed plugins and their status",
+   "category": "Tools & Skills",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/quit",
+   "description": "Exit the CLI (use --delete to also remove session history) (usage: /quit [--delete])",
+   "category": "Exit",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  },
+  {
+   "name": "/exit",
+   "description": "Exit the CLI (use --delete to also remove session history) (alias for /quit)",
+   "category": "Exit",
+   "aliases": [],
+   "argsHint": null,
+   "availability": "unsupported",
+   "executionMode": "disabled",
+   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+  }
+ ]
+}

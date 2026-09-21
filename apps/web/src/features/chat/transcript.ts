@@ -11,13 +11,29 @@ export interface TranscriptMessage {
   role: 'user' | 'assistant';
   content: string;
   streaming?: boolean;
-  reasoning?: string;
 }
 
 export interface TranscriptCommentary {
   kind: 'commentary';
   id: string;
   text: string;
+}
+
+/** Model reasoning, rendered as its own collapsed block (never merged with
+ * tool output or the final answer). */
+export interface TranscriptReasoning {
+  kind: 'reasoning';
+  id: string;
+  text: string;
+}
+
+/** Result of a native WebUI slash command (never LLM-generated content). */
+export interface TranscriptSystem {
+  kind: 'system';
+  id: string;
+  title: string;
+  detail?: string;
+  tone: 'info' | 'success' | 'warning';
 }
 
 export interface TranscriptTool {
@@ -49,6 +65,8 @@ export interface TranscriptError {
 export type TranscriptItem =
   | TranscriptMessage
   | TranscriptCommentary
+  | TranscriptReasoning
+  | TranscriptSystem
   | TranscriptTool
   | TranscriptApproval
   | TranscriptError;
@@ -123,12 +141,16 @@ export function applyEvent(
       return { ...state, items };
     }
     case 'reasoning.available': {
+      const text = String(frame.text ?? '');
+      if (text === '') return state;
       const last = items[items.length - 1];
-      if (last?.kind === 'message' && last.role === 'assistant') {
-        items[items.length - 1] = { ...last, reasoning: String(frame.text ?? '') };
+      // Consecutive reasoning chunks merge into one collapsible block.
+      if (last?.kind === 'reasoning') {
+        items[items.length - 1] = { ...last, text: last.text + text };
         return { ...state, items };
       }
-      return state;
+      items.push({ kind: 'reasoning', id: nextId('rsn'), text });
+      return { ...state, items };
     }
     case 'approval.request': {
       items.push({

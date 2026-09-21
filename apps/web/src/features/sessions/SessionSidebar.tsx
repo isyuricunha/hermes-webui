@@ -9,6 +9,7 @@ import {
   patchSession,
 } from '../../lib/api';
 import { ThemeToggle } from './ThemeToggle';
+import { derivedTitle } from '../../lib/sessionTitles';
 
 function HermesStatusPill() {
   const { data, isPending, isError } = useQuery({
@@ -34,8 +35,17 @@ function HermesStatusPill() {
   );
 }
 
+/**
+ * Display title hierarchy (Chat UX goal): Hermes-provided title, then the
+ * WebUI-derived title from the first user message, then a friendly fallback.
+ * Raw technical session ids (api_*) never render as the primary label — they
+ * stay in the tooltip/debug metadata.
+ */
 function sessionLabel(id: string, title: string | null): string {
-  return title ?? id;
+  if (title !== null && title.trim() !== '' && !/^[a-z0-9_]+_[0-9]{6,}_?[a-f0-9]*$/i.test(title)) {
+    return title;
+  }
+  return derivedTitle(id) ?? 'New chat';
 }
 
 function groupLabel(startedAt: number): 'Today' | 'Earlier' {
@@ -177,7 +187,7 @@ export function SessionSidebar({
                             params={{ sessionId: session.id }}
                             onClick={onNavigate}
                             className="block truncate rounded-lg px-2 py-1.5 pr-20 text-sm hover:bg-surface-elevated"
-                            title={sessionLabel(session.id, session.title)}
+                            title={`${sessionLabel(session.id, session.title)} (${session.id})`}
                           >
                             {sessionLabel(session.id, session.title)}
                           </Link>

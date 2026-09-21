@@ -1,27 +1,35 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import type { NormalizedCommand } from '@hermes-webui/shared';
+import { commandArgs, findCommandIn } from '@hermes-webui/shared';
 import {
   createRun,
   createSession,
+  fetchAppStatus,
+  fetchCommands,
   fetchRun,
   fetchSessionMessages,
+  fetchSessionModel,
   resolveApproval,
   stopRun,
   steerRun,
 } from '../../lib/api';
+import { rememberDerivedTitle } from '../../lib/sessionTitles';
 import {
   applyEvent,
   emptyTranscript,
   type TranscriptApproval,
   type TranscriptItem,
   type TranscriptState,
-  type TranscriptTool,
 } from './transcript';
 import { loadActiveRunId, saveActiveRunId } from './runRegistry';
 import { useRunStream } from './useRunStream';
 import { Composer } from './Composer';
+import { ReasoningBlock, SystemCommandCard, ToolCard } from './cards';
+import { ModelPicker } from './ModelPicker';
 import { rememberChatSession } from '../../lib/navigation';
 
 // --- Subcomponents -----------------------------------------------------------
@@ -30,35 +38,6 @@ function Markdown({ text }: { text: string }) {
   return (
     <div className="text-sm leading-relaxed [&_a]:text-accent [&_code]:rounded [&_code]:bg-surface [&_code]:px-1 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-surface [&_pre]:p-3 [&_pre]:text-xs">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
-    </div>
-  );
-}
-
-function ToolCard({ tool }: { tool: TranscriptTool }) {
-  const [open, setOpen] = useState(false);
-  const label =
-    tool.state === 'running'
-      ? `Running ${tool.name}…`
-      : `${tool.name} · ${tool.state === 'failed' ? 'failed' : `${Math.round((tool.durationMs ?? 0) * 1000) / 1000 || '?'}s`}`;
-  return (
-    <div className="my-1 rounded-lg border border-border-subtle bg-surface-elevated text-xs">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between px-3 py-2 text-left text-text-secondary"
-        aria-expanded={open}
-      >
-        <span className={tool.state === 'failed' ? 'text-danger' : ''}>{label}</span>
-        <span>{open ? '▾' : '▸'}</span>
-      </button>
-      {tool.preview !== undefined && tool.preview !== '' ? (
-        <p className="line-clamp-2 px-3 pb-2 font-mono text-[11px] text-text-secondary">{tool.preview}</p>
-      ) : null}
-      {open ? (
-        <pre className="max-h-64 overflow-auto border-t border-border-subtle p-3 font-mono text-[11px] whitespace-pre-wrap">
-          {tool.preview ?? '(no output captured)'}
-        </pre>
-      ) : null}
     </div>
   );
 }
@@ -149,14 +128,6 @@ function TranscriptItemView({
             ].join(' ')}
           >
             {item.role === 'assistant' ? (
-              item.reasoning ? (
-                <details className="mb-1 text-xs text-text-secondary">
-                  <summary className="cursor-pointer select-none">Reasoning</summary>
-                  <p className="mt-1 whitespace-pre-wrap">{item.reasoning}</p>
-                </details>
-              ) : null
-            ) : null}
-            {item.role === 'assistant' ? (
               <Markdown text={item.content} />
             ) : (
               <p className="whitespace-pre-wrap">{item.content}</p>
@@ -165,6 +136,10 @@ function TranscriptItemView({
           </div>
         </article>
       );
+    case 'reasoning':
+      return <ReasoningBlock reasoning={item} />;
+    case 'system':
+      return <SystemCommandCard card={item} />;
     case 'commentary':
       return (
         <div className="mx-auto w-full max-w-3xl px-4">
@@ -202,6 +177,12 @@ type ChatAction =
   | { type: 'reset'; items: TranscriptItem[]; sessionId: string; force?: boolean }
   | { type: 'event'; frame: Parameters<typeof applyEvent>[1]; sessionId: string }
   | { type: 'appendUser'; text: string; sessionId: string }
+  | {
+      type: 'systemCard';
+      title: string;
+      detail?: string;
+      tone: 'info' | 'success' | 'warning';
+    }
   | { type: 'approvalResolved'; approvalId: string; choice: string };
 
 function transcriptReducer(state: TranscriptState, action: ChatAction): TranscriptState {
@@ -237,11 +218,27 @@ function transcriptReducer(state: TranscriptState, action: ChatAction): Transcri
       );
       return { ...state, items };
     }
+    case 'systemCard': {
+      return {
+        ...state,
+        items: [
+          ...state.items,
+          {
+            kind: 'system' as const,
+            id: `sys-${Date.now()}-${state.items.length}`,
+            title: action.title,
+            detail: action.detail,
+            tone: action.tone,
+          },
+        ],
+      };
+    }
   }
 }
 
 export function ChatView({ sessionId }: { sessionId?: string }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [transcript, dispatch] = useReducer(transcriptReducer, emptyTranscript);
   const [activeRunId, setActiveRunId] = useState<string | null>(() =>
     sessionId ? loadActiveRunId(sessionId) : null,
@@ -268,13 +265,39 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       return;
     }
     const rows = [...messagesQuery.data.data].sort((a, b) => a.id - b.id);
-    const items: TranscriptItem[] = rows.map((row) => ({
-      kind: 'message',
-      id: `history-${row.id}`,
-      role: row.role,
-      content: row.content,
-      reasoning: row.reasoning ?? undefined,
-    }));
+    const items: TranscriptItem[] = [];
+    for (const row of rows) {
+      if (row.reasoning !== null && row.reasoning !== undefined && row.reasoning !== '') {
+        items.push({ kind: 'reasoning', id: `history-rsn-${row.id}`, text: row.reasoning });
+      }
+      if (row.role === 'user') {
+        items.push({ kind: 'message', id: `history-${row.id}`, role: 'user', content: row.content });
+      } else if (row.role === 'tool') {
+        // Persisted tool result: compact card, never raw JSON in the chat.
+        items.push({
+          kind: 'tool',
+          id: `history-tool-${row.id}`,
+          name: 'Tool result',
+          state: 'completed',
+          preview: row.content,
+        });
+      } else if (row.role === 'system') {
+        items.push({
+          kind: 'system',
+          id: `history-sys-${row.id}`,
+          title: 'System notice',
+          detail: row.content,
+          tone: 'info',
+        });
+      } else {
+        items.push({
+          kind: 'message',
+          id: `history-${row.id}`,
+          role: 'assistant',
+          content: row.content,
+        });
+      }
+    }
     dispatch({ type: 'reset', items, sessionId, force: true });
   }, [sessionId, messagesQuery.data]);
 
@@ -375,31 +398,24 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
   });
 
   const [sending, setSending] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
-  const send = async (text: string) => {
-    if (sending) return;
-    setError(null);
-    setSending(true);
-    try {
-      let targetSession = sessionId;
-      if (targetSession === undefined) {
-        const created = await createSession({ title: text.slice(0, 60) });
-        targetSession = created.session.id;
-      }
-      dispatch({ type: 'appendUser', text, sessionId: targetSession });
-      const run = await createRun(text, targetSession);
-      saveActiveRunId(targetSession, run.run_id);
-      setActiveRunId(run.run_id);
-      if (targetSession !== sessionId) {
-        window.history.replaceState(null, '', `/chat/${encodeURIComponent(targetSession)}`);
-      }
-    } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : 'Failed to start the run.');
-    } finally {
-      setSending(false);
-    }
-  };
-
+  // Recognized Hermes commands never reach the LLM as user text (Chat UX
+  // goal): they execute natively here or surface an explanatory card.
+  const commandsQuery = useQuery({
+    queryKey: ['commands'],
+    queryFn: fetchCommands,
+    staleTime: 10 * 60_000,
+  });
+  const sessionModelQuery = useQuery({
+    queryKey: ['session-model', sessionId],
+    queryFn: () => fetchSessionModel(sessionId as string),
+    enabled: sessionId !== undefined,
+    staleTime: 30_000,
+  });
+  const currentModel = sessionModelQuery.data?.model ?? null;
+  const currentProvider = sessionModelQuery.data?.provider ?? '';
+  const modelLabel = currentModel ?? 'global default';
   const stop = async () => {
     if (activeRunId === null) return;
     try {
@@ -415,6 +431,121 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       await steerRun(activeRunId, text);
     } catch (steerError) {
       setError(steerError instanceof Error ? steerError.message : 'Steer failed.');
+    }
+  };
+
+  const runCommand = useCallback(
+    (cmd: NormalizedCommand, argsText: string) => {
+      const notice = (title: string, detail: string, tone: 'info' | 'success' | 'warning' = 'info') =>
+        dispatch({ type: 'systemCard', title, detail, tone });
+      switch (cmd.handler) {
+        case 'new-chat': {
+          const created = createSession(argsText.trim() === '' ? {} : { title: argsText.trim().slice(0, 60) });
+          void created
+            .then((result) => {
+              void navigate({ to: '/chat/$sessionId', params: { sessionId: result.session.id } });
+              notice('New chat started', `Session ${result.session.id}`, 'success');
+            })
+            .catch((error: unknown) =>
+              notice('Could not start a new chat', error instanceof Error ? error.message : 'Unknown error.', 'warning'),
+            );
+          return;
+        }
+        case 'model-picker':
+          setPickerOpen(true);
+          return;
+        case 'status-card': {
+          void fetchAppStatus()
+            .then((status) => {
+              const version = 'version' in status.hermes ? ` (v${status.hermes.version})` : '';
+              notice(
+                'Hermes status',
+                [
+                  `Gateway: ${status.hermes.state}${version}`,
+                  currentModel !== null
+                    ? `Session model: ${currentProvider !== '' ? `${currentProvider}/` : ''}${currentModel}`
+                    : 'Model: global default (Settings > Models)',
+                ].join('\n'),
+              );
+            })
+            .catch(() => notice('Hermes status', 'Status unavailable.', 'warning'));
+          return;
+        }
+        case 'open-sessions':
+          window.dispatchEvent(new CustomEvent('hermes-webui:open-sessions'));
+          return;
+        case 'navigate-settings':
+          void navigate({ to: '/settings' });
+          return;
+        case 'navigate-skills':
+          void navigate({ to: '/settings/skills' });
+          return;
+        case 'stop-run':
+          if (activeRunId !== null && !transcript.runDone) {
+            void stop();
+            notice('Stop requested', 'The active run is being stopped.');
+          } else {
+            notice('No active run', 'There is no run to stop in this session.', 'warning');
+          }
+          return;
+        case 'help-card': {
+          const total = commandsQuery.data?.commands.length ?? 0;
+          notice(
+            'Hermes commands',
+            `Native here: /new /model /status /sessions /settings /skills /stop /help.\nType "/" to browse all ${total} registry commands (CLI/TUI-only ones are labeled).`,
+          );
+          return;
+        }
+        default:
+          notice(
+            `${cmd.name} is unavailable in the WebUI`,
+            cmd.disabledReason ?? 'This Hermes command runs in the terminal only.',
+            'warning',
+          );
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeRunId, transcript.runDone, commandsQuery.data, currentModel, currentProvider],
+  );
+
+  const send = async (text: string) => {
+    if (sending) return;
+    // Command interception: recognized -> native execution; unrecognized
+    // slash input -> explanatory card. Neither becomes a user message.
+    const command = findCommandIn(commandsQuery.data?.commands ?? [], text);
+    if (command !== undefined) {
+      runCommand(command, commandArgs(text));
+      return;
+    }
+    if (text.startsWith('/')) {
+      dispatch({
+        type: 'systemCard',
+        title: `Unknown command ${text.split(/\s+/)[0]}`,
+        detail: 'Type "/" to browse the Hermes command catalog.',
+        tone: 'warning',
+      });
+      return;
+    }
+    setError(null);
+    setSending(true);
+    try {
+      let targetSession = sessionId;
+      if (targetSession === undefined) {
+        const created = await createSession({ title: text.slice(0, 60) });
+        targetSession = created.session.id;
+      }
+      rememberDerivedTitle(targetSession, text);
+      dispatch({ type: 'appendUser', text, sessionId: targetSession });
+      const run = await createRun(text, targetSession);
+      saveActiveRunId(targetSession, run.run_id);
+      setActiveRunId(run.run_id);
+      if (targetSession !== sessionId) {
+        window.history.replaceState(null, '', `/chat/${encodeURIComponent(targetSession)}`);
+      }
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : 'Failed to start the run.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -517,9 +648,15 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           key={sessionId ?? 'new'}
           running={running || sending}
           onSend={(text) => void send(text)}
+          onCommand={(cmd, args) => runCommand(cmd, args)}
+          onOpenModelPicker={() => setPickerOpen(true)}
+          modelLabel={modelLabel}
           onStop={() => void stop()}
           draftKey={sessionId ?? 'new'}
         />
+        {pickerOpen ? (
+          <ModelPicker sessionId={sessionId} onClose={() => setPickerOpen(false)} />
+        ) : null}
       </div>
     </div>
   );

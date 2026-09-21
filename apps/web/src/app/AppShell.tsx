@@ -22,6 +22,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('hermes-webui:restart-required', handler);
   }, []);
 
+  // /sessions command (and other surfaces) can open the conversations drawer.
+  useEffect(() => {
+    const handler = () => {
+      setDrawerOpen(true);
+      setCollapsed(false);
+    };
+    window.addEventListener('hermes-webui:open-sessions', handler);
+    return () => window.removeEventListener('hermes-webui:open-sessions', handler);
+  }, []);
+
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-background text-text-primary">
       {/* Mobile top bar */}
