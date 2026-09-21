@@ -9,6 +9,7 @@ const NAV = [
   { to: '/settings/system', label: 'System' },
   { to: '/settings/advanced/config', label: 'Raw Config' },
   { to: '/settings/advanced/environment', label: 'Environment' },
+  { to: '/settings/advanced/cli', label: 'Hermes CLI' },
 ] as const;
 
 /**

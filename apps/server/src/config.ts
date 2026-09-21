@@ -14,6 +14,8 @@ export interface ServerConfig {
   hermesDashboardToken?: string;
   /** Gateway API_SERVER_KEY. Server-side only; never sent to the browser. */
   hermesApiKey?: string;
+  /** Hermes binary for the restricted CLI bridge. */
+  hermesBin: string;
   /** WebUI version reported by /api/app/status. */
   appVersion: string;
 }
@@ -34,6 +36,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     hermesDashboardUrl: env.HERMES_DASHBOARD_URL ?? 'http://127.0.0.1:49173',
     hermesDashboardToken: env.HERMES_DASHBOARD_SESSION_TOKEN,
     hermesApiKey: env.HERMES_API_KEY,
+    hermesBin: env.HERMES_BIN ?? 'hermes',
     appVersion: env.npm_package_version ?? '0.0.0-dev',
   };
 }

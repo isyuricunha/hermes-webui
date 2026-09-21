@@ -46,6 +46,7 @@ See `apps/server/.env.example`. The WebUI keeps its own tiny configuration; Herm
 - **Update apply is deny-by-default**: the WebUI never runs `hermes update`; the check is read-only, and applying requires the operator to opt in (`HERMES_WEBUI_ALLOW_UPDATE_APPLY=1`) because custom-patched installs must update through their own flow.
 - **Cron**: job list/create/update/delete/pause/resume/run via the gateway API.
 - **Command palette** (Ctrl/Cmd+K), dark/light/system theme, mobile drawer.
+- **Restricted CLI bridge** (Advanced > Hermes CLI): declared registry commands plus a read-only allowlisted escape hatch for the `hermes` binary. `execFile` only, no shell, timeouts, output caps, credential redaction and audit logging — see [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Repository layout
 
@@ -61,6 +62,7 @@ PRD.md         Product requirements (authority for scope and UX)
 
 - [PRD.md](PRD.md) — product requirements
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — technical architecture (draft, refined by the capability matrix)
+- [docs/SECURITY.md](docs/SECURITY.md) — trust model, credential handling, CLI bridge controls
 - `docs/HERMES-CAPABILITY-MATRIX.md` — API vs config vs CLI parity per Hermes capability (in progress)
 
 ## License

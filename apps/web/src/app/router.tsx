@@ -10,6 +10,7 @@ import { MessagingPage } from '../features/settings/MessagingPage';
 import { SystemPage } from '../features/settings/SystemPage';
 import { RawConfigPage } from '../features/settings/RawConfigPage';
 import { EnvPage } from '../features/settings/EnvPage';
+import { CliPage } from '../features/settings/CliPage';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -89,6 +90,12 @@ const environmentRoute = createRoute({
   component: EnvPage,
 });
 
+const cliRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: 'advanced/cli',
+  component: CliPage,
+});
+
 const settingsIndexRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: '/',
@@ -108,6 +115,7 @@ const routeTree = rootRoute.addChildren([
     systemRoute,
     rawConfigRoute,
     environmentRoute,
+    cliRoute,
   ]),
 ]);
 

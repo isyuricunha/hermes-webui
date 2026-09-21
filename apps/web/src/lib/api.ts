@@ -300,3 +300,45 @@ export function fetchLogs(file: 'agent' | 'gateway' | 'errors', lines = 100): Pr
 export function restartGateway(): Promise<unknown> {
   return requestJson<unknown>('/api/settings/gateway/restart', { method: 'POST' });
 }
+
+// --- CLI bridge (PRD 34-36) --------------------------------------------------
+
+export interface BridgeCommandInfo {
+  id: string;
+  displayName: string;
+  readOnly: boolean;
+  mutating: boolean;
+  requiresConfirmation: boolean;
+}
+
+export interface BridgeCatalog {
+  commands: BridgeCommandInfo[];
+  freeFormAllowlist: string[];
+}
+
+export interface BridgeResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  durationMs: number;
+  truncated: boolean;
+  redacted: boolean;
+}
+
+export function fetchCliCatalog(): Promise<BridgeCatalog> {
+  return requestJson<BridgeCatalog>('/api/cli/commands');
+}
+
+export function runCliCommand(id: string, confirm = false): Promise<BridgeResult> {
+  return requestJson<BridgeResult>(`/api/cli/commands/${encodeURIComponent(id)}/run`, {
+    method: 'POST',
+    body: JSON.stringify({ confirm }),
+  });
+}
+
+export function runCliFreeForm(command: string): Promise<BridgeResult> {
+  return requestJson<BridgeResult>('/api/cli/run', {
+    method: 'POST',
+    body: JSON.stringify({ command }),
+  });
+}

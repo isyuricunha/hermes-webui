@@ -7,6 +7,7 @@ import { sessionRoutes } from './routes/sessions';
 import { runRoutes } from './routes/runs';
 import { cronRoutes } from './routes/cron';
 import { settingsRoutes } from './routes/settings';
+import { cliRoutes } from './routes/cli';
 
 export interface BuildAppOptions {
   config: ServerConfig;
@@ -103,6 +104,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   await app.register(runRoutes, { client: hermes });
   await app.register(cronRoutes, { client: hermes });
   await app.register(settingsRoutes, { dashboard });
+  await app.register(cliRoutes, { hermesBin: config.hermesBin });
 
   return app;
 }
