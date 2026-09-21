@@ -126,4 +126,84 @@ describe('dashboard settings routes', () => {
     expect(response.statusCode).toBe(503);
     expect(response.json().error.code).toBe('HERMES_DASHBOARD_UNREACHABLE');
   });
+
+  it('forwards gateway restart and update apply with the token', async () => {
+    handler = (url, init) => {
+      if (url.pathname === '/api/gateway/restart') {
+        expect(init?.method).toBe('POST');
+        return json({ pid: 1234 });
+      }
+      if (url.pathname === '/api/hermes/update') {
+        expect(init?.method).toBe('POST');
+        return json({ ok: true });
+      }
+      return json({ error: { message: 'not found' } }, 404);
+    };
+
+    const restart = await app.inject({ method: 'POST', url: '/api/settings/gateway/restart' });
+    expect(restart.statusCode).toBe(200);
+    expect(restart.json()).toEqual({ pid: 1234 });
+    const restartHeaders = calls[0]?.init?.headers as Record<string, string>;
+    expect(restartHeaders['x-hermes-session-token']).toBe('dash-token');
+
+    const update = await (async () => {
+      // Update apply is deny-by-default (custom-patched install); opt in for
+      // the passthrough assertion here; the next test pins the default 403.
+      process.env.HERMES_WEBUI_ALLOW_UPDATE_APPLY = '1';
+      const response = await app.inject({ method: 'POST', url: '/api/settings/update/apply' });
+      delete process.env.HERMES_WEBUI_ALLOW_UPDATE_APPLY;
+      return response;
+    })();
+    expect(update.statusCode).toBe(200);
+    expect(update.json()).toEqual({ ok: true });
+  });
+
+  it('refuses update apply by default (custom-patched install) unless explicitly enabled', async () => {
+    delete process.env.HERMES_WEBUI_ALLOW_UPDATE_APPLY;
+    const denied = await app.inject({ method: 'POST', url: '/api/settings/update/apply' });
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().error.code).toBe('UPDATE_APPLY_DISABLED');
+    expect(calls.length).toBe(0);
+
+    // Opt-in flag turns the passthrough back on.
+    process.env.HERMES_WEBUI_ALLOW_UPDATE_APPLY = '1';
+    handler = (url, init) => {
+      expect(url.pathname).toBe('/api/hermes/update');
+      expect(init?.method).toBe('POST');
+      return json({ ok: true });
+    };
+    const allowed = await app.inject({ method: 'POST', url: '/api/settings/update/apply' });
+    expect(allowed.statusCode).toBe(200);
+    expect(allowed.json()).toEqual({ ok: true });
+    delete process.env.HERMES_WEBUI_ALLOW_UPDATE_APPLY;
+  });
+
+  it('serves logs only from the allowlist and caps the line count', async () => {
+    handler = (url) => {
+      expect(url.pathname).toBe('/api/logs');
+      expect(url.searchParams.get('file')).toBe('gateway');
+      expect(url.searchParams.get('lines')).toBe('42');
+      return json({ file: 'gateway', lines: ['line1'] });
+    };
+
+    const ok = await app.inject({
+      method: 'GET',
+      url: '/api/settings/logs?file=gateway&lines=42',
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().file).toBe('gateway');
+
+    // Arbitrary file names must never reach the dashboard: the allowlist
+    // collapses them to the default, and only 'agent' may hit the upstream.
+    handler = (url) => {
+      expect(url.searchParams.get('file')).toBe('agent');
+      return json({ file: 'agent', lines: [] });
+    };
+    const denied = await app.inject({
+      method: 'GET',
+      url: '/api/settings/logs?file=../../etc/passwd',
+    });
+    expect(denied.statusCode).toBe(200);
+    expect(denied.json().file).toBe('agent');
+  });
 });

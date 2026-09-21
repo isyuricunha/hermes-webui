@@ -187,4 +187,50 @@ export async function settingsRoutes(
       return sendHermesError(reply, request.id, error);
     }
   });
+
+  // Mutating: applies the update (git installs). DENY-BY-DEFAULT: Yuri's
+  // install carries custom micro-patches, so update apply must never be
+  // reachable unless the operator opts in explicitly.
+  app.post('/api/settings/update/apply', async (request, reply) => {
+    if (process.env.HERMES_WEBUI_ALLOW_UPDATE_APPLY !== '1') {
+      return await reply.status(403).send({
+        error: {
+          code: 'UPDATE_APPLY_DISABLED',
+          message:
+            'Hermes update apply is disabled. This install is custom-patched; update it through its own flow. Set HERMES_WEBUI_ALLOW_UPDATE_APPLY=1 to enable.',
+        },
+        requestId: request.id,
+      });
+    }
+    try {
+      request.log.warn({ action: 'update.apply' }, 'hermes update requested via WebUI');
+      return await reply.send(await dashboard.updateApply());
+    } catch (error) {
+      return sendHermesError(reply, request.id, error);
+    }
+  });
+
+  app.get<{
+    Querystring: { file?: string; lines?: string };
+  }>('/api/settings/logs', async (request, reply) => {
+    try {
+      const { file, lines } = request.query;
+      const allowed = ['agent', 'gateway', 'errors'];
+      const selected = file !== undefined && allowed.includes(file) ? file : 'agent';
+      const count = lines !== undefined && Number.isFinite(Number(lines)) ? Math.min(Number(lines), 500) : 50;
+      return await reply.send(await dashboard.logs(selected, count));
+    } catch (error) {
+      return sendHermesError(reply, request.id, error);
+    }
+  });
+
+  // Mutating: restarts the Hermes gateway (systemd handoff). Confirmed in UI.
+  app.post('/api/settings/gateway/restart', async (request, reply) => {
+    try {
+      request.log.warn({ action: 'gateway.restart' }, 'gateway restart requested via WebUI');
+      return await reply.send(await dashboard.gatewayRestart());
+    } catch (error) {
+      return sendHermesError(reply, request.id, error);
+    }
+  });
 }

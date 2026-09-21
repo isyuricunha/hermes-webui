@@ -283,3 +283,20 @@ export function fetchUpdateCheck(): Promise<{
 }> {
   return requestJson('/api/settings/update/check');
 }
+
+export function applyUpdate(): Promise<unknown> {
+  return requestJson<unknown>('/api/settings/update/apply', { method: 'POST' });
+}
+
+export interface LogLines {
+  file: string;
+  lines: string[];
+}
+
+export function fetchLogs(file: 'agent' | 'gateway' | 'errors', lines = 100): Promise<LogLines> {
+  return requestJson<LogLines>(`/api/settings/logs?file=${file}&lines=${lines}`);
+}
+
+export function restartGateway(): Promise<unknown> {
+  return requestJson<unknown>('/api/settings/gateway/restart', { method: 'POST' });
+}

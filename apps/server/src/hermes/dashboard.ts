@@ -164,4 +164,28 @@ export class HermesDashboardClient {
   updateCheck(): Promise<unknown> {
     return this.request('/api/hermes/update/check');
   }
+
+  /**
+   * Mutating: applies the update (git installs only; the dashboard enforces
+   * admission and restarts the gateway). Deny-by-default: custom-patched
+   * installs MUST NOT auto-apply. Only reachable with
+   * HERMES_WEBUI_ALLOW_UPDATE_APPLY=1 (operator opt-in).
+   */
+  updateApply(): Promise<unknown> {
+    return this.request('/api/hermes/update', { method: 'POST' });
+  }
+
+  /** Log lines from ~/.hermes/logs (agent | gateway | errors). */
+  logs(file: string, lines: number): Promise<{ file: string; lines: string[] }> {
+    return this.request(`/api/logs?file=${encodeURIComponent(file)}&lines=${lines}`);
+  }
+
+  /**
+   * Mutating: restarts the Hermes gateway (spawns `hermes gateway restart`
+   * detached, systemd performs the supervisor handoff). Confirmed in the UI
+   * before calling (PRD 29.2).
+   */
+  gatewayRestart(): Promise<unknown> {
+    return this.request('/api/gateway/restart', { method: 'POST' });
+  }
 }
