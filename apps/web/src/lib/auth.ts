@@ -100,22 +100,14 @@ export async function logout(): Promise<void> {
   storeCsrfToken(null);
 }
 
+export const authStateQuery = {
+  queryKey: ['auth-state'] as const,
+  queryFn: fetchAuthState,
+  staleTime: 30_000,
+};
+
 export function useAuthState() {
-  return useQuery({
-    queryKey: ['auth-state'],
-    queryFn: async (): Promise<AuthState> => {
-      const response = await fetch('/api/auth/state', { headers: { accept: 'application/json' } });
-      if (!response.ok) {
-        throw new Error(`Auth state failed with ${response.status}`);
-      }
-      const state = (await response.json()) as AuthState;
-      if (state.authenticated && state.csrfToken !== undefined) {
-        storeCsrfToken(state.csrfToken);
-      }
-      return state;
-    },
-    staleTime: 30_000,
-  });
+  return useQuery(authStateQuery);
 }
 
 /** Clears cached auth state (call after logout). */

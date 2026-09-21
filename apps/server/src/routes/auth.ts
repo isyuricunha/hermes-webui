@@ -12,7 +12,7 @@ import type { AuthStore } from '../auth/store';
 interface AuthContext {
   service: AuthService;
   store: AuthStore;
-  secureCookie: boolean;
+  secureMode: 'auto' | 'always';
   ipHashSalt: string;
 }
 
@@ -47,7 +47,7 @@ export function buildAuthRoutes(
   app: FastifyInstance,
   context: AuthContext,
 ): void {
-  const { service, store, secureCookie, ipHashSalt } = context;
+  const { service, store, secureMode, ipHashSalt } = context;
 
   app.get(
     '/api/auth/state',
@@ -98,7 +98,7 @@ export function buildAuthRoutes(
           context: requestContext(request, ipHashSalt),
           requestId: request.id,
         });
-        setSessionCookie(reply, result.session.cookieToken, secureCookie);
+        setSessionCookie(request, reply, result.session.cookieToken, secureMode);
         return {
           authenticated: true,
           user: result.user,
@@ -130,7 +130,7 @@ export function buildAuthRoutes(
           context: requestContext(request, ipHashSalt),
           requestId: request.id,
         });
-        setSessionCookie(reply, result.session.cookieToken, secureCookie);
+        setSessionCookie(request, reply, result.session.cookieToken, secureMode);
         return {
           authenticated: true,
           user: result.user,
@@ -205,9 +205,12 @@ export function buildAuthRoutes(
           context: requestContext(request, ipHashSalt),
           requestId: request.id,
         },
-        { id: session.id, userId: session.user_id, csrfToken: session.csrf_token },
+        { id: session.id, userId: session.user_id },
       );
-      setSessionCookie(reply, result.cookieToken, secureCookie);
+      for (const revokedId of result.revokedSessionIds) {
+        app.invalidateSessionStreams(revokedId);
+      }
+      setSessionCookie(request, reply, result.cookieToken, secureMode);
       return {
         ok: true,
         csrfToken: result.csrfToken,
@@ -247,9 +250,15 @@ export function buildAuthRoutes(
       });
       return;
     }
-    const target = store.getSessionByTokenHash; // sessions listed by id, not hash:
-    void target;
-    store.revokeSession(sessionId);
+    // Ownership: a user can only revoke their own sessions (spec 2.24 user
+    // model). 404 — not 403 — avoids a session-id existence oracle.
+    const revoked = store.revokeSessionForUser(sessionId, session.user_id);
+    if (!revoked) {
+      void reply.code(404).send({
+        error: { code: 'NOT_FOUND', message: 'No such session.', requestId: request.id },
+      });
+      return;
+    }
     app.invalidateSessionStreams(sessionId);
     store.appendAudit({
       userId: session.user_id,
@@ -269,9 +278,9 @@ export function buildAuthRoutes(
       });
       return;
     }
-    const revoked = store.revokeAllForUser(session.user_id, session.id);
-    for (let index = 0; index < revoked; index += 1) {
-      app.invalidateSessionStreams(`revoke-others:${session.id}:${index}`);
+    const revoked = store.revokeOthersForUser(session.user_id, session.id);
+    for (const revokedId of revoked) {
+      app.invalidateSessionStreams(revokedId);
     }
     store.appendAudit({
       userId: session.user_id,
@@ -280,6 +289,6 @@ export function buildAuthRoutes(
       requestId: request.id,
       metadata: { revoked },
     });
-    return { ok: true, revoked };
+    return { ok: true, revoked: revoked.length };
   });
 }

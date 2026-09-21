@@ -55,9 +55,18 @@ export async function runRoutes(
     const abort = new AbortController();
     request.raw.on('close', () => {
       abort.abort();
+      unregisterStream?.();
+      if (expiryTimer !== null) clearTimeout(expiryTimer);
     });
+    let unregisterStream: (() => void) | null = null;
+    let expiryTimer: NodeJS.Timeout | null = null;
     if (request.auth?.session !== undefined && request.auth.session !== null) {
-      app.registerSessionStream(request.auth.session.id, () => abort.abort());
+      const session = request.auth.session;
+      unregisterStream = app.registerSessionStream(session.id, () => abort.abort());
+      // Spec 2.18: a stream never outlives its session's validity window.
+      const expiresAt = Math.min(session.idle_expires_at, session.absolute_expires_at);
+      expiryTimer = setTimeout(() => abort.abort(), Math.max(0, expiresAt - Date.now()));
+      expiryTimer.unref?.();
     }
     try {
       const upstream = await client.openRunEvents(runId, abort.signal);

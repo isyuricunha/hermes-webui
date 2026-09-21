@@ -36,7 +36,8 @@ declare module 'fastify' {
   }
   interface FastifyInstance {
     invalidateSessionStreams: (sessionId: string) => void;
-    registerSessionStream: (sessionId: string, abort: () => void) => void;
+    /** Registers a stream for a session; returns its unregister function. */
+    registerSessionStream: (sessionId: string, abort: () => void) => () => void;
   }
 }
 
@@ -52,20 +53,21 @@ export interface AuthPluginOptions {
 
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 
-/** In-memory failure buckets (spec 2.15). Login/setup failures; success clears. */
+/** In-memory failure buckets (spec 2.15): per-bucket window and limit. */
 export class LoginRateLimiter {
-  private buckets = new Map<string, number[]>();
+  private buckets = new Map<string, { stamps: number[]; windowMs: number }>();
 
   attempt(key: string, limit: number): boolean {
     this.sweep();
-    const stamps = this.buckets.get(key) ?? [];
-    return stamps.length < limit;
+    const entry = this.buckets.get(key);
+    return (entry?.stamps.length ?? 0) < limit;
   }
 
-  failure(key: string): void {
-    const stamps = this.buckets.get(key) ?? [];
-    stamps.push(Date.now());
-    this.buckets.set(key, stamps);
+  failure(key: string, windowMs = RATE_WINDOW_MS): void {
+    const entry = this.buckets.get(key) ?? { stamps: [], windowMs };
+    entry.stamps.push(Date.now());
+    entry.windowMs = Math.max(entry.windowMs, windowMs);
+    this.buckets.set(key, entry);
   }
 
   success(key: string): void {
@@ -73,13 +75,13 @@ export class LoginRateLimiter {
   }
 
   private sweep(): void {
-    const cutoff = Date.now() - RATE_WINDOW_MS;
-    for (const [key, stamps] of this.buckets) {
-      const alive = stamps.filter((stamp) => stamp > cutoff);
+    const now = Date.now();
+    for (const [key, entry] of this.buckets) {
+      const alive = entry.stamps.filter((stamp) => now - stamp <= entry.windowMs);
       if (alive.length === 0) {
         this.buckets.delete(key);
-      } else if (alive.length !== stamps.length) {
-        this.buckets.set(key, alive);
+      } else if (alive.length !== entry.stamps.length) {
+        entry.stamps = alive;
       }
     }
   }
@@ -115,12 +117,19 @@ function originAllowed(request: FastifyRequest): boolean {
   }
 }
 
-export function setSessionCookie(reply: FastifyReply, cookieToken: string, secure: boolean): void {
+export function setSessionCookie(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  cookieToken: string,
+  secureMode: 'auto' | 'always',
+): void {
   void reply.setCookie(SESSION_COOKIE, cookieToken, {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    secure,
+    // spec 2.5: auto = Secure when the request itself is HTTPS (trusted
+    // proxy already honored by Fastify); 'always' for TLS-terminated setups.
+    secure: secureMode === 'always' || request.protocol === 'https',
   });
 }
 
@@ -178,7 +187,31 @@ async function fastifyAuthPlugin(
         console.log(`[auth-debug] ${request.method} ${request.url} cookie=${cookieToken.slice(0, 8)}… rowFound=${row !== undefined} session=${session !== null} invalid=${sessionExistsButInvalid}`);
       }
     }
-    request.requestAuthState = { session, user, recent: session !== null };
+    request.requestAuthState = {
+      session,
+      user,
+      recent:
+        session !== null &&
+        session.reauth_until !== null &&
+        session.reauth_until > Date.now(),
+    };
+
+    // Origin validation applies to EVERY mutation — public or not — so
+    // cross-origin browser posts to /login or /setup are rejected too
+    // (spec 2.13). Non-browser clients (no Origin header) are unaffected.
+    const method = request.method.toUpperCase();
+    const isMutation = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
+    if (isMutation && !originAllowed(request)) {
+      void reply.code(403).send({
+        error: {
+          code: 'AUTH_CSRF_INVALID',
+          message: 'Cross-origin mutation rejected.',
+          details: {},
+          requestId: request.id,
+        },
+      });
+      return reply;
+    }
 
     const policy = resolveRoutePolicy(request);
     if (policy === 'public') {
@@ -230,19 +263,7 @@ async function fastifyAuthPlugin(
     }
 
     // CSRF for mutations (spec 2.12/2.13): session-bound token + same origin.
-    const method = request.method.toUpperCase();
-    if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
-      if (!originAllowed(request)) {
-        void reply.code(403).send({
-          error: {
-            code: 'AUTH_CSRF_INVALID',
-            message: 'Cross-origin mutation rejected.',
-            details: {},
-            requestId: request.id,
-          },
-        });
-        return reply;
-      }
+    if (isMutation) {
       const header = request.headers[CSRF_HEADER];
       if (
         typeof header !== 'string' ||
@@ -276,6 +297,10 @@ async function fastifyAuthPlugin(
     const set = sessionStreams.get(sessionId) ?? new Set<() => void>();
     set.add(abort);
     sessionStreams.set(sessionId, set);
+    // Unregister keeps the registry from leaking after normal stream close.
+    return () => {
+      sessionStreams.get(sessionId)?.delete(abort);
+    };
   });
   app.decorate('invalidateSessionStreams', (sessionId: string) => {
     const set = sessionStreams.get(sessionId);

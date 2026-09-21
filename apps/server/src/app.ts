@@ -40,6 +40,9 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     new HermesDashboardClient(config.hermesDashboardUrl, config.hermesDashboardToken);
 
   const app = Fastify({
+    // Trusted proxy (spec 2.14): only explicit IPs/CIDRs; request.protocol,
+    // client IP and rate limiting honor it. Never blanket `true`.
+    trustProxy: config.trustProxy,
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
       redact: {
@@ -111,7 +114,6 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const ipHashSalt = newIpHashSalt();
   const limiter = new LoginRateLimiter();
   const service = new AuthService(store, config.session, dataDir, limiter);
-  const secureCookie = false; // loopback/dev default; Secure auto-derives from HTTPS at the proxy
 
   // First boot (spec 2.7): write the one-time setup token while unclaimed.
   if (!store.isClaimed()) {
@@ -125,7 +127,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
       store,
       service,
       lifetimes: config.session,
-      secureCookie,
+      secureCookie: config.cookieSecureMode === 'always',
       ipHashSalt,
     });
   }
@@ -142,7 +144,13 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     async () => ({ ok: true, service: 'hermes-webui' }),
   );
 
-  buildAuthRoutes(app, { service, store, secureCookie, ipHashSalt });
+  buildAuthRoutes(app, {
+    service,
+    store,
+    secureMode: config.cookieSecureMode,
+    ipHashSalt,
+  });
+
 
   /***
    * Connection states per PRD 40: connected (gateway healthy + auth ok),

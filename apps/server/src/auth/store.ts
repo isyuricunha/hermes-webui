@@ -237,17 +237,65 @@ export class AuthStore {
       .run(Date.now(), sessionId);
   }
 
-  revokeAllForUser(userId: string, exceptSessionId?: string): number {
-    const info = exceptSessionId
-      ? this.db
-          .prepare(
-            'UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND id != ? AND revoked_at IS NULL',
-          )
-          .run(Date.now(), userId, exceptSessionId)
-      : this.db
-          .prepare('UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL')
-          .run(Date.now(), userId);
-    return info.changes;
+  /** Revokes a session only when it belongs to `userId`. Returns ownership. */
+  revokeSessionForUser(sessionId: string, userId: string): boolean {
+    const info = this.db
+      .prepare(
+        'UPDATE sessions SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL',
+      )
+      .run(Date.now(), sessionId, userId);
+    return info.changes > 0;
+  }
+
+  /** Revokes every active session of `userId` except `exceptId`; returns the revoked IDs. */
+  revokeOthersForUser(userId: string, exceptSessionId: string): string[] {
+    const revoked: string[] = [];
+    const run = this.db.transaction(() => {
+      const rows = this.db
+        .prepare(
+          'SELECT id FROM sessions WHERE user_id = ? AND id != ? AND revoked_at IS NULL',
+        )
+        .all(userId, exceptSessionId) as { id: string }[];
+      for (const row of rows) {
+        this.db.prepare('UPDATE sessions SET revoked_at = ? WHERE id = ?').run(Date.now(), row.id);
+        revoked.push(row.id);
+      }
+    });
+    run();
+    return revoked;
+  }
+
+  /**
+   * Password change (spec: atomic lifecycle): updates the password, revokes
+   * every session of the user (current included) and issues one fresh
+   * session, all in a single transaction. Returns the new session plus the
+   * revoked session IDs so the caller can abort their streams.
+   */
+  rotatePasswordAndSession(input: {
+    userId: string;
+    passwordHash: string;
+    oldSessionId: string;
+    lifetimes: SessionLifetimes;
+    context: { userAgent?: string | null; clientIpHash?: string | null };
+  }): { revokedSessionIds: string[]; created: CreatedSession } {
+    const run = this.db.transaction(() => {
+      const now = Date.now();
+      this.db
+        .prepare('UPDATE users SET password_hash = ?, password_changed_at = ?, updated_at = ? WHERE id = ?')
+        .run(input.passwordHash, now, now, input.userId);
+      const old = this.db
+        .prepare('SELECT id FROM sessions WHERE user_id = ? AND revoked_at IS NULL')
+        .all(input.userId) as { id: string }[];
+      for (const row of old) {
+        this.db.prepare('UPDATE sessions SET revoked_at = ? WHERE id = ?').run(now, row.id);
+      }
+      const created = this.createSession(input.userId, input.lifetimes, {
+        userAgent: input.context.userAgent,
+        clientIpHash: input.context.clientIpHash,
+      });
+      return { revokedSessionIds: old.map((row) => row.id), created };
+    });
+    return run();
   }
 
   listSessionsForUser(userId: string): SessionRow[] {

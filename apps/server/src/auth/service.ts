@@ -47,7 +47,7 @@ export interface AuthResult {
 
 export interface LoginRateLimiter {
   /** Returns true when the attempt is allowed (limit = max failures in window). */
-  attempt(key: string, limit: number): boolean;
+  attempt(key: string, limit: number, windowMs?: number): boolean;
   failure(key: string): void;
   success(key: string): void;
 }
@@ -56,6 +56,8 @@ export interface AuthRequestContext {
   userAgent: string | null;
   clientIpHash: string | null;
 }
+
+const SETUP_WINDOW_MS = 15 * 60 * 1000;
 
 export class AuthService {
   constructor(
@@ -71,13 +73,16 @@ export class AuthService {
     return this.store.isClaimed();
   }
 
-  /** Spec 2.7: token lives in <DATA_DIR>/setup-token with 0600 while unclaimed. */
+  /** Spec 2.7: one-time token pair (DB hash + file) must be consistent. */
   ensureBootstrapToken(): string {
     const tokenFile = this.setupTokenFile();
-    if (fs.existsSync(tokenFile)) {
+    const dbHash = this.store.getBootstrapTokenHash();
+    const fileExists = fs.existsSync(tokenFile);
+    if (dbHash !== null && fileExists) {
       return tokenFile;
     }
-    const token = this.store.createBootstrapToken();
+    // Missing or inconsistent pair (stale file, wiped DB row): regenerate both.
+    const token = this.store.rotateBootstrapToken();
     fs.writeFileSync(tokenFile, token + '\n', { mode: 0o600 });
     return tokenFile;
   }
@@ -115,7 +120,7 @@ export class AuthService {
       throw new AuthError('SETUP_ALREADY_CLAIMED', 'This instance is already set up.', 409);
     }
     const ipKey = input.context.clientIpHash ?? 'unknown';
-    if (!this.rateLimiter.attempt(`setup:${ipKey}`, 5)) {
+    if (!this.rateLimiter.attempt(`setup:${ipKey}`, 5, SETUP_WINDOW_MS)) {
       this.store.appendAudit({
         event: 'setup.failure',
         outcome: 'failure',
@@ -297,10 +302,19 @@ export class AuthService {
     });
   }
 
-  async changePassword(
-    input: { currentPassword: string; newPassword: string; context: AuthRequestContext; requestId?: string },
-    session: { id: string; userId: string; csrfToken: string },
-  ): Promise<{ cookieToken: string; csrfToken: string; expiresAt: number; absoluteExpiresAt: number; reauthUntil: number | null }> {
+  async changePassword(input: {
+    currentPassword: string;
+    newPassword: string;
+    context: AuthRequestContext;
+    requestId?: string;
+  }, session: { id: string; userId: string }): Promise<{
+    cookieToken: string;
+    csrfToken: string;
+    expiresAt: number;
+    absoluteExpiresAt: number;
+    reauthUntil: number | null;
+    revokedSessionIds: string[];
+  }> {
     const user = this.store.getUserById(session.userId);
     if (user === undefined || !(await verifyPassword(input.currentPassword, user.password_hash))) {
       throw new AuthError('AUTH_INVALID_CREDENTIALS', 'Current password is incorrect.', 401);
@@ -310,21 +324,31 @@ export class AuthService {
       throw new AuthError('AUTH_VALIDATION_ERROR', passwordError, 400);
     }
     const passwordHash = await hashPassword(input.newPassword);
-    this.store.updatePassword(user.id, passwordHash);
-    const rotated = this.store.rotateSession(session.id, user.id, this.lifetimes);
+    const rotation = this.store.rotatePasswordAndSession({
+      userId: user.id,
+      passwordHash,
+      oldSessionId: session.id,
+      lifetimes: this.lifetimes,
+      context: {
+        userAgent: input.context.userAgent,
+        clientIpHash: input.context.clientIpHash,
+      },
+    });
     this.store.appendAudit({
       userId: user.id,
       event: 'password.changed',
       outcome: 'success',
       ...input.context,
       requestId: input.requestId,
+      metadata: { revokedSessions: rotation.revokedSessionIds.length },
     });
     return {
-      cookieToken: rotated.cookieToken,
-      csrfToken: rotated.session.csrf_token,
-      expiresAt: rotated.session.idle_expires_at,
-      absoluteExpiresAt: rotated.session.absolute_expires_at,
-      reauthUntil: rotated.session.reauth_until,
+      cookieToken: rotation.created.cookieToken,
+      csrfToken: rotation.created.session.csrf_token,
+      expiresAt: rotation.created.session.idle_expires_at,
+      absoluteExpiresAt: rotation.created.session.absolute_expires_at,
+      reauthUntil: rotation.created.session.reauth_until,
+      revokedSessionIds: rotation.revokedSessionIds,
     };
   }
 
@@ -333,7 +357,7 @@ export class AuthService {
   async resetOwnerPasswordInteractively(
     username: string,
     newPassword: string,
-  ): Promise<{ revokedSessions: number }> {
+  ): Promise<{ revokedSessions: string[] }> {
     const user = this.store.getUserByUsernameNormalized(normalizeUsername(username));
     if (user === undefined) {
       throw new AuthError('AUTH_VALIDATION_ERROR', 'No such user.', 404);
@@ -343,9 +367,9 @@ export class AuthService {
       throw new AuthError('AUTH_VALIDATION_ERROR', passwordError, 400);
     }
     const passwordHash = await hashPassword(newPassword);
-    const revokedSessions = this.store.transaction(() => {
+    const revokedSessions: string[] = this.store.transaction(() => {
       this.store.updatePassword(user.id, passwordHash);
-      return this.store.revokeAllForUser(user.id);
+      return this.store.revokeOthersForUser(user.id, '');
     });
     this.store.appendAudit({
       userId: user.id,

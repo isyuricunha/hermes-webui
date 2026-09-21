@@ -40,6 +40,12 @@ export interface ServerConfig {
     absoluteMs: number;
     recentAuthMs: number;
   };
+  /**
+   * Cookie Secure flag policy (spec 2.5): "auto" marks the cookie Secure
+   * when request.protocol is https (honoring trusted proxy); "always" marks
+   * it unconditionally (for deployments that terminate TLS elsewhere).
+   */
+  cookieSecureMode: 'auto' | 'always';
 }
 
 function intFromEnv(value: string | undefined, fallback: number): number {
@@ -95,5 +101,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       absoluteMs: intFromEnv(env.HERMES_WEBUI_SESSION_ABSOLUTE_DAYS, 30) * 24 * 60 * 60 * 1000,
       recentAuthMs: intFromEnv(env.HERMES_WEBUI_REAUTH_MINUTES, 10) * 60 * 1000,
     },
+    cookieSecureMode:
+      env.HERMES_WEBUI_COOKIE_SECURE === 'always' ? ('always' as const) : ('auto' as const),
   };
 }

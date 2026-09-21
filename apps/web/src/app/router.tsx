@@ -5,9 +5,12 @@ import {
   Outlet,
   redirect,
 } from '@tanstack/react-router';
+import type { QueryClient } from '@tanstack/react-query';
 import type { RouterHistory } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { queryClient } from '../lib/query';
+import { AUTH_REQUIRED_EVENT, authStateQuery } from '../lib/auth';
 import { AppShell } from './AppShell';
 import { ChatView } from '../features/chat/ChatView';
 import { SettingsLayout } from '../features/settings/SettingsLayout';
@@ -23,7 +26,6 @@ import { CliPage } from '../features/settings/CliPage';
 import { FieldDetailPage } from '../features/settings/FieldDetailPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { SetupPage } from '../features/auth/SetupPage';
-import { AUTH_REQUIRED_EVENT, fetchAuthState } from '../lib/auth';
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -82,7 +84,7 @@ const protectedLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'protected',
   beforeLoad: async () => {
-    const state = await fetchAuthState();
+    const state = await queryClient.ensureQueryData(authStateQuery);
     if (!state.claimed) {
       throw redirect({ to: '/setup' });
     }
@@ -219,8 +221,8 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-export function createAppRouter(history?: RouterHistory) {
-  return createRouter({ routeTree, history });
+export function createAppRouter(history?: RouterHistory, queryClient?: QueryClient) {
+  return createRouter({ routeTree, history, context: { queryClient } });
 }
 
 declare module '@tanstack/react-router' {
