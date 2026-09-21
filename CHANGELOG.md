@@ -2,6 +2,24 @@
 
 All notable changes to Hermes WebUI are documented here.
 
+## 0.1.0-rc.1 (RC1)
+
+### Fixed (independent review findings)
+- CLI bridge allowlist now requires **exact argv match** — prefix matching admitted mutating flags through the read-only escape hatch (`hermes doctor --fix` was reachable; now 403).
+- Bridge child process runs with a controlled working directory (`$HOME`).
+- Credential redaction expanded: Stripe `sk_live_`/`rk_live_`, `github_pat_`, `glpat-`, AWS `AKIA`, Google `AIza`, PEM key blocks, Slack `xox…`.
+- Static-serving tests are build-order independent (CI regression caught by GitLab pipeline).
+- MCP page: enable/disable and test wired to the dashboard API (was list-only).
+- Models page: main model switching via provider/model selector (deep-merge through the dashboard, with expensive-model confirmation surfaced).
+- Settings saves surface a restart-required banner; raw-config saves flag restart explicitly.
+- Chat recovery: late `run.completed` (reconnect after the run finished) now renders the final answer; status polling surfaces the run's own error message; double-submit window on send closed.
+
+### Deferred post-RC1 (by design, PRD 63 Beta scope)
+- Plugins, bundles, profiles, webhooks, hooks, backups management (dashboard API ready; UI pending).
+- Curated per-category config editors beyond the schema search + field editor.
+- MCP add/remove server form (enable/disable/test shipped).
+- Fallbacks/auxiliary slot editors (editable via Raw Config and search meanwhile).
+
 ## 0.1.0-alpha.0 (RC1 line, in progress)
 
 ### Added

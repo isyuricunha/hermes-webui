@@ -31,5 +31,5 @@ Evergreen Chromium/Firefox/Safari (ES2022 + EventSource). No polyfills are shipp
 
 | WebUI | Tested Hermes | Notes |
 |---|---|---|
-| 0.1.0-alpha (RC1 line) | 0.21.3 (2026.9.14) | reference version |
+| 0.1.0-rc.1 | 0.21.3 (2026.9.14) | reference version |
 | older/newer Hermes | untested | capability detection hides missing features; report gaps as compatibility issues |
