@@ -1,6 +1,6 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
 import { AppShell } from './AppShell';
-import { ChatEmptyState } from '../features/chat/ChatEmptyState';
+import { ChatView } from '../features/chat/ChatView';
 import { SettingsPlaceholder } from '../features/settings/SettingsPlaceholder';
 
 const rootRoute = createRootRoute({
@@ -15,7 +15,16 @@ const rootRoute = createRootRoute({
 const chatRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: ChatEmptyState,
+  component: () => <ChatView />,
+});
+
+const chatSessionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/chat/$sessionId',
+  component: () => {
+    const { sessionId } = chatSessionRoute.useParams();
+    return <ChatView sessionId={sessionId} />;
+  },
 });
 
 const settingsRoute = createRoute({
@@ -24,7 +33,7 @@ const settingsRoute = createRoute({
   component: SettingsPlaceholder,
 });
 
-const routeTree = rootRoute.addChildren([chatRoute, settingsRoute]);
+const routeTree = rootRoute.addChildren([chatRoute, chatSessionRoute, settingsRoute]);
 
 export function createAppRouter() {
   return createRouter({ routeTree });
