@@ -69,6 +69,14 @@ export class HermesClient {
     return this.request(`/api/sessions${qs ? `?${qs}` : ''}`, { method: 'GET' });
   }
 
+  /**
+   * Jobs list including paused/disabled ones (gateway `include_disabled`),
+   * so the Cron page can offer resume on paused jobs.
+   */
+  listJobsIncludeDisabled(): Promise<unknown> {
+    return this.request('/api/jobs?include_disabled=true', { method: 'GET' });
+  }
+
   createSession(body: Record<string, unknown>): Promise<unknown> {
     return this.request('/api/sessions', { method: 'POST', body: JSON.stringify(body) });
   }
@@ -147,8 +155,13 @@ export class HermesClient {
 
   // -- Cron (capability matrix section 16; live-verified /api/jobs) -----------
 
-  listJobs(): Promise<unknown> {
-    return this.request('/api/jobs', { method: 'GET' });
+  /**
+   * Jobs list; include_disabled=true also returns paused/disabled jobs so
+   * the Cron page can offer resume.
+   */
+  listJobs(includeDisabled = false): Promise<unknown> {
+    const qs = includeDisabled ? '?include_disabled=true' : '';
+    return this.request(`/api/jobs${qs}`, { method: 'GET' });
   }
 
   createJob(body: Record<string, unknown>): Promise<unknown> {

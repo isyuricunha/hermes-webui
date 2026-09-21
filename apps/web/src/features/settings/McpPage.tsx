@@ -65,10 +65,10 @@ export function McpPage() {
           {servers.map((server) => (
             <li
               key={server.name}
-              className="rounded-lg border border-border-subtle bg-surface-elevated p-3"
+              className="w-full rounded-lg border border-border-subtle bg-surface-elevated p-3"
             >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium">{server.name}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="break-words text-sm font-medium">{server.name}</p>
                 <span
                   className={[
                     'rounded-full px-2 py-0.5 text-[11px] font-medium',
@@ -78,12 +78,12 @@ export function McpPage() {
                   {server.enabled ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
-              <p className="mt-1 truncate text-xs text-text-secondary">
+              <p className="mt-1 break-all text-xs text-text-secondary">
                 {server.transport}
                 {server.url ? ` · ${server.url}` : ''}
                 {server.auth ? ` · auth: ${server.auth}` : ''}
               </p>
-              <div className="mt-2 flex gap-1.5">
+              <div className="mt-2 flex flex-wrap gap-1.5">
                 <button
                   type="button"
                   onClick={() => toggle.mutate({ name: server.name, enabled: !server.enabled })}

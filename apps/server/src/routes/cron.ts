@@ -15,7 +15,7 @@ export async function cronRoutes(
 
   app.get('/api/cron/jobs', async (request, reply) => {
     try {
-      return await reply.send(await client.listJobs());
+      return await reply.send(await client.listJobs(true));
     } catch (error) {
       return sendHermesError(reply, request.id, error);
     }

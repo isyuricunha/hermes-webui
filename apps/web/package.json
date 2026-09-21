@@ -1,6 +1,6 @@
 {
   "name": "@hermes-webui/web",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-rc.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -24,6 +24,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",

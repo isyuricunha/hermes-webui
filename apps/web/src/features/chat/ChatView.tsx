@@ -499,7 +499,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
               name="steer"
               placeholder="Steer the running task… (Enter)"
               aria-label="Steer the running task"
-              className="h-9 flex-1 rounded-xl border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
+              className="h-9 min-w-0 flex-1 rounded-xl border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
             />
             <button type="submit" className="rounded-xl border border-border-subtle px-3 py-2 text-xs">
               Steer

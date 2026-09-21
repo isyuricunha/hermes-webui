@@ -1,4 +1,5 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
+import type { RouterHistory } from '@tanstack/react-router';
 import { AppShell } from './AppShell';
 import { ChatView } from '../features/chat/ChatView';
 import { SettingsLayout } from '../features/settings/SettingsLayout';
@@ -37,6 +38,7 @@ const chatSessionRoute = createRoute({
   },
 });
 
+/** Settings workspace (PRD 19): its own shell with semantic navigation. */
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
@@ -133,8 +135,8 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-export function createAppRouter() {
-  return createRouter({ routeTree });
+export function createAppRouter(history?: RouterHistory) {
+  return createRouter({ routeTree, history });
 }
 
 declare module '@tanstack/react-router' {

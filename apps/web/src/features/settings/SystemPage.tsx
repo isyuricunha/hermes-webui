@@ -132,7 +132,7 @@ export function SystemPage() {
   return (
     <SettingsPage title="System">
       <div className="rounded-lg border border-border-subtle bg-surface-elevated p-4">
-        <dl className="space-y-1 text-sm">
+        <dl className="space-y-1 break-words text-sm">
           <div className="flex justify-between">
             <dt className="text-text-secondary">WebUI</dt>
             <dd>{statusQuery.data?.version ?? '…'}</dd>

@@ -71,9 +71,9 @@ function CronJobRow({ job, onAct }: { job: CronJob; onAct: (action: 'run' | 'pau
   const schedule = job.schedule_display ?? job.schedule?.display ?? job.schedule?.expr ?? '';
   return (
     <li className="rounded-lg border border-border-subtle bg-surface-elevated p-3">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{job.name}</p>
+          <p className="break-words text-sm font-medium">{job.name}</p>
           <p className="mt-0.5 text-xs text-text-secondary">
             {schedule}
             {job.paused ? ' · paused' : ''}
@@ -82,18 +82,18 @@ function CronJobRow({ job, onAct }: { job: CronJob; onAct: (action: 'run' | 'pau
             <p className="mt-1 line-clamp-2 text-xs text-text-secondary">{job.prompt}</p>
           ) : null}
         </div>
-        <div className="flex shrink-0 gap-1.5">
+        <div className="flex flex-wrap shrink-0 gap-1.5">
           <button
             type="button"
             onClick={() => onAct('run')}
-            className="rounded-lg bg-accent px-2.5 py-1 text-xs font-medium text-white"
+            className="rounded-lg bg-accent px-2.5 py-1.5 text-xs font-medium text-white"
           >
             Run now
           </button>
           <button
             type="button"
             onClick={() => onAct(job.paused ? 'resume' : 'pause')}
-            className="rounded-lg border border-border-subtle px-2.5 py-1 text-xs"
+            className="rounded-lg border border-border-subtle px-2.5 py-1.5 text-xs"
           >
             {job.paused ? 'Resume' : 'Pause'}
           </button>
@@ -103,7 +103,7 @@ function CronJobRow({ job, onAct }: { job: CronJob; onAct: (action: 'run' | 'pau
               if (window.confirm(`Delete job "${job.name}"?`)) onAct('delete');
             }}
             aria-label={`Delete ${job.name}`}
-            className="rounded-lg border border-danger px-2.5 py-1 text-xs text-danger"
+            className="rounded-lg border border-danger px-2.5 py-1.5 text-xs text-danger"
           >
             Delete
           </button>

@@ -79,7 +79,7 @@ export function Composer({ running, onSend, onStop, draftKey, placeholder }: Com
         rows={1}
         placeholder={placeholder ?? 'Message Hermes…'}
         aria-label="Message input"
-        className="max-h-40 min-h-[2.5rem] flex-1 resize-none rounded-xl border border-border-subtle bg-surface-elevated px-3 py-2 text-sm outline-none focus:border-accent"
+        className="min-w-0 max-h-40 min-h-[2.5rem] flex-1 resize-none rounded-xl border border-border-subtle bg-surface-elevated px-3 py-2 text-sm outline-none focus:border-accent"
       />
       {running ? (
         <button

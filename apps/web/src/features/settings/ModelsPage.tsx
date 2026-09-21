@@ -82,10 +82,10 @@ export function ModelsPage() {
 
   return (
     <SettingsPage title="Models">
-      <div className="rounded-lg border border-border-subtle bg-surface-elevated p-4">
+      <div className="w-full rounded-lg border border-border-subtle bg-surface-elevated p-4">
         <p className="text-xs font-semibold tracking-wide text-text-secondary uppercase">Main model</p>
-        <p className="mt-1 text-lg font-medium">{info.model}</p>
-        <p className="text-sm text-text-secondary">
+        <p className="mt-1 break-words text-lg font-medium">{info.model}</p>
+        <p className="break-words text-sm text-text-secondary">
           Provider: {info.provider}
           {contextK !== null ? ` · context ${contextK}k` : ''}
         </p>
@@ -102,7 +102,7 @@ export function ModelsPage() {
             setModel('');
           }}
           aria-label="Provider"
-          className="h-9 w-full max-w-sm rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
+          className="h-10 w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
         >
           <option value="">Select provider…</option>
           {providers.map((p) => (
@@ -116,7 +116,7 @@ export function ModelsPage() {
             value={model}
             onChange={(event) => setModel(event.target.value)}
             aria-label="Model"
-            className="h-9 w-full max-w-sm rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
+            className="h-10 w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
           >
             <option value="">Select model…</option>
             {selected.models?.map((m) => {
@@ -134,7 +134,7 @@ export function ModelsPage() {
             type="button"
             disabled={assign.isPending}
             onClick={() => apply(needsConfirm !== null)}
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+            className="w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40 sm:w-auto"
           >
             {assign.isPending
               ? 'Applying…'
