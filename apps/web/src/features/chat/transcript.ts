@@ -78,7 +78,7 @@ function nextId(prefix: string): string {
 export function applyEvent(
   state: TranscriptState,
   frame: NormalizedRunEvent,
-  sessionId?: string,
+  _sessionId?: string,
 ): TranscriptState {
   const items = [...state.items];
   switch (frame.type) {
