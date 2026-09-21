@@ -10,6 +10,8 @@ export interface ServerConfig {
   host: string;
   port: number;
   hermesBaseUrl: string;
+  hermesDashboardUrl: string;
+  hermesDashboardToken?: string;
   /** WebUI version reported by /api/app/status. */
   appVersion: string;
 }
@@ -27,6 +29,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     host: env.HOST ?? '127.0.0.1',
     port: intFromEnv(env.PORT, 8789),
     hermesBaseUrl: env.HERMES_BASE_URL ?? 'http://127.0.0.1:8642',
+    hermesDashboardUrl: env.HERMES_DASHBOARD_URL ?? 'http://127.0.0.1:49173',
+    hermesDashboardToken: env.HERMES_DASHBOARD_SESSION_TOKEN,
     appVersion: env.npm_package_version ?? '0.0.0-dev',
   };
 }

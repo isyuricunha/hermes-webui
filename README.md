@@ -33,8 +33,10 @@ Open http://localhost:5173.
 | `HOST` | `127.0.0.1` | Bind address of the WebUI server |
 | `PORT` | `8789` | Bind port of the WebUI server |
 | `HERMES_BASE_URL` | `http://127.0.0.1:8642` | Hermes gateway base URL |
+| `HERMES_DASHBOARD_URL` | `http://127.0.0.1:49173` | Hermes dashboard API base URL (config/env/models/MCP/skills/ops) |
+| `HERMES_DASHBOARD_SESSION_TOKEN` | — | Session token shared with the dashboard service (server-side only, never sent to the browser) |
 
-The WebUI keeps its own tiny configuration; Hermes settings stay in Hermes (`config.yaml` / `.env`) and are accessed through adapters.
+See `apps/server/.env.example`. The WebUI keeps its own tiny configuration; Hermes settings stay in Hermes (`config.yaml` / `.env`) and are accessed through adapters.
 
 ## Repository layout
 
