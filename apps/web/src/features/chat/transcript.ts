@@ -136,12 +136,27 @@ export function applyEvent(state: TranscriptState, frame: NormalizedRunEvent): T
       return { ...state, items };
     }
     case 'run.completed': {
-      // Seal any open streaming message with the authoritative final output.
-      const finalized: TranscriptItem[] = items.map((item) =>
-        item.kind === 'message' && item.streaming
-          ? { ...item, content: String(frame.output ?? item.content), streaming: false }
-          : item,
+      // Seal any open streaming message with the authoritative final output;
+      // if none exists (late reconnect after the run finished), create the
+      // assistant message from the run output so the answer is never lost.
+      const hasStreaming = items.some(
+        (item) => item.kind === 'message' && item.role === 'assistant' && item.streaming,
       );
+      const finalized: TranscriptItem[] = hasStreaming
+        ? items.map((item) =>
+            item.kind === 'message' && item.streaming
+              ? { ...item, content: String(frame.output ?? item.content), streaming: false }
+              : item,
+          )
+        : [
+            ...items,
+            {
+              kind: 'message',
+              id: `final-${frame.runId}`,
+              role: 'assistant' as const,
+              content: String(frame.output ?? ''),
+            },
+          ];
       return {
         ...state,
         items: finalized,

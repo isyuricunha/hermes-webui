@@ -131,7 +131,7 @@ export function SessionSidebar({ onNavigate }: { onNavigate?: () => void }) {
                       >
                         {sessionLabel(session.id, session.title)}
                       </Link>
-                      <span className="absolute top-1.5 right-2 hidden gap-1 group-hover:flex">
+                      <span className="absolute top-1.5 right-2 hidden gap-1 group-hover:flex group-focus-within:flex">
                         <button
                           type="button"
                           aria-label={`Rename ${sessionLabel(session.id, session.title)}`}

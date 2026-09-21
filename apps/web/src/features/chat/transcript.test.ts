@@ -40,6 +40,14 @@ describe('transcript reducer', () => {
     expect(state.runError).toBe('denied');
   });
 
+  it('creates the assistant message on late run.completed (reconnect after finish)', () => {
+    // No streaming message was ever received (events missed, run finished).
+    const state = applyEvent(emptyTranscript, frame('run.completed', { output: 'the answer' }));
+    expect(state.items).toHaveLength(1);
+    expect(state.items[0]).toMatchObject({ kind: 'message', role: 'assistant', content: 'the answer' });
+    expect(state.runDone).toBe(true);
+  });
+
   it('ignores unknown events for forward compatibility', () => {
     const state = applyEvent(emptyTranscript, frame('something.new' as string));
     expect(state.items).toHaveLength(0);

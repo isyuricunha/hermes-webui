@@ -270,7 +270,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       .then((status) => {
         if (cancelled) return;
         if (status.completed || ['completed', 'failed', 'cancelled', 'interrupted'].includes(status.status)) {
-          if (status.output && messagesQuery.data === undefined) {
+          if (status.output !== undefined) {
             dispatch({
               type: 'event',
               frame: { type: 'run.completed', runId: activeRunId, output: status.output },
@@ -278,6 +278,8 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           }
           saveActiveRunId(sessionId, null);
           setActiveRunId(null);
+          // History holds the persisted messages; render them.
+          void queryClient.invalidateQueries({ queryKey: ['messages', sessionId] });
         }
       })
       .catch(() => {
@@ -290,7 +292,38 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId, activeRunId, messagesQuery.data]);
+  }, [sessionId, activeRunId, messagesQuery.data, queryClient]);
+
+  // Status-polling fallback while a run is active: the gateway SSE stream has
+  // no late-subscribe replay (capability matrix section 8), so if events were
+  // missed the run status is the only source of truth.
+  useEffect(() => {
+    if (sessionId === undefined || activeRunId === null || transcript.runDone) {
+      return;
+    }
+    const interval = setInterval(() => {
+      void fetchRun(activeRunId)
+        .then((status) => {
+          if (
+            status.output !== undefined &&
+            ['completed', 'failed', 'cancelled', 'interrupted'].includes(status.status)
+          ) {
+            dispatch({
+              type: 'event',
+              frame:
+                status.status === 'failed'
+                  ? { type: 'run.failed', runId: activeRunId, error: 'The run failed.' }
+                  : { type: 'run.completed', runId: activeRunId, output: status.output ?? '' },
+            });
+            saveActiveRunId(sessionId, null);
+            setActiveRunId(null);
+            void queryClient.invalidateQueries({ queryKey: ['messages', sessionId] });
+          }
+        })
+        .catch(() => undefined);
+    }, 5_000);
+    return () => clearInterval(interval);
+  }, [sessionId, activeRunId, transcript.runDone, queryClient]);
 
   const handleEvent = useCallback(
     (frame: Parameters<typeof applyEvent>[1]) => {
@@ -371,7 +404,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         }}
         className="flex-1 overflow-y-auto py-4"
       >
-        {sessionId === undefined && transcript.items.length === 0 ? (
+        {transcript.items.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
             <h1 className="text-2xl font-semibold tracking-tight">New chat</h1>
             <p className="max-w-md text-sm text-text-secondary">
