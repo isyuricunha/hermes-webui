@@ -198,25 +198,31 @@ function TranscriptItemView({
 // --- Chat view ---------------------------------------------------------------
 
 type ChatAction =
-  | { type: 'reset'; items: TranscriptItem[] }
-  | { type: 'event'; frame: Parameters<typeof applyEvent>[1] }
-  | { type: 'appendUser'; text: string }
+  | { type: 'reset'; items: TranscriptItem[]; sessionId: string; force?: boolean }
+  | { type: 'event'; frame: Parameters<typeof applyEvent>[1]; sessionId: string }
+  | { type: 'appendUser'; text: string; sessionId: string }
   | { type: 'approvalResolved'; approvalId: string; choice: string };
 
 function transcriptReducer(state: TranscriptState, action: ChatAction): TranscriptState {
   switch (action.type) {
     case 'reset':
-      // Don't wipe a run in progress: history arriving mid-stream must not
-      // discard live deltas (review F9a).
-      if (state.items.some((item) => item.kind === 'message' && item.streaming)) {
-        return state;
+      // A different session always resets. The same session only resets when
+      // idle: history arriving mid-stream must not discard live deltas
+      // (review F9a).
+      if (!action.force && state.sessionId === action.sessionId) {
+        if (state.items.some((item) => item.kind === 'message' && item.streaming)) {
+          return state;
+        }
       }
-      return { ...emptyTranscript, items: action.items };
+      return { ...emptyTranscript, sessionId: action.sessionId, items: action.items };
     case 'event':
+      // Drop events from a previous session after a switch.
+      if (state.sessionId !== action.sessionId) return state;
       return applyEvent(state, action.frame);
     case 'appendUser':
       return {
         ...state,
+        sessionId: action.sessionId,
         items: [
           ...state.items,
           { kind: 'message', id: `local-${Date.now()}`, role: 'user', content: action.text },
@@ -262,7 +268,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       content: row.content,
       reasoning: row.reasoning ?? undefined,
     }));
-    dispatch({ type: 'reset', items });
+    dispatch({ type: 'reset', items, sessionId, force: true });
   }, [sessionId, messagesQuery.data]);
 
   // Resume: a registry run either streams or has reached a terminal state.
@@ -279,6 +285,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
             dispatch({
               type: 'event',
               frame: { type: 'run.completed', runId: activeRunId, output: status.output },
+              sessionId,
             });
           }
           saveActiveRunId(sessionId, null);
@@ -322,6 +329,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
                       error: status.error ?? 'The run failed.',
                     }
                   : { type: 'run.completed', runId: activeRunId, output: status.output ?? '' },
+              sessionId,
             });
             saveActiveRunId(sessionId, null);
             setActiveRunId(null);
@@ -335,7 +343,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
 
   const handleEvent = useCallback(
     (frame: Parameters<typeof applyEvent>[1]) => {
-      dispatch({ type: 'event', frame });
+      dispatch({ type: 'event', frame, sessionId: sessionId ?? '' });
       if (['run.completed', 'run.failed', 'run.cancelled', 'run.interrupted'].includes(frame.type)) {
         if (sessionId !== undefined) {
           saveActiveRunId(sessionId, null);
@@ -371,7 +379,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         const created = await createSession({ title: text.slice(0, 60) });
         targetSession = created.session.id;
       }
-      dispatch({ type: 'appendUser', text });
+      dispatch({ type: 'appendUser', text, sessionId: targetSession });
       const run = await createRun(text, targetSession);
       saveActiveRunId(targetSession, run.run_id);
       setActiveRunId(run.run_id);

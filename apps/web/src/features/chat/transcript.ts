@@ -55,6 +55,8 @@ export type TranscriptItem =
 
 export interface TranscriptState {
   items: TranscriptItem[];
+  /** Session this transcript belongs to (guards cross-session resets). */
+  sessionId?: string;
   /** Terminal state of the run driving this transcript, if any. */
   runDone: boolean;
   runError?: string;
@@ -73,7 +75,11 @@ function nextId(prefix: string): string {
  * Appends one normalized gateway event to the transcript. Unknown events are
  * ignored (forward compatibility), matching PRD 48.
  */
-export function applyEvent(state: TranscriptState, frame: NormalizedRunEvent): TranscriptState {
+export function applyEvent(
+  state: TranscriptState,
+  frame: NormalizedRunEvent,
+  sessionId?: string,
+): TranscriptState {
   const items = [...state.items];
   switch (frame.type) {
     case 'message.delta': {
