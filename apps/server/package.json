@@ -9,7 +9,7 @@
     "start": "node dist/main.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "echo 'eslint pending' && exit 0"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@hermes-webui/shared": "workspace:*",

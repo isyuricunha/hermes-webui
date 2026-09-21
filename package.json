@@ -1,6 +1,7 @@
 {
   "name": "hermes-webui",
   "private": true,
+  "type": "module",
   "version": "0.1.0-alpha.0",
   "description": "A modern, chat-first web interface for Hermes Agent. Self-hosted sidecar that runs alongside Hermes.",
   "packageManager": "pnpm@12.3.4",
@@ -11,7 +12,15 @@
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "lint": "pnpm -r lint",
+    "lint": "eslint .",
     "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.12.0",
+    "typescript-eslint": "^8.70.0"
   }
 }
