@@ -24,6 +24,7 @@ import { RawConfigPage } from '../features/settings/RawConfigPage';
 import { EnvPage } from '../features/settings/EnvPage';
 import { CliPage } from '../features/settings/CliPage';
 import { FieldDetailPage } from '../features/settings/FieldDetailPage';
+import { AppearancePage } from '../features/settings/AppearancePage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { SetupPage } from '../features/auth/SetupPage';
 
@@ -181,6 +182,12 @@ const cliRoute = createRoute({
   component: CliPage,
 });
 
+const appearanceRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: 'appearance',
+  component: AppearancePage,
+});
+
 const fieldRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: 'field',
@@ -208,6 +215,7 @@ const routeTree = rootRoute.addChildren([
     settingsRoute.addChildren([
       settingsIndexRoute,
       modelsRoute,
+      appearanceRoute,
       mcpRoute,
       skillsRoute,
       cronRoute,

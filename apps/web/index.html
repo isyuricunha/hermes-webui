@@ -4,6 +4,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Hermes WebUI</title>
+    <script>
+      // Anti-flash (Phase 2): apply the persisted theme and accent BEFORE
+      // first paint. Mirrors lib/theme.ts; kept tiny and dependency-free.
+      (function () {
+        try {
+          var theme = localStorage.getItem('hermes-webui-theme');
+          if (
+            theme === 'light' ||
+            theme === 'dark' ||
+            theme === 'true-black'
+          ) {
+            document.documentElement.dataset.theme = theme;
+          }
+          var accent = localStorage.getItem('hermes-webui-accent');
+          if (
+            accent === 'blue' ||
+            accent === 'green' ||
+            accent === 'amber' ||
+            accent === 'red' ||
+            accent === 'violet'
+          ) {
+            document.documentElement.dataset.accent = accent;
+          }
+        } catch (e) {
+          /* private mode: defaults apply */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

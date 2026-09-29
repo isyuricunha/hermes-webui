@@ -7,6 +7,7 @@ import { goToChat } from '../../lib/navigation';
 
 const NAV = [
   { to: '/settings/models', label: 'Models' },
+  { to: '/settings/appearance', label: 'Appearance' },
   { to: '/settings/mcp', label: 'MCP' },
   { to: '/settings/skills', label: 'Skills' },
   { to: '/settings/cron', label: 'Cron' },

@@ -1,10 +1,15 @@
 import { expect, test } from '@playwright/test';
+import { loginViaApi } from './helpers/auth';
+
 
 /**
  * Settings E2E: search finds the acceptance-criteria dotpaths and the field
  * editor changes the REAL config (save -> confirmed by re-read -> restore).
  */
 test.describe('settings', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginViaApi(page);
+  });
   test('search finds memory.nudge_interval by label and dotpath', async ({ page }) => {
     await page.goto('/settings/models');
     const search = page.getByLabel('Search settings');
@@ -46,11 +51,38 @@ test.describe('settings', () => {
 
   test('system page shows hermes running', async ({ page }) => {
     await page.goto('/settings/system');
-    await expect(page.getByText(/Running · 0\.21\.3/)).toBeVisible({ timeout: 30_000 });
+    // Version drifts with Hermes updates; the page's contract is the status line.
+    await expect(page.getByText(/Running · \d+\.\d+\.\d+/)).toBeVisible({ timeout: 30_000 });
+  });
+
+  test('appearance: theme and accent apply to <html> and persist', async ({ page }) => {
+    await page.goto('/settings/appearance');
+    await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
+
+    await page.getByRole('button', { name: /True Black/ }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'true-black');
+
+    await page.getByRole('button', { name: 'Accent Green' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-accent', 'green');
+
+    // Both settings survive a reload (index.html anti-flash re-applies them).
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'true-black');
+    await expect(page.locator('html')).toHaveAttribute('data-accent', 'green');
+
+    // Defaults remove the attributes: system deletes data-theme, indigo the accent.
+    await page.getByRole('button', { name: /System/ }).click();
+    expect(await page.locator('html').getAttribute('data-theme')).toBeNull();
+    await page.getByRole('button', { name: 'Accent Indigo (default)' }).click();
+    expect(await page.locator('html').getAttribute('data-accent')).toBeNull();
   });
 });
 
 test.describe('cli bridge', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginViaApi(page);
+  });
+
   test('runs an allowed command and blocks hermes update', async ({ page }) => {
     await page.goto('/settings/advanced/cli');
 

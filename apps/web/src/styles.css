@@ -33,8 +33,23 @@
   --color-running: #7b8cff;
 }
 
+/* True Black (Phase 2): pure #000 canvas for OLED-class displays. */
+[data-theme='true-black'] {
+  --color-background: #000000;
+  --color-surface: #0a0a0d;
+  --color-surface-elevated: #131318;
+  --color-text-primary: #ececf1;
+  --color-text-secondary: #9b9ba7;
+  --color-border-subtle: #22222c;
+  --color-accent: #7b8cff;
+  --color-success: #4ec98d;
+  --color-warning: #e2b455;
+  --color-danger: #ef6b65;
+  --color-running: #7b8cff;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root:not([data-theme='light']):not([data-theme='true-black']) {
     --color-background: #131318;
     --color-surface: #1a1a21;
     --color-surface-elevated: #20202a;
@@ -47,6 +62,44 @@
     --color-danger: #ef6b65;
     --color-running: #7b8cff;
   }
+  [data-theme='true-black'] {
+    --color-background: #000000;
+    --color-surface: #0a0a0d;
+    --color-surface-elevated: #131318;
+    --color-text-primary: #ececf1;
+    --color-text-secondary: #9b9ba7;
+    --color-border-subtle: #22222c;
+    --color-accent: #7b8cff;
+    --color-success: #4ec98d;
+    --color-warning: #e2b455;
+    --color-danger: #ef6b65;
+    --color-running: #7b8cff;
+  }
+}
+
+/*
+ * Accent presets (Phase 2): data-accent overrides the accent hue in every
+ * theme. Default (no attribute) keeps the indigo baseline.
+ */
+[data-accent='blue'] {
+  --color-accent: #2f6fed;
+  --color-running: #2f6fed;
+}
+[data-accent='green'] {
+  --color-accent: #199a68;
+  --color-running: #199a68;
+}
+[data-accent='amber'] {
+  --color-accent: #c07f16;
+  --color-running: #c07f16;
+}
+[data-accent='red'] {
+  --color-accent: #d5423c;
+  --color-running: #d5423c;
+}
+[data-accent='violet'] {
+  --color-accent: #7b8cff;
+  --color-running: #7b8cff;
 }
 
 @theme inline {
