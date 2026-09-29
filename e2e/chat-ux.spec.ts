@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { createRealSession, deleteSession, loginViaApi } from './helpers/auth';
 
 /**
  * Chat UX E2E against the real Hermes-backed dev WebUI:
@@ -7,29 +8,15 @@ import { expect, test, type Page } from '@playwright/test';
  * session titles, and mobile usability — including no page-level overflow.
  *
  * Real-run flows use one disposable session created and deleted by the spec.
+ * Each test authenticates via the API so a sign-out in any spec cannot poison
+ * the shared storage state of the following specs.
  */
 
 const TOOL_ECHO = 'hello-webui-toolcard';
 
-/** Phase 1 auth: mutating API calls need the session CSRF token. */
-async function csrfHeaders(page: Page): Promise<Record<string, string>> {
-  const state = await page.request.get('/api/auth/state');
-  const body = (await state.json()) as { csrfToken?: string };
-  return body.csrfToken !== undefined ? { 'x-csrf-token': body.csrfToken } : {};
-}
-
-async function createRealSession(page: Page): Promise<string> {
-  const headers = await csrfHeaders(page);
-  const response = await page.request.post('/api/sessions', { headers, data: {} });
-  expect(response.ok()).toBeTruthy();
-  const payload = (await response.json()) as { session: { id: string } };
-  return payload.session.id;
-}
-
-async function deleteSession(page: Page, sessionId: string): Promise<void> {
-  const headers = await csrfHeaders(page);
-  await page.request.delete(`/api/sessions/${sessionId}`, { headers });
-}
+test.beforeEach(async ({ page }) => {
+  await loginViaApi(page);
+});
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   await page.waitForFunction(() => {

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { createRealSession, deleteSession, loginViaApi } from './helpers/auth';
 
 /**
  * Top-level navigation (PRD 6.2): Settings must never be a dead end.
@@ -18,31 +19,12 @@ const waitForNoHorizontalOverflow = async (page: Page): Promise<void> => {
   });
 };
 
-/** Phase 1 auth: mutating API calls need the session CSRF token. */
-async function csrfHeaders(page: Page): Promise<Record<string, string>> {
-  const state = await page.request.get('/api/auth/state');
-  const body = (await state.json()) as { csrfToken?: string };
-  return body.csrfToken !== undefined ? { 'x-csrf-token': body.csrfToken } : {};
-}
-
-async function createRealSession(page: Page): Promise<string> {
-  const headers = await csrfHeaders(page);
-  const response = await page.request.post('/api/sessions', { headers, data: {} });
-  expect(response.ok()).toBeTruthy();
-  const payload = (await response.json()) as { session: { id: string } };
-  return payload.session.id;
-}
-
-async function deleteSession(page: Page, sessionId: string): Promise<void> {
-  const headers = await csrfHeaders(page);
-  await page.request.delete(`/api/sessions/${sessionId}`, { headers });
-}
-
 test.describe('Settings is never a dead end', () => {
   test.describe('mobile (390px)', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
     test('top bar back arrow restores the active session', async ({ page }) => {
+      await loginViaApi(page);
       const sessionId = await createRealSession(page);
       try {
         await page.goto(`/chat/${sessionId}`);
@@ -64,6 +46,7 @@ test.describe('Settings is never a dead end', () => {
     });
 
     test('drawer Chat entry closes the drawer and restores the session', async ({ page }) => {
+      await loginViaApi(page);
       const sessionId = await createRealSession(page);
       try {
         await page.goto(`/chat/${sessionId}`);
@@ -89,6 +72,7 @@ test.describe('Settings is never a dead end', () => {
     test.use({ viewport: { width: 1280, height: 800 } });
 
     test('nav Chat entry restores the session; Back/Forward stays sane', async ({ page }) => {
+      await loginViaApi(page);
       const sessionId = await createRealSession(page);
       try {
         await page.goto(`/chat/${sessionId}`);
@@ -115,6 +99,7 @@ test.describe('Settings is never a dead end', () => {
   });
 
   test('direct /settings deep link leads to normal Chat home', async ({ page }) => {
+    await loginViaApi(page);
     await page.goto('/settings/system');
     await expect(page).toHaveURL(/\/settings\/system/);
     await waitForNoHorizontalOverflow(page);

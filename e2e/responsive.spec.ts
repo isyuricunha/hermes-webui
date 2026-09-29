@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { loginViaApi } from './helpers/auth';
+
 
 /**
  * Responsive shell audit (PRD 55 + UX remediation goal): every Settings page
@@ -40,6 +42,9 @@ test.describe('settings mobile viewport matrix', () => {
         viewport: { width: viewport.width, height: viewport.height },
       });
       const page = await context.newPage();
+      // Login on THIS context: contexts are cookie-isolated, so the default
+      // fixture's session never reaches it.
+      await loginViaApi(page);
       const failures: string[] = [];
 
       for (const settingsPage of SETTINGS_PAGES) {
@@ -71,6 +76,7 @@ test.describe('settings mobile viewport matrix', () => {
       viewport: { width: 390, height: 844 },
     });
     const page = await context.newPage();
+    await loginViaApi(page);
     await page.goto('/settings/models');
 
     // Drawer opens from the mobile top bar hamburger.
@@ -99,6 +105,7 @@ test.describe('settings mobile viewport matrix', () => {
       viewport: { width: 390, height: 844 },
     });
     const page = await context.newPage();
+    await loginViaApi(page);
     await page.goto('/settings/cron');
 
     await page.getByRole('button', { name: 'Open Settings navigation' }).click();
@@ -112,6 +119,9 @@ test.describe('settings mobile viewport matrix', () => {
 });
 
 test.describe('desktop regression', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginViaApi(page);
+  });
   test.use({ viewport: { width: 1440, height: 900 } });
 
   test('desktop keeps the persistent two-pane settings layout', async ({ page }) => {

@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { loginViaApi } from './helpers/auth';
+
 
 /**
  * E2E against the REAL Hermes gateway on this host (no mocks): sends a real
@@ -18,12 +20,14 @@ test.describe.serial('chat over real Hermes', () => {
   });
 
   test('opens into the chat home', async ({ page }) => {
+    await loginViaApi(page);
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'New chat' })).toBeVisible();
     await expect(page.getByText('Hermes: Connected')).toBeVisible();
   });
 
   test('sends a message and receives a real streamed response', async ({ page }) => {
+    await loginViaApi(page);
     await page.goto('/');
     const composer = page.getByLabel('Message input');
     await composer.fill(`Responda apenas: ${MARKER} ok`);
@@ -42,6 +46,7 @@ test.describe.serial('chat over real Hermes', () => {
 
   test('the session persists in Hermes and reopens with history', async ({ page }) => {
     test.skip(sessionId === null, 'previous step failed');
+    await loginViaApi(page);
     await page.goto(`/chat/${sessionId}`);
     await expect(page.getByText(MARKER).first()).toBeVisible();
     // Reload during idle: history still comes from Hermes.
@@ -51,6 +56,7 @@ test.describe.serial('chat over real Hermes', () => {
 
   test('sidebar lists the session and delete removes it', async ({ page }) => {
     test.skip(sessionId === null, 'previous step failed');
+    await loginViaApi(page);
     await page.goto('/');
     const listItem = page.locator('li').filter({ has: page.getByRole('link', { name: MARKER }) }).first();
     await expect(listItem).toBeVisible();
