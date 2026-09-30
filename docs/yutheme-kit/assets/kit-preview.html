@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YuTheme kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./yutheme-kit.css">
+<style>
+  /* layout only; every colour, radius and effect comes from the kit */
+  main { max-width: 1120px; margin: 0 auto; padding: 56px 24px 80px; display: grid; gap: 40px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .swatch { height: 64px; border-radius: 12px; border: 0.5px solid var(--border-default); }
+  .mono { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+  section > h2 { font-size: 13px; font-weight: 500; color: var(--text-secondary); letter-spacing: 0; margin: 0 0 14px; }
+  .pad { padding: 20px; }
+  header h1 { font-size: clamp(36px, 6vw, 64px); margin: 8px 0 12px; }
+  header p { max-width: 520px; color: var(--text-secondary); line-height: 1.65; margin: 0; }
+  .themebar { position: fixed; top: 16px; right: 16px; z-index: 5; }
+  .bars { display: flex; align-items: flex-end; gap: 2px; height: 120px; padding: 16px; }
+  .bars .yu-bar { flex: 1; }
+</style>
+</head>
+<body>
+<div class="themebar yu-segmented" role="radiogroup" aria-label="Theme">
+  <button aria-checked="true" data-t="">AMOLED</button>
+  <button aria-checked="false" data-t="yu-graphite">Graphite</button>
+  <button aria-checked="false" data-t="yu-daylight">Daylight (apps)</button>
+</div>
+<main>
+  <header class="yu-rise yu-d1">
+    <span class="label-mono">YuTheme v2 · kit</span>
+    <h1>Same palette, <em class="yu-shimmer-gold">true black.</em></h1>
+    <p>Canvas AMOLED #000, near-black surfaces, 0.5px warm borders and a 1px top highlight carry the structure. Gold is the action, cyan the link, green success, purple the agent, red danger.</p>
+  </header>
+
+  <section class="yu-rise yu-d2">
+    <h2>Surfaces</h2>
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr))">
+      <div><div class="swatch" style="background:var(--yu-bg-canvas)"></div><p class="mono">canvas</p></div>
+      <div><div class="swatch" style="background:var(--yu-bg-surface)"></div><p class="mono">surface / window</p></div>
+      <div><div class="swatch" style="background:var(--yu-bg-editor)"></div><p class="mono">editor</p></div>
+      <div><div class="swatch" style="background:var(--yu-bg-input)"></div><p class="mono">titlebar / input</p></div>
+      <div><div class="swatch" style="background:var(--yu-bg-popover)"></div><p class="mono">raised / popover</p></div>
+      <div><div class="swatch" style="background:var(--yu-bg-chip)"></div><p class="mono">chip</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Components</h2>
+    <div class="row">
+      <button class="yu-btn yu-btn-primary yu-btn--lg">Primary</button>
+      <button class="yu-btn yu-btn-secondary yu-btn--lg">Secondary</button>
+      <button class="yu-btn yu-btn-tonal yu-btn--lg">Tonal</button>
+      <button class="yu-btn yu-btn-ghost yu-btn--lg">Ghost</button>
+      <button class="yu-btn yu-btn-danger yu-btn--lg">Delete</button>
+      <a class="yu-link cta-link" href="#">Link <span class="yu-arrow">→</span></a>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <span class="yu-chip yu-chip-agent">Agent</span>
+      <span class="yu-chip yu-chip-success">Healthy</span>
+      <span class="yu-chip yu-chip-warning">Needs setup</span>
+      <span class="yu-chip yu-chip-danger">Failed</span>
+      <span class="yu-chip yu-chip-info">Info</span>
+      <span class="yu-chip">Neutral</span>
+      <button class="yu-switch" role="switch" aria-checked="true" aria-label="Enabled" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked')!=='true')"><span></span></button>
+      <input class="yu-input" placeholder="Search models or providers" style="width:260px">
+    </div>
+  </section>
+
+  <section>
+    <h2>Effects</h2>
+    <div class="grid">
+      <div class="yu-card pad"><span class="yu-text-shimmer" style="font-size:18px">Checking the backup jobs…</span><p class="mono">neutral shimmer · 3.6s, rests from 65%</p></div>
+      <div class="yu-card pad"><span class="yu-shimmer-agent">Thinking…</span><p class="mono">agent shimmer · 2.8s · AI states only</p></div>
+      <div class="yu-card pad"><span class="yu-sheen-border yu-chip" style="height:30px;padding:0 14px"><span class="yu-dot yu-pulse"></span>Open to talk</span><p class="mono">border sheen + pulse · status only</p></div>
+      <div class="yu-card pad yu-lift" tabindex="0"><div class="yu-skeleton" style="height:12px;width:70%"></div><div class="yu-skeleton" style="height:12px;width:45%;margin-top:8px"></div><p class="mono">skeleton · hover lift (hover me)</p></div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="yu-card">
+      <ul class="yu-list">
+        <li><span class="yu-dot yu-pulse"></span><span style="flex:1">cloud-arm <span class="mono">· gateway up</span></span><button class="yu-switch" role="switch" aria-checked="true" aria-label="cloud-arm"><span></span></button></li>
+        <li><span class="yu-dot" style="background:var(--text-dim)"></span><span style="flex:1">github <span class="mono">· off</span></span><button class="yu-switch" role="switch" aria-checked="false" aria-label="github"><span></span></button></li>
+      </ul>
+    </div>
+    <div class="yu-codeblock">
+      <div class="yu-codeblock__header">typescript <button class="yu-btn yu-btn-ghost yu-btn--sm">Copy</button></div>
+      <pre><span class="tok-keyword">export function</span> <span class="tok-function">greet</span>(name: <span class="tok-type">string</span>) {
+  <span class="tok-keyword">return</span> <span class="tok-string">`oi, ${name}`</span>; <span class="tok-comment">// casual</span>
+}<span class="yu-caret"></span></pre>
+    </div>
+    <div class="yu-card">
+      <div class="yu-stat"><div class="yu-stat__label">Tokens · 30 days</div><div class="yu-stat__value">3.4M</div><div class="yu-stat__hint">3.1M in · 243K out</div></div>
+      <div class="bars" role="img" aria-label="Daily tokens"><span class="yu-bar" style="height:40%"></span><span class="yu-bar" style="height:70%"></span><span class="yu-bar" style="height:30%"></span><span class="yu-bar" style="height:90%"></span><span class="yu-bar" style="height:55%"></span><span class="yu-bar" style="height:65%"></span><span class="yu-bar" style="height:45%"></span></div>
+    </div>
+    <div class="yu-pop yu-pop-in pad" style="border-radius:16px">
+      <p style="margin:0 0 6px;font-weight:500">Popover / menu / toast layer</p>
+      <p class="mono" style="margin:0">raised surface + strong border + highlight + floating shadow · portal to &lt;body&gt;</p>
+    </div>
+  </section>
+</main>
+<script>
+  document.querySelectorAll('.themebar button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.themebar button').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+    if (b.dataset.t) document.documentElement.setAttribute('data-theme', b.dataset.t); else document.documentElement.removeAttribute('data-theme');
+  }));
+</script>
+</body>
+</html>
