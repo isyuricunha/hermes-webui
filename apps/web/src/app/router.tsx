@@ -117,7 +117,7 @@ const protectedLayoutRoute = createRoute({
 const chatRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: '/',
-  component: () => <ChatView />,
+  component: () => <ChatView key="new" />,
 });
 
 const chatSessionRoute = createRoute({
@@ -125,7 +125,10 @@ const chatSessionRoute = createRoute({
   path: '/chat/$sessionId',
   component: () => {
     const { sessionId } = chatSessionRoute.useParams();
-    return <ChatView sessionId={sessionId} />;
+    // One ChatView per conversation: switching conversations must drop the
+    // other one's live stream, run id and transcript (a reused instance kept
+    // streaming the previous run's reply into the conversation on screen).
+    return <ChatView key={sessionId} sessionId={sessionId} />;
   },
 });
 
