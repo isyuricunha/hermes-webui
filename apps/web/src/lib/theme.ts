@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 
 /**
- * Theme handling (PRD 57 + Phase 2 Design System): dark, light, true-black
- * and system. The resolved theme is applied as `data-theme` on <html>;
+ * Theme handling (YuTheme 2.0): AMOLED (true-black, the default), Graphite
+ * (dark), Light and System. The resolved theme is applied as `data-theme` on <html>;
  * "system" removes the attribute so the CSS media query decides. Accent
  * presets apply `data-accent` the same way. Both persist in localStorage
  * (WebUI-owned presentation state, PRD 51).
  */
 
 export type ThemeSetting = 'light' | 'dark' | 'true-black' | 'system';
-export type AccentSetting = 'indigo' | 'blue' | 'green' | 'amber' | 'red' | 'violet';
+export type AccentSetting = 'gold' | 'blue' | 'green' | 'violet' | 'coral';
 
 const THEME_KEY = 'hermes-webui-theme';
 const ACCENT_KEY = 'hermes-webui-accent';
 const THEME_ORDER: readonly ThemeSetting[] = ['system', 'light', 'dark', 'true-black'];
-const ACCENTS: readonly AccentSetting[] = ['indigo', 'blue', 'green', 'amber', 'red', 'violet'];
+const ACCENTS: readonly AccentSetting[] = ['gold', 'blue', 'green', 'violet', 'coral'];
+const DEFAULT_THEME: ThemeSetting = 'true-black';
+const DEFAULT_ACCENT: AccentSetting = 'gold';
 
 // Multiple components hold useTheme/useAccent state (sidebar cycle button,
 // Appearance page). localStorage 'storage' events do not fire in the writing
@@ -63,18 +65,18 @@ export function nextTheme(current: ThemeSetting): ThemeSetting {
 export function readStoredTheme(storage: Pick<Storage, 'getItem'> = localStorage): ThemeSetting {
   try {
     const stored = storage.getItem(THEME_KEY);
-    return isThemeSetting(stored) ? stored : 'system';
+    return isThemeSetting(stored) ? stored : DEFAULT_THEME;
   } catch {
-    return 'system';
+    return DEFAULT_THEME;
   }
 }
 
 export function readStoredAccent(storage: Pick<Storage, 'getItem'> = localStorage): AccentSetting {
   try {
     const stored = storage.getItem(ACCENT_KEY);
-    return isAccentSetting(stored) ? stored : 'indigo';
+    return isAccentSetting(stored) ? stored : DEFAULT_ACCENT;
   } catch {
-    return 'indigo';
+    return DEFAULT_ACCENT;
   }
 }
 
@@ -87,7 +89,7 @@ export function applyTheme(theme: ThemeSetting): void {
 }
 
 export function applyAccent(accent: AccentSetting): void {
-  if (accent === 'indigo') {
+  if (accent === DEFAULT_ACCENT) {
     delete document.documentElement.dataset.accent;
   } else {
     document.documentElement.dataset.accent = accent;
@@ -163,19 +165,18 @@ export function useAccent(): { accent: AccentSetting; setAccent: (accent: Accent
 }
 
 export const ACCENT_OPTIONS: readonly { id: AccentSetting; label: string; swatch: string }[] = [
-  { id: 'indigo', label: 'Indigo (default)', swatch: '#4a5cf0' },
-  { id: 'blue', label: 'Blue', swatch: '#2f6fed' },
-  { id: 'green', label: 'Green', swatch: '#199a68' },
-  { id: 'amber', label: 'Amber', swatch: '#c07f16' },
-  { id: 'red', label: 'Red', swatch: '#d5423c' },
-  { id: 'violet', label: 'Violet', swatch: '#7b8cff' },
+  { id: 'gold', label: 'Gold (default)', swatch: '#d6a84f' },
+  { id: 'blue', label: 'Sky', swatch: '#64d2ff' },
+  { id: 'green', label: 'Green', swatch: '#31d158' },
+  { id: 'violet', label: 'Violet', swatch: '#bf5af2' },
+  { id: 'coral', label: 'Coral', swatch: '#ff6961' },
 ];
 
 export const THEME_OPTIONS: readonly { id: ThemeSetting; label: string; hint: string }[] = [
-  { id: 'light', label: 'Light', hint: 'Light surfaces' },
-  { id: 'dark', label: 'Dark', hint: 'Dark gray surfaces' },
-  { id: 'true-black', label: 'True Black', hint: 'Pure #000 canvas (OLED)' },
-  { id: 'system', label: 'System', hint: 'Follow the OS setting' },
+  { id: 'true-black', label: 'AMOLED', hint: 'Pure #000 canvas (default)' },
+  { id: 'dark', label: 'Graphite', hint: 'Same palette on #262624' },
+  { id: 'light', label: 'Light', hint: 'Warm daylight surfaces' },
+  { id: 'system', label: 'System', hint: 'AMOLED or Light, by OS' },
 ];
 
 export function resolvedThemeLabel(theme: ThemeSetting): 'Light' | 'Dark' | 'System' {

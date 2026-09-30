@@ -46,6 +46,15 @@ export interface ServerConfig {
    * it unconditionally (for deployments that terminate TLS elsewhere).
    */
   cookieSecureMode: 'auto' | 'always';
+  /**
+   * Who verifies credentials. "hermes" (default): sign-in uses the Hermes
+   * dashboard's own username/password provider, so there is exactly one
+   * credential to manage; the WebUI never stores the password. "local": the
+   * WebUI's own Argon2id user store with the one-time setup claim.
+   */
+  authMode: 'hermes' | 'local';
+  /** Dashboard password provider used in "hermes" auth mode. */
+  hermesAuthProvider: string;
 }
 
 function intFromEnv(value: string | undefined, fallback: number): number {
@@ -103,5 +112,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     },
     cookieSecureMode:
       env.HERMES_WEBUI_COOKIE_SECURE === 'always' ? ('always' as const) : ('auto' as const),
+    authMode: env.HERMES_WEBUI_AUTH_MODE === 'local' ? ('local' as const) : ('hermes' as const),
+    hermesAuthProvider: env.HERMES_WEBUI_HERMES_AUTH_PROVIDER ?? 'basic',
   };
 }

@@ -55,6 +55,19 @@ export interface AuditEntry {
   requestId?: string | null;
 }
 
+/** Dashboard session tokens held server-side in auth mode "hermes". */
+export interface HermesTokens {
+  accessToken: string;
+  refreshToken: string | null;
+  accessExpiresAt: number | null;
+}
+
+/**
+ * Password-hash placeholder for users whose credentials Hermes verifies. It
+ * is not a valid Argon2 encoding, so no local verification can ever succeed.
+ */
+export const HERMES_DELEGATED_PASSWORD_HASH = 'hermes-delegated';
+
 export function normalizeUsername(username: string): string {
   return username.trim().toLowerCase();
 }
@@ -304,6 +317,42 @@ export class AuthStore {
         'SELECT * FROM sessions WHERE user_id = ? AND revoked_at IS NULL ORDER BY last_seen_at DESC',
       )
       .all(userId) as SessionRow[];
+  }
+
+  // --- hermes dashboard tokens ----------------------------------------------
+
+  getHermesTokens(): HermesTokens | null {
+    const row = this.db
+      .prepare('SELECT access_token, refresh_token, access_expires_at FROM hermes_tokens WHERE id = 1')
+      .get() as
+      | { access_token: string; refresh_token: string | null; access_expires_at: number | null }
+      | undefined;
+    if (row === undefined) {
+      return null;
+    }
+    return {
+      accessToken: row.access_token,
+      refreshToken: row.refresh_token,
+      accessExpiresAt: row.access_expires_at,
+    };
+  }
+
+  saveHermesTokens(tokens: HermesTokens): void {
+    this.db
+      .prepare(
+        `INSERT INTO hermes_tokens (id, access_token, refresh_token, access_expires_at, updated_at)
+         VALUES (1, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           access_token = excluded.access_token,
+           refresh_token = excluded.refresh_token,
+           access_expires_at = excluded.access_expires_at,
+           updated_at = excluded.updated_at`,
+      )
+      .run(tokens.accessToken, tokens.refreshToken, tokens.accessExpiresAt, Date.now());
+  }
+
+  clearHermesTokens(): void {
+    this.db.prepare('DELETE FROM hermes_tokens WHERE id = 1').run();
   }
 
   // --- audit -----------------------------------------------------------------

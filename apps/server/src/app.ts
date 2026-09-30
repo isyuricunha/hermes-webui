@@ -5,6 +5,7 @@ import type { AppStatus, HermesConnectivity } from '@hermes-webui/shared';
 import type { ServerConfig } from './config';
 import { HermesClient, HermesHttpError } from './hermes/client';
 import { HermesDashboardClient } from './hermes/dashboard';
+import { HermesDashboardSession, HermesIdentity } from './hermes/identity';
 import { sessionRoutes } from './routes/sessions';
 import { runRoutes } from './routes/runs';
 import { cronRoutes } from './routes/cron';
@@ -25,6 +26,10 @@ export interface BuildAppOptions {
   dataDir?: string;
   /** Test seam: disable the auth policy entirely (never used in production). */
   disableAuth?: boolean;
+  /** Test seam: Hermes identity used in auth mode "hermes". */
+  hermesIdentity?: HermesIdentity;
+  /** Test seam: fetch used by the default dashboard client. */
+  dashboardFetch?: typeof fetch;
 }
 
 /**
@@ -35,9 +40,23 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const { config } = options;
   const hermes =
     options.hermesClient ?? new HermesClient(config.hermesBaseUrl, config.hermesApiKey);
+
+  // Auth state lives in the WebUI database; open it before the dashboard
+  // client so auth mode "hermes" can hand it the signed-in dashboard session.
+  const dataDir = options.dataDir ?? config.dataDir;
+  const { db } = openDatabase(dataDir);
+  const store = new AuthStore(db);
+  const identity =
+    config.authMode === 'hermes'
+      ? (options.hermesIdentity ??
+        new HermesIdentity(config.hermesDashboardUrl, config.hermesAuthProvider))
+      : undefined;
   const dashboard =
     options.dashboardClient ??
-    new HermesDashboardClient(config.hermesDashboardUrl, config.hermesDashboardToken);
+    new HermesDashboardClient(config.hermesDashboardUrl, config.hermesDashboardToken, {
+      fetchImpl: options.dashboardFetch,
+      tokenSource: identity === undefined ? undefined : new HermesDashboardSession(identity, store),
+    });
 
   const app = Fastify({
     // Trusted proxy (spec 2.14): only explicit IPs/CIDRs; request.protocol,
@@ -108,15 +127,13 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
 
   // Phase 1 auth (spec 2.9): central policy, deny-by-default for /api/*.
   // Only /healthz and /api/auth/{state,setup,login} declare themselves public.
-  const dataDir = options.dataDir ?? config.dataDir;
-  const { db } = openDatabase(dataDir);
-  const store = new AuthStore(db);
   const ipHashSalt = newIpHashSalt();
   const limiter = new LoginRateLimiter();
-  const service = new AuthService(store, config.session, dataDir, limiter);
+  const service = new AuthService(store, config.session, dataDir, limiter, identity);
 
-  // First boot (spec 2.7): write the one-time setup token while unclaimed.
-  if (!store.isClaimed()) {
+  // First boot (spec 2.7): write the one-time setup token while unclaimed
+  // (local auth mode only; in "hermes" mode Hermes owns the credential).
+  if (!service.isClaimed()) {
     const tokenPath = service.ensureBootstrapToken();
     app.log.warn(`Hermes WebUI is unclaimed. Setup token written to: ${tokenPath}`);
   }

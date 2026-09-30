@@ -53,14 +53,16 @@ export function buildAuthRoutes(
     '/api/auth/state',
     { config: { auth: 'public' } },
     async (request) => {
-      const claimed = store.isClaimed();
+      const claimed = service.isClaimed();
+      const mode = service.mode;
       const session = request.auth?.session ?? null;
       const user = request.auth?.user ?? null;
       if (session === null || user === null) {
-        return { claimed, authenticated: false };
+        return { claimed, mode, authenticated: false };
       }
       return {
         claimed: true,
+        mode,
         authenticated: true,
         user: {
           id: user.id,

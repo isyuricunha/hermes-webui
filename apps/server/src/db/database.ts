@@ -76,6 +76,21 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_audit_event ON auth_audit(event, timestamp);
     `,
   },
+  {
+    id: 2,
+    name: 'hermes-dashboard-tokens',
+    // Auth mode "hermes": the dashboard session obtained at sign-in, used
+    // server-side as the bearer for dashboard API calls. Single row.
+    sql: `
+      CREATE TABLE hermes_tokens (
+        id                 INTEGER PRIMARY KEY CHECK (id = 1),
+        access_token       TEXT NOT NULL,
+        refresh_token      TEXT,
+        access_expires_at  INTEGER,
+        updated_at         INTEGER NOT NULL
+      );
+    `,
+  },
 ];
 
 export function openDatabase(dataDir: string): DatabaseHandles {

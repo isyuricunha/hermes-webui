@@ -20,25 +20,60 @@ export interface DashboardClientOptions {
   timeoutMs?: number;
 }
 
+/**
+ * Bearer token source for a gated dashboard (auth mode "hermes"): the
+ * dashboard session obtained when the user signed in with Hermes.
+ */
+export interface DashboardTokenSource {
+  current(): string | null;
+  /** Rotates the token; null when the session can no longer be renewed. */
+  refresh(): Promise<string | null>;
+}
+
 export class HermesDashboardClient {
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
+  private readonly tokenSource?: DashboardTokenSource;
 
   constructor(
     readonly baseUrl: string,
     private readonly sessionToken?: string,
-    options: Partial<Omit<DashboardClientOptions, 'baseUrl' | 'sessionToken'>> = {},
+    options: Partial<Omit<DashboardClientOptions, 'baseUrl' | 'sessionToken'>> & {
+      tokenSource?: DashboardTokenSource;
+    } = {},
   ) {
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.tokenSource = options.tokenSource;
   }
 
   private authHeaders(base: Record<string, string> = {}): Record<string, string> {
     const headers = { ...base };
-    if (this.sessionToken) {
+    const bearer = this.tokenSource?.current() ?? null;
+    if (bearer !== null) {
+      headers.authorization = `Bearer ${bearer}`;
+    } else if (this.sessionToken) {
       headers['x-hermes-session-token'] = this.sessionToken;
     }
     return headers;
+  }
+
+  private async send(
+    path: string,
+    init: { method: string; body?: string; headers?: Record<string, string> },
+    signal: AbortSignal,
+  ): Promise<Response> {
+    return this.fetchImpl(`${this.baseUrl}${path}`, {
+      method: init.method,
+      headers: {
+        accept: 'application/json',
+        ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...this.authHeaders(),
+        ...init.headers,
+      },
+      body: init.body,
+      signal,
+    });
   }
 
   private async request<T>(
@@ -48,17 +83,22 @@ export class HermesDashboardClient {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
-        method: init.method,
-        headers: {
-          accept: 'application/json',
-          ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
-          ...this.authHeaders(),
-          ...init.headers,
-        },
-        body: init.body,
-        signal: controller.signal,
-      });
+      let response = await this.send(path, init, controller.signal);
+      if (response.status === 401 && this.tokenSource !== undefined) {
+        // Access token lapsed: rotate once through the refresh token, retry once.
+        const renewed = await this.tokenSource.refresh();
+        if (renewed !== null) {
+          response = await this.send(path, init, controller.signal);
+        }
+      }
+      if (response.status === 401 && this.tokenSource !== undefined) {
+        // 502, not 401: the WebUI session is fine; only the upstream one lapsed.
+        throw new HermesHttpError(
+          502,
+          'HERMES_DASHBOARD_SESSION_EXPIRED',
+          'The Hermes dashboard session expired. Sign out and sign in again to renew it.',
+        );
+      }
       if (!response.ok) {
         const bodyText = await response.text().catch(() => '');
         let detail: unknown = bodyText || undefined;

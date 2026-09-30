@@ -3,32 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Hermes WebUI</title>
+    <title>Hermes</title>
+    <meta name="theme-color" content="#000000" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <script>
-      // Anti-flash (Phase 2): apply the persisted theme and accent BEFORE
-      // first paint. Mirrors lib/theme.ts; kept tiny and dependency-free.
+      // Anti-flash: apply the persisted theme and accent BEFORE first paint.
+      // Mirrors lib/theme.ts (AMOLED + gold by default); tiny and dependency-free.
       (function () {
+        var root = document.documentElement;
         try {
           var theme = localStorage.getItem('hermes-webui-theme');
-          if (
-            theme === 'light' ||
-            theme === 'dark' ||
-            theme === 'true-black'
-          ) {
-            document.documentElement.dataset.theme = theme;
+          if (theme === 'system') {
+            /* no attribute: the OS decides */
+          } else if (theme === 'light' || theme === 'dark' || theme === 'true-black') {
+            root.dataset.theme = theme;
+          } else {
+            root.dataset.theme = 'true-black';
           }
           var accent = localStorage.getItem('hermes-webui-accent');
-          if (
-            accent === 'blue' ||
-            accent === 'green' ||
-            accent === 'amber' ||
-            accent === 'red' ||
-            accent === 'violet'
-          ) {
-            document.documentElement.dataset.accent = accent;
+          if (accent === 'blue' || accent === 'green' || accent === 'violet' || accent === 'coral') {
+            root.dataset.accent = accent;
           }
         } catch (e) {
-          /* private mode: defaults apply */
+          root.dataset.theme = 'true-black';
         }
       })();
     </script>

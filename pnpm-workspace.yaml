@@ -7,3 +7,6 @@ allowBuilds:
   better-sqlite3: true
   '@node-rs/argon2': true
   esbuild: true
+
+minimumReleaseAgeExclude:
+  - lucide-react@1.49.0

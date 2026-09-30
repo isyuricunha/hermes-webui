@@ -29,7 +29,7 @@ describe('dashboard settings routes', () => {
       }),
     );
     app = await buildApp(
-      { disableAuth: true, config: loadConfig({ HERMES_DASHBOARD_SESSION_TOKEN: 'dash-token' }) },
+      { disableAuth: true, config: loadConfig({ HERMES_WEBUI_AUTH_MODE: 'local', HERMES_DASHBOARD_SESSION_TOKEN: 'dash-token' }) },
     );
   });
 

@@ -1,13 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
+import { Menu, RotateCw, X } from 'lucide-react';
 import { CommandPalette } from '../features/palette/CommandPalette';
 import { SessionSidebar } from '../features/sessions/SessionSidebar';
 import { useTheme } from '../lib/theme';
 
 /**
- * Primary layout (PRD 10.2): Conversations | Chat | Optional Context Panel.
- * Desktop keeps the sidebar visible and collapsible; mobile turns it into a
- * drawer (PRD 10.3, 55.1). The context panel arrives in Phase 2.
+ * Primary layout (PRD 10.2): Conversations | Chat. Desktop keeps the sidebar
+ * visible and collapsible; mobile turns it into a drawer (PRD 10.3, 55.1).
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -35,26 +35,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-background text-text-primary">
       {/* Mobile top bar */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-2 border-b border-border-subtle bg-surface px-3 md:hidden">
+      <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-2 border-b border-border-subtle bg-background/85 px-2 backdrop-blur-md md:hidden">
         <button
           type="button"
-          className="rounded-md border border-border-subtle px-2 py-1 text-sm"
+          className="yu-btn yu-btn-ghost size-9"
           aria-label="Open conversations"
           onClick={() => setDrawerOpen(true)}
         >
-          ☰
+          <Menu className="size-[18px]" aria-hidden />
         </button>
-        <span className="text-sm font-medium">
-          <Link to="/" className="hover:text-text-primary" aria-label="Hermes WebUI home">
-            Hermes WebUI
-          </Link>
-        </span>
+        <Link to="/" className="text-[15px] font-medium tracking-[-0.01em]" aria-label="Hermes WebUI home">
+          Hermes
+        </Link>
       </header>
 
       {/* Backdrop for the mobile drawer */}
       {drawerOpen ? (
         <div
-          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-[2px] md:hidden"
           aria-hidden
           onClick={() => setDrawerOpen(false)}
         />
@@ -63,9 +61,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside
         className={[
           'fixed inset-y-0 left-0 z-40 flex shrink-0 flex-col border-r border-border-subtle bg-surface',
-          'transition-all duration-200 md:static md:translate-x-0',
-          'pt-12 md:pt-0',
-          collapsed ? 'w-14' : 'w-72',
+          'transition-[width,transform] duration-200 md:static md:translate-x-0',
+          collapsed ? 'w-[60px]' : 'w-[284px]',
           drawerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         ].join(' ')}
         aria-label="Conversations"
@@ -83,24 +80,25 @@ export function AppShell({ children }: { children: ReactNode }) {
       {restartRequired ? (
         <div
           role="status"
-          className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-warning bg-surface-elevated px-4 py-2 text-xs"
+          className="yu-pop fixed inset-x-3 bottom-3 z-40 flex items-center justify-between gap-3 rounded-2xl px-4 py-2.5 text-xs md:left-auto md:right-4 md:w-[26rem]"
         >
-          <span>Changes saved. A gateway restart may be required to apply them.</span>
-          <span className="flex items-center gap-2">
+          <span className="text-text-secondary">Changes saved. A gateway restart may be required.</span>
+          <span className="flex items-center gap-1.5">
             <Link
               to="/settings/system"
-              className="rounded-lg bg-accent px-3 py-1 font-medium text-white"
+              className="yu-btn yu-btn-primary h-8 px-3 text-xs"
               onClick={() => setRestartRequired(false)}
             >
+              <RotateCw className="size-3.5" aria-hidden />
               Restart Hermes
             </Link>
             <button
               type="button"
               aria-label="Dismiss restart notice"
-              className="text-text-secondary hover:text-text-primary"
+              className="yu-btn yu-btn-ghost size-8"
               onClick={() => setRestartRequired(false)}
             >
-              ✕
+              <X className="size-4" aria-hidden />
             </button>
           </span>
         </div>

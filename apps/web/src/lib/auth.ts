@@ -15,6 +15,8 @@ export interface AuthStateUser {
 
 export interface AuthState {
   claimed: boolean;
+  /** "hermes": credentials are the Hermes dashboard's; "local": WebUI-owned. */
+  mode?: 'hermes' | 'local';
   authenticated: boolean;
   user?: AuthStateUser;
   session?: {

@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { SessionLifetimes } from './store';
 import type { AuthStore } from './store';
-import { normalizeUsername, validateUsername } from './store';
+import { HERMES_DELEGATED_PASSWORD_HASH, normalizeUsername, validateUsername } from './store';
+import { HermesIdentityError, type HermesIdentity } from '../hermes/identity';
 import { hashPassword, verifyPassword, fakeVerifyForTiming, validatePasswordPolicy } from './passwords';
 import { constantTimeEqual, sha256Hex } from './tokens';
 
@@ -20,7 +21,9 @@ export type AuthErrorCode =
   | 'AUTH_INVALID_CREDENTIALS'
   | 'AUTH_RATE_LIMITED'
   | 'AUTH_REAUTH_REQUIRED'
-  | 'AUTH_VALIDATION_ERROR';
+  | 'AUTH_VALIDATION_ERROR'
+  | 'AUTH_PROVIDER_UNAVAILABLE'
+  | 'AUTH_NOT_SUPPORTED';
 
 export class AuthError extends Error {
   constructor(
@@ -65,12 +68,48 @@ export class AuthService {
     private readonly lifetimes: SessionLifetimes,
     private readonly dataDir: string,
     private readonly rateLimiter: LoginRateLimiter,
+    /** Present in auth mode "hermes": credentials are verified by Hermes. */
+    private readonly identity?: HermesIdentity,
   ) {}
+
+  get mode(): 'hermes' | 'local' {
+    return this.identity === undefined ? 'local' : 'hermes';
+  }
 
   // --- bootstrap/setup -------------------------------------------------------
 
+  /** In "hermes" mode there is nothing to claim: Hermes already owns the credential. */
   isClaimed(): boolean {
-    return this.store.isClaimed();
+    return this.identity !== undefined || this.store.isClaimed();
+  }
+
+  /**
+   * Verifies credentials with Hermes and keeps the dashboard session it
+   * issues. Maps identity failures onto the auth error vocabulary.
+   */
+  private async verifyWithHermes(username: string, password: string): Promise<void> {
+    if (this.identity === undefined) {
+      throw new AuthError('AUTH_NOT_SUPPORTED', 'Hermes sign-in is not enabled.', 400);
+    }
+    try {
+      const tokens = await this.identity.passwordLogin(username, password);
+      this.store.saveHermesTokens(tokens);
+    } catch (error) {
+      if (error instanceof HermesIdentityError) {
+        if (error.kind === 'invalid_credentials') {
+          throw new AuthError('AUTH_INVALID_CREDENTIALS', 'Invalid username or password.', 401);
+        }
+        if (error.kind === 'rate_limited') {
+          throw new AuthError('AUTH_RATE_LIMITED', error.message, 429, 60);
+        }
+        throw new AuthError(
+          'AUTH_PROVIDER_UNAVAILABLE',
+          'Hermes sign-in is unavailable right now. Check that the Hermes dashboard is running.',
+          503,
+        );
+      }
+      throw error;
+    }
   }
 
   /**
@@ -125,6 +164,13 @@ export class AuthService {
     context: AuthRequestContext;
     requestId?: string;
   }): Promise<AuthResult> {
+    if (this.identity !== undefined) {
+      throw new AuthError(
+        'AUTH_NOT_SUPPORTED',
+        'Setup is not used here: sign in with your Hermes credentials.',
+        404,
+      );
+    }
     if (this.store.isClaimed()) {
       this.store.appendAudit({
         event: 'setup.failure',
@@ -242,6 +288,10 @@ export class AuthService {
       throw new AuthError('AUTH_RATE_LIMITED', 'Too many attempts. Try again later.', 429, 600);
     }
 
+    if (this.identity !== undefined) {
+      return this.loginWithHermes(input, { perUserKey, perIpKey, usernameKey });
+    }
+
     const user = this.store.getUserByUsernameNormalized(usernameKey);
     let valid = false;
     if (user === undefined || user.disabled_at !== null) {
@@ -278,6 +328,58 @@ export class AuthService {
     return this.toAuthResult(user, created.session, created.cookieToken);
   }
 
+  private async loginWithHermes(
+    input: { username: string; password: string; context: AuthRequestContext; requestId?: string },
+    keys: { perUserKey: string; perIpKey: string; usernameKey: string },
+  ): Promise<AuthResult> {
+    const username = input.username.trim();
+    if (username === '' || username.length > 256 || input.password === '' || input.password.length > 1024) {
+      this.rateLimiter.failure(keys.perUserKey);
+      this.rateLimiter.failure(keys.perIpKey);
+      throw new AuthError('AUTH_INVALID_CREDENTIALS', 'Invalid username or password.', 401);
+    }
+    try {
+      await this.verifyWithHermes(username, input.password);
+    } catch (error) {
+      if (error instanceof AuthError && error.code === 'AUTH_INVALID_CREDENTIALS') {
+        this.rateLimiter.failure(keys.perUserKey);
+        this.rateLimiter.failure(keys.perIpKey);
+      }
+      const existing = this.store.getUserByUsernameNormalized(keys.usernameKey);
+      this.store.appendAudit({
+        userId: existing?.id ?? null,
+        event: 'login.failure',
+        outcome: 'failure',
+        ...input.context,
+        requestId: input.requestId,
+        metadata: { provider: 'hermes', reason: error instanceof AuthError ? error.code : 'error' },
+      });
+      throw error;
+    }
+
+    this.rateLimiter.success(keys.perUserKey);
+    this.rateLimiter.success(keys.perIpKey);
+    const user =
+      this.store.getUserByUsernameNormalized(keys.usernameKey) ??
+      this.store.createUser({ username, displayName: null, passwordHash: HERMES_DELEGATED_PASSWORD_HASH });
+    if (user.disabled_at !== null) {
+      throw new AuthError('AUTH_INVALID_CREDENTIALS', 'Invalid username or password.', 401);
+    }
+    const created = this.store.createSession(user.id, this.lifetimes, {
+      userAgent: input.context.userAgent,
+      clientIpHash: input.context.clientIpHash,
+    });
+    this.store.appendAudit({
+      userId: user.id,
+      event: 'login.success',
+      outcome: 'success',
+      ...input.context,
+      requestId: input.requestId,
+      metadata: { provider: 'hermes' },
+    });
+    return this.toAuthResult(user, created.session, created.cookieToken);
+  }
+
   logout(session: { id: string; userId: string }, context: AuthRequestContext, requestId?: string): void {
     this.store.revokeSession(session.id);
     this.store.appendAudit({
@@ -296,8 +398,21 @@ export class AuthService {
     session: { id: string; userId: string },
   ): Promise<void> {
     const user = this.store.getUserById(session.userId);
-    const valid =
-      user !== undefined && user.disabled_at === null && (await verifyPassword(input.password, user.password_hash));
+    let valid = false;
+    if (user !== undefined && user.disabled_at === null) {
+      if (this.identity !== undefined) {
+        try {
+          await this.verifyWithHermes(user.username, input.password);
+          valid = true;
+        } catch (error) {
+          if (!(error instanceof AuthError) || error.code !== 'AUTH_INVALID_CREDENTIALS') {
+            throw error;
+          }
+        }
+      } else {
+        valid = await verifyPassword(input.password, user.password_hash);
+      }
+    }
     if (!valid) {
       this.store.appendAudit({
         userId: session.userId,
@@ -331,6 +446,13 @@ export class AuthService {
     reauthUntil: number | null;
     revokedSessionIds: string[];
   }> {
+    if (this.identity !== undefined) {
+      throw new AuthError(
+        'AUTH_NOT_SUPPORTED',
+        'Your password is managed by Hermes (dashboard.basic_auth in config.yaml).',
+        409,
+      );
+    }
     const user = this.store.getUserById(session.userId);
     if (user === undefined || !(await verifyPassword(input.currentPassword, user.password_hash))) {
       throw new AuthError('AUTH_INVALID_CREDENTIALS', 'Current password is incorrect.', 401);

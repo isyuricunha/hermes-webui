@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { storeCsrfToken } from '../../lib/auth';
+import { ArrowRight, LockKeyhole } from 'lucide-react';
+import { storeCsrfToken, useAuthState } from '../../lib/auth';
 
 /**
  * Login (Phase 1, spec 2.21): username + password. Errors never reveal
- * whether the username exists; rate limiting is enforced server-side.
+ * whether the username exists; rate limiting is enforced server-side. In auth
+ * mode "hermes" the credentials are the Hermes dashboard's own.
  */
 
 interface LoginSearch {
@@ -22,6 +24,8 @@ function safeNextPath(next: string | undefined): string {
 export function LoginPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: '/login' }) as LoginSearch;
+  const authState = useAuthState();
+  const hermesMode = authState.data?.mode !== 'local';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -56,59 +60,75 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-      <form
-        onSubmit={(event) => void submit(event)}
-        className="w-full max-w-sm rounded-2xl border border-border-subtle bg-surface p-6"
-      >
-        <h1 className="text-lg font-semibold tracking-tight">Hermes WebUI</h1>
-        <p className="mt-1 text-sm text-text-secondary">Sign in to continue</p>
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-[380px]">
+        <div className="yu-rise mb-8 text-center" style={{ ['--yu-delay' as string]: '0ms' }}>
+          <h1 className="text-[44px] leading-none font-normal tracking-[-0.03em]">
+            <span className="yu-shimmer-gold italic">Hermes</span>
+          </h1>
+          <p className="mt-3 text-sm text-text-secondary">Sign in to continue</p>
+        </div>
 
-        <label className="mt-5 block">
-          <span className="mb-1 block text-xs font-medium text-text-secondary">Username</span>
-          <input
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            required
-            autoComplete="username"
-            className="h-10 w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
-          />
-        </label>
-
-        <label className="mt-3 block">
-          <span className="mb-1 block text-xs font-medium text-text-secondary">Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            autoComplete="current-password"
-            className="h-10 w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
-          />
-        </label>
-
-        {error !== null ? (
-          <p role="alert" className="mt-3 rounded-lg border border-danger px-3 py-2 text-xs text-danger">
-            {error}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="mt-5 h-10 w-full rounded-xl bg-accent text-sm font-medium text-white disabled:opacity-40"
+        <form
+          onSubmit={(event) => void submit(event)}
+          className="yu-card yu-rise rounded-3xl p-6"
+          style={{ ['--yu-delay' as string]: '100ms' }}
         >
-          {pending ? 'Signing in…' : 'Sign in'}
-        </button>
+          <label className="block">
+            <span className="yu-eyebrow mb-1.5 block">Username</span>
+            <input
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              required
+              autoFocus
+              autoComplete="username"
+              className="yu-input h-11 w-full px-3.5 text-sm"
+            />
+          </label>
+
+          <label className="mt-4 block">
+            <span className="yu-eyebrow mb-1.5 block">Password</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              autoComplete="current-password"
+              className="yu-input h-11 w-full px-3.5 text-sm"
+            />
+          </label>
+
+          {error !== null ? (
+            <p role="alert" className="yu-chip-danger mt-4 rounded-xl px-3 py-2 text-xs">
+              {error}
+            </p>
+          ) : null}
+
+          <button type="submit" disabled={pending} className="yu-btn yu-btn-primary mt-6 h-11 w-full text-sm">
+            {pending ? <span>Signing in…</span> : (
+              <>
+                <span>Sign in</span>
+                <ArrowRight className="size-4" aria-hidden />
+              </>
+            )}
+          </button>
+
+          {hermesMode ? (
+            <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-text-tertiary">
+              <LockKeyhole className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              <span>Use the same username and password as your Hermes dashboard.</span>
+            </p>
+          ) : null}
+        </form>
 
         <button
           type="button"
           onClick={() => void navigate({ to: '/' })}
-          className="mt-3 w-full text-center text-xs text-text-secondary hover:text-text-primary"
+          className="mt-5 w-full text-center text-xs text-text-tertiary transition-colors hover:text-text-primary"
         >
           Back to home
         </button>
-      </form>
+      </div>
     </div>
   );
 }

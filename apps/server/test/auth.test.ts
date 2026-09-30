@@ -20,7 +20,7 @@ const setupTokenFile = () => path.join(dataDir, 'setup-token');
 
 beforeAll(async () => {
   dataDir = mkdtempSync(path.join(tmpdir(), 'hwui-auth-'));
-  app = await buildApp({ dataDir, config: loadConfig({}) });
+  app = await buildApp({ dataDir, config: loadConfig({ HERMES_WEBUI_AUTH_MODE: 'local' }) });
 });
 
 afterAll(() => {
@@ -247,7 +247,7 @@ describe('auth regression coverage (planner review)', () => {
     dbFile = path.join(dataDir2, 'webui.sqlite3');
     app2 = await buildApp({
       dataDir: dataDir2,
-      config: loadConfig({ HERMES_WEBUI_TRUST_PROXY: '127.0.0.1' }),
+      config: loadConfig({ HERMES_WEBUI_TRUST_PROXY: '127.0.0.1', HERMES_WEBUI_AUTH_MODE: 'local' }),
     });
     const token = fs.readFileSync(path.join(dataDir2, 'setup-token'), 'utf8').trim();
     const setup = await app2.inject({
