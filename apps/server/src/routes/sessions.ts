@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { HermesClient } from '../hermes/client';
 import { sendHermesError } from '../hermes/errors';
+import type { MessageImageStore } from '../images';
 
 /**
  * Session management routes (PRD 11). Thin proxies over the gateway's
@@ -9,9 +10,28 @@ import { sendHermesError } from '../hermes/errors';
  */
 export async function sessionRoutes(
   app: FastifyInstance,
-  opts: { client: HermesClient },
+  opts: { client: HermesClient; images?: MessageImageStore },
 ): Promise<void> {
   const client = opts.client;
+
+  // Images this WebUI sent in the session (Hermes keeps only "[screenshot]").
+  app.get('/api/sessions/:sessionId/images', async (request, reply) => {
+    const { sessionId } = request.params as { sessionId: string };
+    return await reply.header('cache-control', 'no-store').send({ images: opts.images?.list(sessionId) ?? [] });
+  });
+
+  app.get('/api/images/:imageId', async (request, reply) => {
+    const id = Number((request.params as { imageId: string }).imageId);
+    const image = Number.isInteger(id) && id > 0 ? opts.images?.get(id) : undefined;
+    if (image === undefined) {
+      return await reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Image not found.' }, requestId: request.id });
+    }
+    return await reply
+      .header('content-type', image.mime)
+      .header('cache-control', 'private, max-age=31536000, immutable')
+      .header('content-security-policy', "sandbox; default-src 'none'; frame-ancestors 'none'")
+      .send(image.data);
+  });
 
   // Session-scoped model lock (gateway POST /api/sessions/:id/model). This is
   // the ONLY supported model change from a chat session; global changes go
@@ -137,7 +157,9 @@ export async function sessionRoutes(
   app.delete('/api/sessions/:sessionId', async (request, reply) => {
     const { sessionId } = request.params as { sessionId: string };
     try {
-      return await reply.send(await client.deleteSession(sessionId));
+      const result = await client.deleteSession(sessionId);
+      opts.images?.deleteSession(sessionId);
+      return await reply.send(result);
     } catch (error) {
       return sendHermesError(reply, request.id, error);
     }

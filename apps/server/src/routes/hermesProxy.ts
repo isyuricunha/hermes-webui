@@ -58,6 +58,8 @@ export const PROXY_RULES: readonly ProxyRule[] = [
   // Skills and toolsets
   { method: 'GET', path: 'skills' },
   { method: 'GET', path: 'skills/content', query: ['name'] },
+  { method: 'PUT', path: 'skills/content' },
+  { method: 'POST', path: 'skills' },
   { method: 'PUT', path: 'skills/toggle' },
   { method: 'GET', path: 'tools/toolsets' },
   { method: 'PUT', path: 'tools/toolsets/:name' },
@@ -66,8 +68,19 @@ export const PROXY_RULES: readonly ProxyRule[] = [
   { method: 'GET', path: 'profiles/active' },
   { method: 'GET', path: 'profiles/:name/soul' },
   { method: 'PUT', path: 'profiles/:name/soul' },
-  // Cron history
+  { method: 'PATCH', path: 'profiles/:name' },
+  { method: 'PUT', path: 'profiles/:name/description' },
+  // Cron: history, create, edit
   { method: 'GET', path: 'cron/jobs/:id/runs', query: ['limit'] },
+  { method: 'GET', path: 'cron/delivery-targets' },
+  { method: 'POST', path: 'cron/jobs' },
+  { method: 'PUT', path: 'cron/jobs/:id' },
+  // MCP servers: add, remove, enable, test
+  { method: 'GET', path: 'mcp/servers' },
+  { method: 'POST', path: 'mcp/servers' },
+  { method: 'DELETE', path: 'mcp/servers/:name' },
+  { method: 'PUT', path: 'mcp/servers/:name/enabled' },
+  { method: 'POST', path: 'mcp/servers/:name/test', timeoutMs: 60_000 },
   // System
   { method: 'GET', path: 'status' },
   { method: 'GET', path: 'system/stats' },
@@ -75,6 +88,9 @@ export const PROXY_RULES: readonly ProxyRule[] = [
   // Webhooks
   { method: 'GET', path: 'webhooks' },
   { method: 'PUT', path: 'webhooks/:name/enabled' },
+  { method: 'POST', path: 'webhooks/enable', timeoutMs: 60_000 },
+  { method: 'POST', path: 'webhooks' },
+  { method: 'DELETE', path: 'webhooks/:name' },
   // Files the assistant delivered with MEDIA:/path (images, audio, documents)
   {
     method: 'GET',

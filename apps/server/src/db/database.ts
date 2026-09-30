@@ -91,6 +91,23 @@ const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    id: 3,
+    name: 'message-images',
+    // Hermes persists image parts as the text "[screenshot]" (no bytes), so
+    // the WebUI keeps the images it sent to show them again in history.
+    sql: `
+      CREATE TABLE message_images (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id  TEXT NOT NULL,
+        sent_at     INTEGER NOT NULL,
+        position    INTEGER NOT NULL,
+        mime        TEXT NOT NULL,
+        data        BLOB NOT NULL
+      );
+      CREATE INDEX message_images_session ON message_images (session_id, sent_at);
+    `,
+  },
 ];
 
 export function openDatabase(dataDir: string): DatabaseHandles {
@@ -116,18 +133,16 @@ function migrate(db: Database.Database): void {
   db.exec(
     'CREATE TABLE IF NOT EXISTS schema_migrations (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at INTEGER NOT NULL)',
   );
-  const applied = new Set(
-    (db.prepare('SELECT id FROM schema_migrations').all() as { id: number }[]).map((row) => row.id),
-  );
+  const isApplied = db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?');
   const insert = db.prepare('INSERT INTO schema_migrations (id, name, applied_at) VALUES (?, ?, ?)');
   for (const migration of MIGRATIONS) {
-    if (applied.has(migration.id)) {
-      continue;
-    }
+    // IMMEDIATE takes the write lock before the check, so two processes
+    // opening the same database cannot both apply one migration.
     const run = db.transaction(() => {
+      if (isApplied.get(migration.id) !== undefined) return;
       db.exec(migration.sql);
       insert.run(migration.id, migration.name, Date.now());
     });
-    run();
+    run.immediate();
   }
 }

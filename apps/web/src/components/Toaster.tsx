@@ -1,21 +1,26 @@
 import { Check, Info, TriangleAlert, X } from 'lucide-react';
 import { dismissToast, useToasts } from '../lib/toast';
 
-/** Bottom-center toast stack (above the composer on mobile). */
+/**
+ * Toast stack: top-right on desktop, under the top bar on phones, so it never
+ * sits on the composer. Each toast slides in and carries its tone as an edge.
+ */
 export function Toaster() {
   const toasts = useToasts();
   if (toasts.length === 0) return null;
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-24 z-[70] flex flex-col items-center gap-2 px-4 md:bottom-6"
+      className="pointer-events-none fixed inset-x-0 top-16 z-[80] flex flex-col items-center gap-2 px-4 md:inset-x-auto md:top-5 md:right-5 md:items-end md:px-0"
       role="status"
       aria-live="polite"
     >
       {toasts.map((item) => (
         <div
           key={item.id}
-          className="yu-pop yu-rise pointer-events-auto flex max-w-md items-center gap-2.5 rounded-2xl py-2 pr-2 pl-3 text-[13px] text-text-primary"
-          style={{ ['--yu-delay' as string]: '0ms', animationDuration: '0.35s' }}
+          className={[
+            'yu-pop yu-pop-in pointer-events-auto flex w-full max-w-sm items-center gap-2.5 rounded-2xl border-l-2 py-2.5 pr-2 pl-3 text-[13px] text-text-primary',
+            item.tone === 'error' ? '!border-l-danger' : item.tone === 'success' ? '!border-l-success' : '!border-l-accent',
+          ].join(' ')}
         >
           <span
             aria-hidden

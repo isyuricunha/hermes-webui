@@ -24,7 +24,8 @@ export function ToolsPage() {
       queryClient.setQueryData(['toolsets'], context?.previous);
       toastError(error);
     },
-    onSuccess: (_data, { name, enabled }) => toast(`${name} ${enabled ? 'enabled' : 'disabled'}.`, 'success'),
+    onSuccess: (_data, { name, enabled }) =>
+      toast(`${name} ${enabled ? 'enabled' : 'disabled'}. New conversations get it (/new or /reset for a running one).`, 'success'),
   });
 
   const list = [...(toolsets.data ?? [])].sort((a, b) => Number(b.enabled) - Number(a.enabled) || a.label.localeCompare(b.label));

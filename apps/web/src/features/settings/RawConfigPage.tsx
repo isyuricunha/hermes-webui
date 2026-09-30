@@ -94,11 +94,34 @@ export function RawConfigPage() {
   }
 
   return (
-    <SettingsPage title="Raw Config">
-      <p className="mb-3 text-xs text-text-secondary">
-        {configQuery.data.path} — saved directly by Hermes. Invalid YAML is refused before applying
-        (PRD 65.6).
-      </p>
+    <SettingsPage
+      title="Raw Config"
+      description={
+        <>
+          <span className="font-mono">{configQuery.data.path}</span>, saved by Hermes itself; invalid YAML is refused before
+          it is applied. Every key is explained in the{' '}
+          <a
+            href="https://hermes-agent.nousresearch.com/docs/user-guide/configuration"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-accent hover:underline"
+          >
+            Hermes configuration docs
+          </a>
+          .
+        </>
+      }
+      actions={
+        <a
+          href="https://hermes-agent.nousresearch.com/docs/"
+          target="_blank"
+          rel="noreferrer noopener"
+          className="yu-btn yu-btn-tonal h-9 px-3.5 text-[13px]"
+        >
+          Hermes docs
+        </a>
+      }
+    >
 
       {dirty ? (
         <details className="mb-3 yu-card rounded-2xl p-3 text-xs">

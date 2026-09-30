@@ -1,202 +1,181 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import {
-  fetchModelInfo,
-  fetchModelOptions,
-  setModelAssignment,
-} from '../../lib/api';
-import { SettingsError, SettingsPage } from './SettingsLayout';
+import { useMemo } from 'react';
+import { Brain, Eye, KeyRound, Sparkles, Wrench } from 'lucide-react';
+import { fetchModelInfo, fetchModelOptions, setModelAssignment } from '../../lib/api';
+import { fetchModelsAnalytics } from '../../lib/hx';
+import { normalizeCatalog, pickableProviders } from '../../lib/modelCatalog';
+import { compactNumber, money, relativeTime } from '../../lib/format';
+import { confirmDialog } from '../../lib/dialog';
+import { toast, toastError } from '../../lib/toast';
+import { Badge, Card, ErrorNote, Section, SkeletonRows, Stat } from '../../components/ui';
+import { ModelBrowser } from '../../components/ModelBrowser';
+import { SettingsPage } from './SettingsLayout';
 
-interface ProviderOption {
-  slug?: string;
-  is_current?: boolean;
-  authenticated?: boolean;
-  models?: unknown[];
-}
-
+/**
+ * Settings > Models: the default model with what it can do, a searchable
+ * catalog to change it, provider readiness and recent per-model usage.
+ */
 export function ModelsPage() {
   const queryClient = useQueryClient();
-  const infoQuery = useQuery({ queryKey: ['model-info'], queryFn: fetchModelInfo });
-  const optionsQuery = useQuery({ queryKey: ['model-options'], queryFn: fetchModelOptions });
-
-  const [provider, setProvider] = useState('');
-  const [model, setModel] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
-  const [needsConfirm, setNeedsConfirm] = useState<string | null>(null);
+  const info = useQuery({ queryKey: ['model-info'], queryFn: fetchModelInfo });
+  const options = useQuery({ queryKey: ['model-options'], queryFn: fetchModelOptions });
+  const usage = useQuery({ queryKey: ['analytics-models', 30], queryFn: () => fetchModelsAnalytics(30) });
+  const catalog = useMemo(() => normalizeCatalog(options.data), [options.data]);
+  const pickable = useMemo(() => pickableProviders(catalog), [catalog]);
 
   const assign = useMutation({
-    mutationFn: (input: {
-      provider: string;
-      model: string;
-      confirm_expensive_model: boolean;
-    }) => setModelAssignment({ scope: 'main', ...input }),
-    onSuccess: (data, input) => {
-      const result = data as { ok?: boolean; confirm_required?: boolean; confirm_message?: string };
-      if (result?.confirm_required && !input.confirm_expensive_model) {
-        setNeedsConfirm(input.model);
-        setMessage(result.confirm_message ?? 'This model may be expensive. Click Apply to proceed.');
-      } else {
-        setNeedsConfirm(null);
-        setMessage('Model assigned. Applies to new sessions.');
-        void queryClient.invalidateQueries({ queryKey: ['model-info'] });
-      }
-    },
-    onError: (assignError) => setMessage(assignError.message),
+    mutationFn: (input: { provider: string; model: string; confirm_expensive_model: boolean }) =>
+      setModelAssignment({ scope: 'main', ...input }),
+    onError: (error) => toastError(error),
   });
 
-  const apply = (confirm: boolean) => {
-    if (provider === '' || model === '') return;
-    assign.mutate({ provider, model, confirm_expensive_model: confirm });
+  const choose = async (provider: string, model: string) => {
+    const ok = await confirmDialog({
+      title: `Make ${model} the default?`,
+      description: 'New chats (Telegram, cron, this app) start with it. Conversations already open keep their model until /new or /reset.',
+      confirmLabel: 'Set as default',
+    });
+    if (!ok) return;
+    try {
+      let result = (await assign.mutateAsync({ provider, model, confirm_expensive_model: false })) as {
+        confirm_required?: boolean;
+        confirm_message?: string;
+      };
+      if (result?.confirm_required === true) {
+        const again = await confirmDialog({
+          title: 'This model may be expensive',
+          description: result.confirm_message ?? 'Hermes flagged this model as costly. Use it anyway?',
+          confirmLabel: 'Use it anyway',
+          tone: 'danger',
+        });
+        if (!again) return;
+        result = (await assign.mutateAsync({ provider, model, confirm_expensive_model: true })) as typeof result;
+      }
+      toast(`${model} is now the default for new chats.`, 'success');
+      void queryClient.invalidateQueries({ queryKey: ['model-info'] });
+      void queryClient.invalidateQueries({ queryKey: ['model-options'] });
+    } catch {
+      // toastError already reported it
+    }
   };
 
-  if (infoQuery.isPending || optionsQuery.isPending) {
-    return (
-      <SettingsPage title="Models">
-        <p className="text-sm text-text-secondary">Loading models…</p>
-      </SettingsPage>
-    );
-  }
-  if (infoQuery.isError) {
-    return (
-      <SettingsPage title="Models">
-        <SettingsError message={infoQuery.error.message} />
-      </SettingsPage>
-    );
-  }
-
-  const info = infoQuery.data;
-  const contextK =
-    info.effective_context_length !== undefined
-      ? (info.effective_context_length / 1000).toFixed(0)
-      : null;
-
-  const providers =
-    typeof optionsQuery.data === 'object' &&
-    optionsQuery.data !== null &&
-    Array.isArray((optionsQuery.data as { providers?: unknown }).providers)
-      ? ((optionsQuery.data as { providers: ProviderOption[] }).providers.filter(
-          (p) => p.authenticated && (p.models?.length ?? 0) > 0,
-        ))
-      : [];
-  const selected = providers.find((p) => p.slug === provider);
+  const caps = info.data?.capabilities ?? {};
+  const context = info.data?.effective_context_length ?? caps.context_window;
+  const usedModels = (usage.data?.models ?? []).filter((row) => row.sessions > 0).slice(0, 6);
 
   return (
-    <SettingsPage title="Models">
-      <div className="w-full yu-card rounded-2xl p-4">
-        <p className="text-[13px] font-medium text-text-secondary">Main model</p>
-        <p className="mt-1 break-words text-lg font-medium">{info.model}</p>
-        <p className="break-words text-sm text-text-secondary">
-          Provider: {info.provider}
-          {contextK !== null ? ` · context ${contextK}k` : ''}
-        </p>
-      </div>
-
-      <p className="mb-2 mt-6 text-[13px] font-medium text-text-secondary">
-        Switch main model
-      </p>
-      <div className="space-y-2">
-        <select
-          value={provider}
-          onChange={(event) => {
-            setProvider(event.target.value);
-            setModel('');
-          }}
-          aria-label="Provider"
-          className="h-10 w-full yu-card rounded-2xl px-3 text-sm outline-none focus:border-accent"
-        >
-          <option value="">Select provider…</option>
-          {providers.map((p) => (
-            <option key={p.slug} value={p.slug ?? ''}>
-              {p.slug}
-            </option>
-          ))}
-        </select>
-        {provider !== '' && selected !== undefined ? (
-          <select
-            value={model}
-            onChange={(event) => setModel(event.target.value)}
-            aria-label="Model"
-            className="h-10 w-full yu-card rounded-2xl px-3 text-sm outline-none focus:border-accent"
-          >
-            <option value="">Select model…</option>
-            {selected.models?.map((m) => {
-              const name = typeof m === 'string' ? m : String((m as { id?: unknown }).id ?? m);
-              return (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              );
-            })}
-          </select>
-        ) : null}
-        {provider !== '' && model !== '' ? (
-          <button
-            type="button"
-            disabled={assign.isPending}
-            onClick={() => apply(needsConfirm !== null)}
-            className="yu-btn yu-btn-primary w-full px-4 py-2.5 text-sm sm:w-auto"
-          >
-            {assign.isPending
-              ? 'Applying…'
-              : needsConfirm !== null
-                ? 'Confirm and apply'
-                : 'Apply'}
-          </button>
-        ) : null}
-        {message !== null ? <p className="text-xs text-text-secondary">{message}</p> : null}
-        {needsConfirm !== null ? (
-          <p className="text-xs text-warning">
-            Pending confirmation for {needsConfirm}. Click Apply again to proceed.
-          </p>
-        ) : null}
-      </div>
-
-      <p className="mb-2 mt-6 text-[13px] font-medium text-text-secondary">
-        Provider readiness
-      </p>
-      {optionsQuery.isError ? (
-        <SettingsError message={optionsQuery.error.message} />
+    <SettingsPage title="Models" description="The model Hermes starts every new chat with, and the catalog your providers offer.">
+      {info.isError ? (
+        <ErrorNote message={info.error.message} onRetry={() => void info.refetch()} />
+      ) : info.isPending ? (
+        <SkeletonRows rows={2} />
       ) : (
-        <ProvidersList data={optionsQuery.data} />
+        <Card className="mb-7 overflow-hidden">
+          <div className="flex items-start gap-4 px-5 py-5">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-chip text-accent">
+              <Sparkles className="size-5" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-text-tertiary">Default model</p>
+              <p className="mt-0.5 font-mono text-lg break-all text-text-primary">{info.data.model || 'not set'}</p>
+              <p className="mt-0.5 text-[13px] text-text-secondary">via {info.data.provider || 'unknown provider'}</p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {caps.supports_tools === true ? (
+                  <Badge tone="success">
+                    <Wrench className="size-3" aria-hidden /> Tools
+                  </Badge>
+                ) : null}
+                {caps.supports_vision === true ? (
+                  <Badge tone="agent">
+                    <Eye className="size-3" aria-hidden /> Vision
+                  </Badge>
+                ) : (
+                  <Badge>
+                    <Eye className="size-3" aria-hidden /> No vision
+                  </Badge>
+                )}
+                {caps.supports_reasoning === true ? (
+                  <Badge tone="accent">
+                    <Brain className="size-3" aria-hidden /> Reasoning
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 border-t border-border-subtle">
+            <div className="border-r border-border-subtle px-5 py-3">
+              <p className="text-[11px] text-text-tertiary">Context window</p>
+              <p className="font-mono text-sm text-text-primary">{context !== undefined ? `${compactNumber(context)} tokens` : 'unknown'}</p>
+            </div>
+            <div className="px-5 py-3">
+              <p className="text-[11px] text-text-tertiary">Max output</p>
+              <p className="font-mono text-sm text-text-primary">
+                {caps.max_output_tokens !== undefined ? `${compactNumber(caps.max_output_tokens)} tokens` : 'provider default'}
+              </p>
+            </div>
+          </div>
+        </Card>
       )}
-      <p className="mt-4 text-xs text-text-secondary">
-        Fallbacks and auxiliary slots: edit via Settings search or Raw Config; a curated editor
-        arrives post-RC1.
-      </p>
-    </SettingsPage>
-  );
-}
 
-function ProvidersList({ data }: { data: unknown }) {
-  const providers =
-    typeof data === 'object' && data !== null && Array.isArray((data as { providers?: unknown }).providers)
-      ? ((data as { providers: unknown[] }).providers as { slug?: string; authenticated?: boolean; is_current?: boolean }[])
-      : [];
-  if (providers.length === 0) {
-    return <p className="text-sm text-text-secondary">Provider options unavailable.</p>;
-  }
-  return (
-    <ul className="space-y-1.5">
-      {providers.map((provider, index) => (
-        <li
-          key={provider.slug ?? `provider-${index}`}
-          className="flex items-center justify-between yu-card rounded-2xl px-3 py-2 text-sm"
-        >
-          <span>
-            {provider.slug ?? 'unknown'}
-            {provider.is_current ? ' · current' : ''}
-          </span>
-          <span
-            className={
-              provider.authenticated
-                ? 'text-xs font-medium text-success'
-                : 'text-xs font-medium text-warning'
-            }
-          >
-            {provider.authenticated ? 'Ready' : 'No credential'}
-          </span>
-        </li>
-      ))}
-    </ul>
+      <Section
+        title="Change the default"
+        description="Only providers with a working credential are listed. A single chat can use another model from its model chip."
+      >
+        <Card className="p-3">
+          {options.isError ? (
+            <ErrorNote message={options.error.message} onRetry={() => void options.refetch()} />
+          ) : options.isPending ? (
+            <SkeletonRows rows={4} />
+          ) : pickable.length === 0 ? (
+            <p className="px-2 py-3 text-[13px] text-text-secondary">No provider with credentials and models yet.</p>
+          ) : (
+            <ModelBrowser
+              providers={pickable}
+              selected={info.data !== undefined ? { provider: '', model: info.data.model } : null}
+              busy={assign.isPending}
+              maxHeight="max-h-[26rem]"
+              onPick={(provider, model) => void choose(provider, model)}
+            />
+          )}
+        </Card>
+      </Section>
+
+      {usedModels.length > 0 ? (
+        <Section title="Used in the last 30 days" description="From the Hermes session store; cost is Hermes' estimate.">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {usedModels.map((row) => (
+              <Stat
+                key={`${row.provider}/${row.model}`}
+                label={row.model}
+                value={`${compactNumber(row.input_tokens + row.output_tokens)} tokens`}
+                hint={`${row.sessions} sessions · ${money(row.estimated_cost)} · last ${relativeTime(row.last_used_at)}`}
+              />
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      <Section title="Providers" description="Add or rotate keys in Settings > Environment.">
+        <div className="flex flex-wrap gap-2">
+          {catalog.map((provider) => (
+            <span
+              key={provider.slug}
+              className="yu-card flex h-9 items-center gap-2 rounded-xl px-3 text-[13px]"
+              title={provider.slug}
+            >
+              {provider.ready ? (
+                <span aria-hidden className="size-1.5 rounded-full bg-success" />
+              ) : (
+                <KeyRound className="size-3.5 text-warning" aria-hidden />
+              )}
+              <span className="text-text-primary">{provider.name}</span>
+              <span className="font-mono text-[11px] text-text-tertiary">
+                {provider.ready ? `${provider.models.length} models` : 'no key'}
+              </span>
+            </span>
+          ))}
+        </div>
+      </Section>
+    </SettingsPage>
   );
 }

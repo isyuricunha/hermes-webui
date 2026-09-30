@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { copyText } from '../../lib/clipboard';
-import { Check, Copy, FileText, LoaderCircle, Pencil, RotateCcw, Square, Volume2 } from 'lucide-react';
+import { Check, Copy, FileText, ImageIcon, LoaderCircle, Pencil, RotateCcw, Square, Volume2 } from 'lucide-react';
+import { Lightbox } from './MediaEmbed';
 import { speakText } from '../../lib/hx';
 import { clockTime } from '../../lib/format';
 import { toast, toastError } from '../../lib/toast';
@@ -107,24 +108,29 @@ function ReadAloudAction({ text }: { text: string }) {
 }
 
 function Attachments({ items }: { items: NonNullable<TranscriptMessage['attachments']> }) {
+  const [open, setOpen] = useState<{ url: string; name: string } | null>(null);
   return (
     <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
       {items.map((attachment, index) =>
         attachment.kind === 'image' && attachment.url !== undefined ? (
-          <a key={index} href={attachment.url} target="_blank" rel="noreferrer noopener" title={attachment.name}>
-            <img
-              src={attachment.url}
-              alt={attachment.name}
-              className="size-24 rounded-xl border border-border-subtle object-cover sm:size-32"
-            />
-          </a>
+          <button
+            key={index}
+            type="button"
+            title={attachment.name}
+            aria-label={`Open ${attachment.name}`}
+            onClick={() => setOpen({ url: attachment.url as string, name: attachment.name })}
+            className="overflow-hidden rounded-xl border border-border-subtle transition-opacity hover:opacity-90"
+          >
+            <img src={attachment.url} alt={attachment.name} className="size-24 object-cover sm:size-32" />
+          </button>
         ) : (
           <span key={index} className="yu-chip yu-chip-neutral h-8 rounded-xl px-2.5">
-            <FileText className="size-3.5" aria-hidden />
+            {attachment.kind === 'image' ? <ImageIcon className="size-3.5" aria-hidden /> : <FileText className="size-3.5" aria-hidden />}
             {attachment.name}
           </span>
         ),
       )}
+      {open !== null ? <Lightbox src={open.url} name={open.name} onClose={() => setOpen(null)} /> : null}
     </div>
   );
 }
@@ -140,6 +146,16 @@ export function UserMessage({ item, onEdit }: { item: TranscriptMessage; onEdit:
         <div className="max-w-[85%] rounded-2xl rounded-br-md bg-chip px-4 py-2.5 text-[15px] leading-relaxed text-text-primary shadow-[var(--yu-highlight)]">
           <p className="whitespace-pre-wrap break-words">{item.content}</p>
         </div>
+      ) : null}
+      {item.injected !== undefined ? (
+        <details className="group/ctx mt-1 max-w-[85%] text-right">
+          <summary className="cursor-pointer list-none text-[11px] text-text-tertiary select-none hover:text-text-secondary [&::-webkit-details-marker]:hidden">
+            + context added by a Hermes plugin
+          </summary>
+          <p className="mt-1 rounded-xl bg-surface-input px-3 py-2 text-left text-xs whitespace-pre-wrap break-words text-text-tertiary">
+            {item.injected}
+          </p>
+        </details>
       ) : null}
       <div className="mt-1 flex h-7 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
         {item.timestamp !== undefined ? (

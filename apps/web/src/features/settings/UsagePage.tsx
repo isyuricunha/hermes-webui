@@ -61,7 +61,9 @@ export function UsagePage() {
       metric === 'tokens'
         ? entry.input_tokens + entry.output_tokens
         : metric === 'cost'
-          ? entry.estimated_cost + entry.actual_cost
+          ? entry.actual_cost > 0
+            ? entry.actual_cost
+            : entry.estimated_cost
           : entry.sessions,
   }));
   const format = metric === 'cost' ? money : compactNumber;
@@ -70,7 +72,13 @@ export function UsagePage() {
   return (
     <SettingsPage
       title="Usage"
-      description="What Hermes spent across every channel: Telegram, cron, this app and the API."
+      description={
+        <>
+          What Hermes spent across every channel: Telegram, cron, this app and the API. Numbers come from the Hermes
+          session store (token counts each provider reported). Cost is the provider&apos;s billed amount when it reports one,
+          otherwise Hermes&apos; estimate from its model price table, so treat it as an approximation; free providers show $0.
+        </>
+      }
       wide
     >
       <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -90,9 +98,13 @@ export function UsagePage() {
               hint={`${compactNumber(totals?.total_input)} in · ${compactNumber(totals?.total_output)} out`}
             />
             <Stat
-              label="Estimated cost"
-              value={money((totals?.total_estimated_cost ?? 0) + (totals?.total_actual_cost ?? 0))}
-              hint={`${compactNumber(totals?.total_cache_read)} tokens from cache`}
+              label="Cost (approx.)"
+              value={money((totals?.total_actual_cost ?? 0) > 0 ? (totals?.total_actual_cost ?? 0) : (totals?.total_estimated_cost ?? 0))}
+              hint={
+                (totals?.total_actual_cost ?? 0) > 0
+                  ? `billed by providers · ${money(totals?.total_estimated_cost ?? 0)} estimated`
+                  : `Hermes estimate · ${compactNumber(totals?.total_cache_read)} tokens from cache`
+              }
             />
             <Stat label="Sessions" value={compactNumber(totals?.total_sessions)} hint={`last ${days} days`} />
             <Stat label="API calls" value={compactNumber(totals?.total_api_calls)} hint={`${compactNumber(totals?.total_reasoning)} reasoning tokens`} />

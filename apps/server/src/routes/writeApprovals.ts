@@ -2,8 +2,10 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
   APPROVAL_SUBSYSTEMS,
   PENDING_ID,
+  SKILL_NAME,
   WriteApprovalError,
   type ApprovalSubsystem,
+  type MemoryTarget,
   type WriteApprovalBridge,
 } from '../hermes/writeApprovals';
 
@@ -65,6 +67,85 @@ export async function writeApprovalRoutes(
         const result = await opts.bridge.resolve(subsystem, action, id);
         request.log.info({ subsystem, action, id, ok: result.ok }, 'write approval resolved');
         return await reply.send(result);
+      } catch (error) {
+        return fail(reply, request.id, error);
+      }
+    },
+  );
+
+  // MEMORY.md (target "memory") and USER.md (target "user") entries.
+  const targetParam = {
+    type: 'object',
+    required: ['target'],
+    properties: { target: { type: 'string', enum: ['memory', 'user'] } },
+  } as const;
+
+  app.get('/api/memory-files/:target', { schema: { params: targetParam } }, async (request, reply) => {
+    const { target } = request.params as { target: MemoryTarget };
+    try {
+      return await reply.header('cache-control', 'no-store').send(await opts.bridge.memoryEntries(target));
+    } catch (error) {
+      return fail(reply, request.id, error);
+    }
+  });
+
+  app.post(
+    '/api/memory-files/:target',
+    {
+      schema: {
+        params: targetParam,
+        body: {
+          type: 'object',
+          required: ['action'],
+          properties: {
+            action: { type: 'string', enum: ['add', 'replace', 'remove'] },
+            entry: { type: 'string', minLength: 1, maxLength: 20_000 },
+            content: { type: 'string', minLength: 1, maxLength: 20_000 },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { target } = request.params as { target: MemoryTarget };
+      const body = request.body as { action: 'add' | 'replace' | 'remove'; entry?: string; content?: string };
+      const missing =
+        (body.action !== 'remove' && body.content === undefined) || (body.action !== 'add' && body.entry === undefined);
+      if (missing) {
+        return await reply.status(400).send({
+          error: { code: 'INVALID_BODY', message: 'add needs content; replace needs entry and content; remove needs entry.' },
+          requestId: request.id,
+        });
+      }
+      try {
+        const edit =
+          body.action === 'add'
+            ? { action: 'add' as const, content: body.content as string }
+            : body.action === 'remove'
+              ? { action: 'remove' as const, entry: body.entry as string }
+              : { action: 'replace' as const, entry: body.entry as string, content: body.content as string };
+        const result = await opts.bridge.memoryEdit(target, edit);
+        request.log.info({ target, action: body.action, ok: result.ok }, 'memory file edited');
+        return await reply.status(result.ok ? 200 : 422).send(
+          result.ok ? result : { error: { code: 'MEMORY_EDIT_REFUSED', message: result.message }, requestId: request.id },
+        );
+      } catch (error) {
+        return fail(reply, request.id, error);
+      }
+    },
+  );
+
+  app.delete(
+    '/api/skills/:name',
+    { schema: { params: { type: 'object', required: ['name'], properties: { name: { type: 'string', pattern: SKILL_NAME.source } } } } },
+    async (request, reply) => {
+      const { name } = request.params as { name: string };
+      try {
+        const result = await opts.bridge.deleteSkill(name);
+        request.log.info({ skill: name, ok: result.ok }, 'skill delete');
+        return await reply.status(result.ok ? 200 : 422).send(
+          result.ok ? result : { error: { code: 'SKILL_DELETE_REFUSED', message: result.message }, requestId: request.id },
+        );
       } catch (error) {
         return fail(reply, request.id, error);
       }

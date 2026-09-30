@@ -1,3 +1,4 @@
+import type { StoredImage } from '../features/chat/history';
 import type { AppStatus, NormalizedCommand } from '@hermes-webui/shared';
 import { getCsrfToken, notifyAuthRequired } from './auth';
 
@@ -101,6 +102,10 @@ export function fetchSessionDetail(sessionId: string): Promise<{ session: Sessio
 export interface SessionListResponse {
   object: 'list';
   data: SessionRow[];
+}
+
+export function fetchSessionImages(sessionId: string): Promise<{ images: StoredImage[] }> {
+  return requestJson(`/api/sessions/${encodeURIComponent(sessionId)}/images`);
 }
 
 export function fetchSessions(limit = 50): Promise<SessionListResponse> {
@@ -319,6 +324,14 @@ export function fetchModelInfo(): Promise<{
   model: string;
   provider: string;
   effective_context_length?: number;
+  capabilities?: {
+    supports_tools?: boolean;
+    supports_vision?: boolean;
+    supports_reasoning?: boolean;
+    context_window?: number;
+    max_output_tokens?: number;
+    model_family?: string;
+  };
 }> {
   return requestJson('/api/settings/model/info');
 }

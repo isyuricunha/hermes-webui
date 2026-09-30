@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { TriangleAlert } from 'lucide-react';
 
 /**
@@ -233,7 +234,11 @@ export interface MenuItem {
   disabled?: boolean;
 }
 
-/** Small popover menu anchored to its trigger; closes on outside click / Escape. */
+/**
+ * Small popover menu anchored to its trigger; closes on outside click,
+ * Escape, scroll or resize. Rendered in a portal on <body> so no transformed
+ * or clipped ancestor can put it under the page content.
+ */
 export function Menu({
   trigger,
   items,
@@ -245,66 +250,89 @@ export function Menu({
   label: string;
   align?: 'start' | 'end';
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left?: number; right?: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const open = position !== null;
+  const toggle = () => {
+    if (open) {
+      setPosition(null);
+      return;
+    }
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect === undefined) return;
+    const top = rect.bottom + 6;
+    setPosition(
+      align === 'end' ? { top, right: Math.max(8, window.innerWidth - rect.right) } : { top, left: Math.max(8, rect.left) },
+    );
+  };
   useEffect(() => {
     if (!open) return;
+    const close = () => setPosition(null);
     const onDown = (event: MouseEvent) => {
-      if (ref.current !== null && !ref.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (!menuRef.current?.contains(target) && !buttonRef.current?.contains(target)) close();
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') close();
     };
     document.addEventListener('mousedown', onDown);
     window.addEventListener('keydown', onKey);
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
     return () => {
       document.removeEventListener('mousedown', onDown);
       window.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', close);
+      window.removeEventListener('scroll', close, true);
     };
   }, [open]);
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={buttonRef}
         type="button"
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggle}
         className="yu-btn yu-btn-ghost size-8 rounded-lg"
       >
         {trigger}
       </button>
-      {open ? (
-        <div
-          role="menu"
-          aria-label={label}
-          className={[
-            'yu-pop absolute top-full z-50 mt-1.5 min-w-48 rounded-2xl p-1.5',
-            align === 'end' ? 'right-0' : 'left-0',
-          ].join(' ')}
-        >
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              disabled={item.disabled}
-              onClick={() => {
-                setOpen(false);
-                item.onSelect();
-              }}
-              className={[
-                'flex min-h-9 w-full items-center gap-2.5 rounded-xl px-2.5 text-left text-[13px] transition-colors hover:bg-chip disabled:opacity-40',
-                item.danger === true ? 'text-danger' : 'text-text-primary',
-              ].join(' ')}
+      {position !== null
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              aria-label={label}
+              className="yu-pop yu-pop-in fixed z-[70] min-w-48 rounded-2xl p-1.5"
+              style={position}
             >
-              {item.icon !== undefined ? <span className="flex text-text-tertiary [&>svg]:size-4">{item.icon}</span> : null}
-              {item.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
+              {items.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  role="menuitem"
+                  disabled={item.disabled}
+                  onClick={() => {
+                    setPosition(null);
+                    item.onSelect();
+                  }}
+                  className={[
+                    'flex min-h-9 w-full items-center gap-2.5 rounded-xl px-2.5 text-left text-[13px] transition-colors outline-none hover:bg-chip focus-visible:bg-chip disabled:opacity-40',
+                    item.danger === true ? 'text-danger' : 'text-text-primary',
+                  ].join(' ')}
+                >
+                  {item.icon !== undefined ? <span className="flex text-text-tertiary [&>svg]:size-4">{item.icon}</span> : null}
+                  {item.label}
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 
@@ -333,7 +361,9 @@ export function Sheet({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
   if (!open) return null;
-  return (
+  // Portal: a transformed ancestor (the page entrance animation) would
+  // otherwise size this "fixed" panel to the whole page, not the viewport.
+  return createPortal(
     <div className="fixed inset-0 z-[65] flex items-end justify-end md:items-stretch">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" aria-hidden onClick={onClose} />
       <aside
@@ -355,6 +385,7 @@ export function Sheet({
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }

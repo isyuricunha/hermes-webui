@@ -6,6 +6,7 @@ import { toast, toastError } from '../../lib/toast';
 import { Badge, Card, ErrorNote, Section, SkeletonRows, Stat, Switch } from '../../components/ui';
 import { SettingsPage } from './SettingsLayout';
 import { PendingWrites } from './PendingWrites';
+import { MemoryFiles } from './MemoryFiles';
 
 const STATUS: Record<MemoryProviderInfo['status'], { label: string; tone: 'success' | 'warning' | 'neutral' | 'danger' }> = {
   ready: { label: 'Ready', tone: 'success' },
@@ -38,6 +39,12 @@ export function MemoryPage() {
         description="Memory changes Hermes staged for you to review (the /memory command)."
       >
         <PendingWrites subsystem="memory" />
+      </Section>
+      <Section
+        title="What Hermes remembers"
+        description="The built-in memory files, entry by entry. Edits apply to new conversations; a running one picks them up after /new or /reset."
+      >
+        <MemoryFiles />
       </Section>
       {memory.isError ? (
         <ErrorNote message={memory.error.message} onRetry={() => void memory.refetch()} />

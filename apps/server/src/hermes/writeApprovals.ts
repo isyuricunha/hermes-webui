@@ -91,7 +91,29 @@ from tools import write_approval as wa
 def text(value, limit=20000):
     return None if value is None else str(value)[:limit]
 
-if command == 'list':
+extra = sys.argv[5] if len(sys.argv) > 5 else ''
+
+if subsystem == 'memory-file':
+    # Direct MEMORY.md / USER.md edits through Hermes' own store: file lock,
+    # char limits and the same entry format the agent writes.
+    from tools.memory_tool import load_on_disk_store
+    store = load_on_disk_store()
+    if command == 'entries':
+        result = {'entries': list(store._entries_for(target)), 'chars': store._char_count(target),
+                  'limit': store._char_limit(target), 'enabled': store.target_enabled(target)}
+    elif command == 'add':
+        result = store.add(target, extra)
+    elif command == 'replace':
+        entry, new = json.loads(extra)
+        result = store.replace(target, entry, new)
+    elif command == 'remove':
+        result = store.remove(target, extra, matched_entry=extra)
+    else:
+        result = {'success': False, 'error': 'unknown memory command'}
+elif subsystem == 'skill':
+    from tools.skill_manager_tool import _delete_skill
+    result = _delete_skill(target, absorbed_into='') if command == 'delete' else {'success': False, 'error': 'unknown skill command'}
+elif command == 'list':
     items = []
     for record in wa.list_pending(subsystem):
         payload = record.get('payload') or {}
@@ -196,17 +218,23 @@ export class WriteApprovalBridge {
     return this.runtime;
   }
 
-  private async run(subsystem: ApprovalSubsystem, command: string, target = ''): Promise<unknown> {
+  private async run(
+    subsystem: ApprovalSubsystem | 'memory-file' | 'skill',
+    command: string,
+    target = '',
+    extra?: string,
+  ): Promise<unknown> {
     const runtime = await this.resolveRuntime();
     const args = ['-I', '-c', SCRIPT, runtime.source, subsystem, command];
-    if (target !== '') args.push(target);
+    if (target !== '' || extra !== undefined) args.push(target);
+    if (extra !== undefined) args.push(extra);
     const result = await this.exec(runtime.python, args, this.options.timeoutMs ?? 30_000);
     const line = result.stdout.split('\n').find((item) => item.startsWith(MARKER));
     if (result.code !== 0 || line === undefined) {
       const detail = redact(result.stderr.trim().split('\n').slice(-3).join(' ')).text;
       throw new WriteApprovalError(
         'WRITE_APPROVALS_FAILED',
-        `Hermes could not ${command === 'list' ? 'list' : command} pending ${subsystem} writes${detail === '' ? '.' : `: ${detail}`}`,
+        `Hermes could not run ${subsystem} ${command}${detail === '' ? '.' : `: ${detail}`}`,
       );
     }
     return JSON.parse(line.slice(MARKER.length)) as unknown;
@@ -226,4 +254,47 @@ export class WriteApprovalBridge {
     const ok = message !== '' && !/^(No pending|Usage)/.test(message) && !/\nFailed:/.test(message);
     return { ok, message };
   }
+
+  // --- MEMORY.md / USER.md, through Hermes' MemoryStore (lock + char limits) ---
+
+  async memoryEntries(target: MemoryTarget): Promise<MemoryFile> {
+    const data = (await this.run('memory-file', 'entries', target)) as Partial<MemoryFile>;
+    return {
+      entries: Array.isArray(data.entries) ? data.entries.map(String) : [],
+      chars: typeof data.chars === 'number' ? data.chars : 0,
+      limit: typeof data.limit === 'number' ? data.limit : 0,
+      enabled: data.enabled !== false,
+    };
+  }
+
+  async memoryEdit(
+    target: MemoryTarget,
+    edit: { action: 'add'; content: string } | { action: 'replace'; entry: string; content: string } | { action: 'remove'; entry: string },
+  ): Promise<{ ok: boolean; message: string }> {
+    const extra =
+      edit.action === 'add' ? edit.content : edit.action === 'remove' ? edit.entry : JSON.stringify([edit.entry, edit.content]);
+    const data = (await this.run('memory-file', edit.action, target, extra)) as { success?: unknown; error?: unknown; message?: unknown };
+    const ok = data.success === true;
+    const message = String((ok ? data.message : data.error) ?? (ok ? 'Saved.' : 'Hermes refused the change.'));
+    return { ok, message: redact(message).text };
+  }
+
+  // --- Skills: delete (no dashboard route; Hermes' own skill_manage delete) ---
+
+  async deleteSkill(name: string): Promise<{ ok: boolean; message: string }> {
+    if (!SKILL_NAME.test(name)) throw new WriteApprovalError('WRITE_APPROVALS_FAILED', 'Invalid skill name.');
+    const data = (await this.run('skill', 'delete', name)) as { success?: unknown; error?: unknown; message?: unknown };
+    const ok = data.success === true;
+    return { ok, message: String((ok ? data.message : data.error) ?? (ok ? 'Skill deleted.' : 'Hermes refused to delete it.')) };
+  }
+}
+
+export type MemoryTarget = 'memory' | 'user';
+export const SKILL_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+
+export interface MemoryFile {
+  entries: string[];
+  chars: number;
+  limit: number;
+  enabled: boolean;
 }

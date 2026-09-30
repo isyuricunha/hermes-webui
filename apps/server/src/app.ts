@@ -17,6 +17,7 @@ import { writeApprovalRoutes } from './routes/writeApprovals';
 import { WriteApprovalBridge } from './hermes/writeApprovals';
 import { openDatabase } from './db/database';
 import { AuthStore } from './auth/store';
+import { MessageImageStore } from './images';
 import { AuthService } from './auth/service';
 import { LoginRateLimiter, authPlugin, newIpHashSalt } from './auth/plugin';
 import { buildAuthRoutes } from './routes/auth';
@@ -51,6 +52,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const dataDir = options.dataDir ?? config.dataDir;
   const { db } = openDatabase(dataDir);
   const store = new AuthStore(db);
+  const images = new MessageImageStore(db);
   const identity =
     config.authMode === 'hermes'
       ? (options.hermesIdentity ??
@@ -209,8 +211,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     return void reply.send(body);
   });
 
-  await app.register(sessionRoutes, { client: hermes });
-  await app.register(runRoutes, { client: hermes });
+  await app.register(sessionRoutes, { client: hermes, images });
+  await app.register(runRoutes, { client: hermes, images });
   await app.register(cronRoutes, { client: hermes });
   await app.register(settingsRoutes, { dashboard });
   await app.register(hermesProxyRoutes, { dashboard });

@@ -326,3 +326,73 @@ export const speakText = (text: string) =>
     method: 'POST',
     ...json({ text }),
   });
+
+// --- Writes added for full management (profiles, skills, cron, MCP, webhooks) ---
+
+export const renameProfile = (name: string, newName: string) =>
+  requestJson<{ ok: boolean; name: string; display_name?: string }>(`/api/hx/profiles/${encodeURIComponent(name)}`, {
+    method: 'PATCH',
+    ...json({ new_name: newName }),
+  });
+export const setProfileDescription = (name: string, description: string) =>
+  requestJson<{ ok: boolean }>(`/api/hx/profiles/${encodeURIComponent(name)}/description`, {
+    method: 'PUT',
+    ...json({ description }),
+  });
+
+export const saveSkillContent = (name: string, content: string) =>
+  requestJson<{ success: boolean }>('/api/hx/skills/content', { method: 'PUT', ...json({ name, content }) });
+export const createSkill = (name: string, content: string, category?: string) =>
+  requestJson<{ success: boolean }>('/api/hx/skills', { method: 'POST', ...json({ name, content, category: category || null }) });
+export const deleteSkill = (name: string) =>
+  requestJson<{ ok: boolean; message: string }>(`/api/skills/${encodeURIComponent(name)}`, { method: 'DELETE' });
+
+export interface CronJobInput {
+  name: string;
+  schedule: string;
+  prompt: string;
+  deliver: string;
+  skills?: string[] | null;
+  model?: string | null;
+  paused?: boolean;
+}
+export const fetchCronTargets = () =>
+  requestJson<{ targets: { id: string; name: string; home_target_set: boolean }[] }>('/api/hx/cron/delivery-targets');
+export const createCronJob = (input: CronJobInput) =>
+  requestJson<unknown>('/api/hx/cron/jobs', { method: 'POST', ...json(input) });
+export const updateCronJob = (id: string, updates: Partial<CronJobInput>) =>
+  requestJson<unknown>(`/api/hx/cron/jobs/${encodeURIComponent(id)}`, { method: 'PUT', ...json({ updates }) });
+
+export interface McpServerInput {
+  name: string;
+  url?: string;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  auth?: 'none' | 'header' | 'oauth';
+  bearer_token?: string;
+}
+export const addMcpServer = (input: McpServerInput) =>
+  requestJson<unknown>('/api/hx/mcp/servers', { method: 'POST', ...json(input) });
+export const removeMcpServer = (name: string) =>
+  requestJson<unknown>(`/api/hx/mcp/servers/${encodeURIComponent(name)}`, { method: 'DELETE' });
+
+export const enableWebhooks = () =>
+  requestJson<{ ok: boolean; needs_restart?: boolean }>('/api/hx/webhooks/enable', { method: 'POST', ...json({}) });
+export const deleteWebhook = (name: string) =>
+  requestJson<unknown>(`/api/hx/webhooks/${encodeURIComponent(name)}`, { method: 'DELETE' });
+
+// --- MEMORY.md / USER.md (server bridge to Hermes' MemoryStore) ---
+
+export type MemoryTarget = 'memory' | 'user';
+export interface MemoryFile {
+  entries: string[];
+  chars: number;
+  limit: number;
+  enabled: boolean;
+}
+export const fetchMemoryFile = (target: MemoryTarget) => requestJson<MemoryFile>(`/api/memory-files/${target}`);
+export const editMemoryFile = (
+  target: MemoryTarget,
+  edit: { action: 'add'; content: string } | { action: 'replace'; entry: string; content: string } | { action: 'remove'; entry: string },
+) => requestJson<{ ok: boolean; message: string }>(`/api/memory-files/${target}`, { method: 'POST', ...json(edit) });

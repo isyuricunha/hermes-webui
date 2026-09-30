@@ -4,6 +4,23 @@ All notable changes to Hermes WebUI are documented here.
 
 ## Post-RC1
 
+### Round 3 (review fixes)
+- **New chat** no longer creates an empty conversation: it opens the composer, and the conversation is created when the first message is sent.
+- **Sent images survive reloads**: Hermes stores image parts as "[screenshot]", so the WebUI keeps the images it sends (SQLite) and puts them back in history; they open in the lightbox. Plugin-injected context (e.g. `[LIVE-TIME]`) folds out of the bubble.
+- Titles refresh on their own after Hermes names a conversation.
+- **Chat model picker** reads Hermes 0.21's catalog (`providers[].models`) with search, grouped by provider; no native selects left.
+- Menus and side panels render in a portal (menus were painted under the page; the skill panel stretched to the page height). Toasts moved to the top right with an entrance animation and a tone edge.
+- **Models** page: default model with capabilities, searchable catalog to change it (with confirmations), recent usage per model, provider readiness.
+- **Profiles**: names fall back to the folder name, real Rename and Edit description actions, selection shown with a check.
+- **Memory**: MEMORY.md and USER.md entry by entry, add/edit/delete through Hermes' own store (lock + char limits).
+- **Skills**: edit SKILL.md, delete (Hermes' skill_manage), create new skills.
+- **Cron**: create and edit jobs (schedule presets, delivery target, skills).
+- **Webhooks**: turn the platform on from here; delete subscriptions. **MCP**: add (URL or command), remove, enable/disable, test.
+- **Environment**: change or set any variable (values stay masked). **Raw Config** links the Hermes configuration docs.
+- **Usage**: cost labeled as an approximation with its source; provider-billed cost preferred over the estimate (no double counting); the y axis fits cost labels.
+- Every change that only reaches new conversations says so (/new or /reset for a running one): SOUL, default model, skills, tools, memory, MCP, environment.
+- Migrations take the write lock before checking (two processes opening one database could race).
+
 ### Added (Hermes parity)
 - **Files the assistant sends** (`MEDIA:/path` tags, as used on Telegram): images render inline (click to enlarge, download), audio and video get players, documents become download cards. Files come through a guarded `/api/hx/fs/download` (absolute path, media/document extensions only, credential folders and system roots refused, sandboxed response); tags inside code stay text.
 - **Memory write approvals** (`memory.write_approval`): Settings > Memory lists the writes Hermes staged, with approve/reject (one or all) and the gate switch; `/memory [pending|approve|reject|approval]` works in chat; a staged Memory tool card gets Approve/Reject inline. Skills get the same queue in Settings > Skills. The server runs Hermes' own `/memory` handler in Hermes' runtime (found via `hermes --print-runtime-command`, or `HERMES_PYTHON` + `HERMES_SOURCE_DIR`).

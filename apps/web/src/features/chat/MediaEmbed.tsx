@@ -23,7 +23,7 @@ function Unavailable({ path, reason }: { path: string; reason: string }) {
   );
 }
 
-function Lightbox({ src, name, onClose }: { src: string; name: string; onClose: () => void }) {
+export function Lightbox({ src, name, onClose }: { src: string; name: string; onClose: () => void }) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();

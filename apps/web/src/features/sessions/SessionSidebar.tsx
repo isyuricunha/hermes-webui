@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { PanelLeftClose, PanelLeftOpen, Search, Settings, SquarePen } from 'lucide-react';
 import {
-  createSession,
   deleteSession,
   fetchAppStatus,
   fetchSessions,
@@ -16,6 +15,7 @@ import { AccountMenu } from '../auth/AccountMenu';
 import { derivedTitle } from '../../lib/sessionTitles';
 import { confirmDialog } from '../../lib/dialog';
 import { toast, toastError } from '../../lib/toast';
+import { FOCUS_COMPOSER_EVENT } from '../../lib/events';
 import { SessionItem } from './SessionItem';
 import { SessionSearch } from './SessionSearch';
 
@@ -105,15 +105,16 @@ export function SessionSidebar({
     void queryClient.invalidateQueries({ queryKey: ['sessions'] });
   };
 
-  const newChat = useMutation({
-    mutationFn: () => createSession({}),
-    onSuccess: (created) => {
-      invalidate();
-      void navigate({ to: '/chat/$sessionId', params: { sessionId: created.session.id } });
+  // A new chat is just the empty composer: the conversation is created when
+  // the first message is sent, so abandoned "New chat" rows never pile up.
+  const newChat = {
+    isPending: false,
+    mutate: () => {
+      void navigate({ to: '/' });
       onNavigate?.();
+      window.setTimeout(() => window.dispatchEvent(new Event(FOCUS_COMPOSER_EVENT)), 50);
     },
-    onError: (error) => toastError(error),
-  });
+  };
 
   const patch = useMutation({
     mutationFn: ({ id, body }: { id: string; body: { title?: string; pinned?: boolean; archived?: boolean } }) =>

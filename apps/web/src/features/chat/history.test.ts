@@ -47,3 +47,50 @@ describe('splitContent', () => {
     }
   });
 });
+
+describe('images Hermes stored as "[screenshot]"', () => {
+  const images = [
+    { id: 7, sent_at: 1000_000 + 1500, position: 0, mime: 'image/png' },
+    { id: 8, sent_at: 1000_000 + 1500, position: 1, mime: 'image/png' },
+    { id: 9, sent_at: 5000_000, position: 0, mime: 'image/jpeg' },
+  ];
+
+  it('puts back the images the WebUI kept for the closest send', () => {
+    const items = historyToItems(
+      [row({ id: 1, role: 'user', timestamp: 1000, content: '[screenshot]\n[screenshot]\nwhat is this?' })],
+      images,
+    );
+    expect(items[0]).toMatchObject({
+      kind: 'message',
+      content: 'what is this?',
+      attachments: [
+        { kind: 'image', url: '/api/images/7' },
+        { kind: 'image', url: '/api/images/8' },
+      ],
+    });
+  });
+
+  it('shows a placeholder chip when no kept image is close enough (sent from Telegram, or before this feature)', () => {
+    const items = historyToItems([row({ id: 1, role: 'user', timestamp: 99999, content: '[screenshot]' })], images);
+    expect(items[0]).toMatchObject({ content: '', attachments: [{ kind: 'image', name: 'image (not kept)' }] });
+  });
+
+  it('uses each send once', () => {
+    const items = historyToItems(
+      [
+        row({ id: 1, role: 'user', timestamp: 5000, content: '[screenshot]' }),
+        row({ id: 2, role: 'user', timestamp: 5001, content: '[screenshot]' }),
+      ],
+      images,
+    );
+    expect(items[0]).toMatchObject({ attachments: [{ url: '/api/images/9' }] });
+    expect(items[1]).toMatchObject({ attachments: [{ name: 'image (not kept)' }] });
+  });
+
+  it('folds plugin-injected context out of the bubble', () => {
+    const items = historyToItems([
+      row({ id: 1, role: 'user', content: 'oi\n[LIVE-TIME] Now: 2026-09-30 03:33\nStanding rules...' }),
+    ]);
+    expect(items[0]).toMatchObject({ content: 'oi', injected: '[LIVE-TIME] Now: 2026-09-30 03:33\nStanding rules...' });
+  });
+});

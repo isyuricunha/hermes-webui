@@ -268,6 +268,22 @@ body {
   box-shadow: var(--yu-highlight), var(--yu-shadow-pop);
 }
 
+/* Popover / toast entrance (off under reduced motion). */
+@keyframes yu-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+.yu-pop-in {
+  animation: yu-pop-in 0.16s cubic-bezier(0.2, 0, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .yu-pop-in {
+    animation: none;
+  }
+}
+
 .yu-btn {
   display: inline-flex;
   align-items: center;

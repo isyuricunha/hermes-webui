@@ -29,20 +29,29 @@ describe('tool payload formatting', () => {
   });
 });
 
-describe('model picker option normalization (operator UI shows real ids)', () => {
-  it('keeps real provider/model pairs from string options', async () => {
-    const { normalizeOptions } = await import('./ModelPicker');
-    const options = normalizeOptions({ options: ['example/model-large', 'provider-b/vendor/model-x'] });
-    expect(options).toContainEqual({ provider: 'example', model: 'model-large' });
-    expect(options.every((option) => option.provider !== '' && option.model !== '')).toBe(true);
+describe('model catalog normalization (operator UI shows real ids)', () => {
+  it('reads the Hermes 0.21 providers shape (the chat picker showed "unavailable" on it)', async () => {
+    const { normalizeCatalog, pickableProviders } = await import('../../lib/modelCatalog');
+    const providers = normalizeCatalog({
+      providers: [
+        { slug: 'provider-b', name: 'Provider B', authenticated: false, models: ['vendor/model-x'] },
+        { slug: 'custom:example', name: 'Example Provider', is_current: true, models: ['model-large', { id: 'model-small', name: 'Model Small' }] },
+        { slug: 'nous', name: 'Nous', models: [] },
+      ],
+    });
+    const pickable = pickableProviders(providers);
+    expect(pickable.map((p) => p.slug)).toEqual(['custom:example']);
+    expect(pickable[0]!.models).toEqual([
+      { id: 'model-large', label: 'model-large' },
+      { id: 'model-small', label: 'Model Small' },
+    ]);
   });
 
-  it('keeps object options with provider/model fields', async () => {
-    const { normalizeOptions } = await import('./ModelPicker');
-    const options = normalizeOptions({
-      options: [{ provider: 'nous', model: 'vendor/model-x' }],
-    });
-    expect(options).toEqual([{ provider: 'nous', model: 'vendor/model-x' }]);
+  it('still reads the older flat options list, keeping slashes inside model ids', async () => {
+    const { normalizeCatalog } = await import('../../lib/modelCatalog');
+    const providers = normalizeCatalog({ options: ['example/model-large', 'provider-b/vendor/model-x', { provider: 'nous', model: 'hermes-5' }] });
+    expect(providers.find((p) => p.slug === 'provider-b')?.models).toEqual([{ id: 'vendor/model-x', label: 'vendor/model-x' }]);
+    expect(providers.find((p) => p.slug === 'nous')?.models[0]?.id).toBe('hermes-5');
   });
 });
 

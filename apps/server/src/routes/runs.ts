@@ -3,6 +3,7 @@ import type { ReadableStream as NodeWebReadableStream } from 'node:stream/web';
 import type { FastifyInstance } from 'fastify';
 import type { HermesClient } from '../hermes/client';
 import { sendHermesError } from '../hermes/errors';
+import type { MessageImageStore } from '../images';
 
 type RunInputPart =
   | { type: 'text'; text: string }
@@ -15,7 +16,7 @@ type RunInputPart =
  */
 export async function runRoutes(
   app: FastifyInstance,
-  opts: { client: HermesClient },
+  opts: { client: HermesClient; images?: MessageImageStore },
 ): Promise<void> {
   const client = opts.client;
   // A message is plain text, or text plus images (vision parts). Images
@@ -95,6 +96,13 @@ export async function runRoutes(
           ? [{ role: 'user' as const, content: body.input }]
           : body.input;
         const payload = await client.createRun({ ...body, input }, crypto.randomUUID());
+        if (images.length > 0 && body.session_id !== undefined) {
+          try {
+            opts.images?.saveSend(body.session_id, images.map((part) => (part as { image_url: { url: string } }).image_url.url));
+          } catch (error) {
+            request.log.warn({ err: error }, 'could not keep sent images for history');
+          }
+        }
         return await reply.send(payload);
       } catch (error) {
         return sendHermesError(reply, request.id, error);

@@ -39,12 +39,15 @@ export function ColumnChart({
   const top = ticks[ticks.length - 1] || 1;
   const labelEvery = Math.max(1, Math.ceil(data.length / 6));
   const current = active === null ? undefined : data[active];
+  // The y axis is as wide as its longest label (cost labels like "$0.025"
+  // overflowed a fixed 40px into the plot).
+  const axisWidth = Math.max(28, Math.max(...ticks.map((tick) => format(tick).length)) * 6.4 + 6);
 
   return (
     <figure aria-label={label} className="m-0">
       <div className="flex gap-2">
         {/* y axis */}
-        <div className="relative w-10 shrink-0" style={{ height }} aria-hidden>
+        <div className="relative shrink-0" style={{ height, width: axisWidth }} aria-hidden>
           {ticks.map((tick) => (
             <span
               key={tick}

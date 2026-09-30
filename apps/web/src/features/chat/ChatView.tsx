@@ -10,6 +10,7 @@ import {
   fetchAppStatus,
   fetchCommands,
   fetchRun,
+  fetchSessionImages,
   fetchSessionMessages,
   fetchSessionModel,
   stopRun,
@@ -115,6 +116,9 @@ function TranscriptItemView({
 
 // --- Chat view ---------------------------------------------------------------
 
+/** Messages typed on "/" waiting for their new conversation's view to mount. */
+const pendingFirstSends = new Map<string, { text: string; attachments: PendingAttachment[] }>();
+
 type ChatAction =
   | { type: 'reset'; items: TranscriptItem[]; sessionId: string; force?: boolean }
   | { type: 'event'; frame: Parameters<typeof applyEvent>[1]; sessionId: string }
@@ -204,6 +208,18 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
   const [nearBottom, setNearBottom] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Hermes titles a conversation after its first reply, a few seconds after
+  // the run ends: refresh the sidebar and header now and once more later.
+  const refreshSessionMeta = useCallback(() => {
+    const refresh = () => {
+      void queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      if (sessionId !== undefined) void queryClient.invalidateQueries({ queryKey: ['session-detail', sessionId] });
+    };
+    refresh();
+    window.setTimeout(refresh, 6000);
+    window.setTimeout(refresh, 20000);
+  }, [queryClient, sessionId]);
+
   // Remember the last visited session so "Back to Chat" from Settings
   // restores this conversation (navigation.ts).
   useEffect(() => {
@@ -217,13 +233,20 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     enabled: sessionId !== undefined,
   });
 
+  const imagesQuery = useQuery({
+    queryKey: ['session-images', sessionId],
+    queryFn: () => fetchSessionImages(sessionId as string),
+    enabled: sessionId !== undefined,
+  });
+  const storedImages = imagesQuery.data?.images;
+
   useEffect(() => {
-    if (sessionId === undefined || !messagesQuery.data) {
+    if (sessionId === undefined || !messagesQuery.data || imagesQuery.isPending) {
       return;
     }
-    const items = historyToItems(messagesQuery.data.data);
+    const items = historyToItems(messagesQuery.data.data, storedImages ?? []);
     dispatch({ type: 'reset', items, sessionId, force: true });
-  }, [sessionId, messagesQuery.data]);
+  }, [sessionId, messagesQuery.data, storedImages, imagesQuery.isPending]);
 
   // Resume: a registry run either streams or has reached a terminal state.
   useEffect(() => {
@@ -306,12 +329,13 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         // transcript (runDone=false), and a still-set run id would make the
         // resume effect append the final output a second time.
         setActiveRunId(null);
+        void queryClient.invalidateQueries({ queryKey: ['session-images', sessionId] });
         void queryClient.invalidateQueries({ queryKey: ['messages', sessionId] });
-        void queryClient.invalidateQueries({ queryKey: ['session-detail', sessionId] });
+        refreshSessionMeta();
         notifyRunFinished(frame.type, frame.type === 'run.completed' ? String((frame as { output?: unknown }).output ?? '') : '');
       }
     },
-    [sessionId, queryClient],
+    [sessionId, queryClient, refreshSessionMeta],
   );
 
   useRunStream(activeRunId, handleEvent);
@@ -509,13 +533,18 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     setError(null);
     setSending(true);
     try {
-      let targetSession = sessionId;
       const titleSeed = text !== '' ? text : (attachments[0]?.name ?? 'Attachment');
-      if (targetSession === undefined) {
+      if (sessionId === undefined) {
+        // A conversation exists only once something is sent: create it now and
+        // hand the message to that conversation's own view.
         const created = await createSession({ title: titleSeed.slice(0, 60) });
-        targetSession = created.session.id;
+        rememberDerivedTitle(created.session.id, titleSeed);
+        pendingFirstSends.set(created.session.id, { text, attachments });
         void queryClient.invalidateQueries({ queryKey: ['sessions'] });
+        void navigate({ to: '/chat/$sessionId', params: { sessionId: created.session.id } });
+        return;
       }
+      const targetSession = sessionId;
       rememberDerivedTitle(targetSession, titleSeed);
       dispatch({
         type: 'appendUser',
@@ -530,15 +559,29 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       const run = await createRun(buildRunInput(text, attachments), targetSession);
       saveActiveRunId(targetSession, run.run_id);
       setActiveRunId(run.run_id);
-      if (targetSession !== sessionId) {
-        window.history.replaceState(null, '', `/chat/${encodeURIComponent(targetSession)}`);
-      }
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : 'Failed to start the run.');
     } finally {
       setSending(false);
     }
   };
+
+  // The first message of a conversation started on "/" is sent from here,
+  // once the (empty) history has loaded so the reset cannot drop it.
+  useEffect(() => {
+    if (sessionId === undefined || !messagesQuery.data || imagesQuery.isPending) return;
+    if (!pendingFirstSends.has(sessionId)) return;
+    // Deferred (not a synchronous setState in the effect); taken inside the
+    // timer so a StrictMode remount cannot drop it.
+    const timer = window.setTimeout(() => {
+      const pending = pendingFirstSends.get(sessionId);
+      if (pending === undefined) return;
+      pendingFirstSends.delete(sessionId);
+      void send(pending.text, pending.attachments);
+    }, 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, messagesQuery.data, imagesQuery.isPending]);
 
   // Retry re-sends the last user turn (images included) as a new run.
   const lastUser = [...transcript.items]

@@ -1,162 +1,209 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { KeyRound, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { deleteEnv, fetchEnv, putEnv } from '../../lib/api';
 import { confirmDialog } from '../../lib/dialog';
-import { SettingsError, SettingsPage } from './SettingsLayout';
+import { toast, toastError } from '../../lib/toast';
+import { Card, ErrorNote, Segmented, SkeletonRows } from '../../components/ui';
+import { SettingsPage } from './SettingsLayout';
+
+const RESTART_NOTE = 'New conversations read it; the gateway (Telegram, cron) picks it up after a restart in Settings > System.';
+
+function ValueForm({
+  name,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  name: string;
+  busy: boolean;
+  onSave: (value: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState('');
+  return (
+    <form
+      className="mt-2.5 flex items-center gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (value !== '') onSave(value);
+      }}
+    >
+      <input
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        type="password"
+        autoComplete="off"
+        autoFocus
+        aria-label={`New value for ${name}`}
+        placeholder="New value (the current one is never shown)"
+        className="yu-input h-9 min-w-0 flex-1 px-3 font-mono text-[13px]"
+      />
+      <button type="button" onClick={onCancel} aria-label="Cancel" className="yu-btn yu-btn-ghost size-9 rounded-lg">
+        <X className="size-4" aria-hidden />
+      </button>
+      <button type="submit" disabled={busy || value === ''} className="yu-btn yu-btn-primary h-9 px-3.5 text-[13px]">
+        Save
+      </button>
+    </form>
+  );
+}
 
 /**
- * Environment / secrets (PRD 32). Values are only ever shown masked by the
- * dashboard; the WebUI never displays a secret value and requires explicit
- * confirmation before removing a key.
+ * Environment / secrets (PRD 32). The dashboard only ever returns masked
+ * values; editing means typing a new value, removing asks first.
  */
 export function EnvPage() {
   const queryClient = useQueryClient();
   const envQuery = useQuery({ queryKey: ['env'], queryFn: fetchEnv });
   const [filter, setFilter] = useState('');
-  const [onlySet, setOnlySet] = useState(false);
+  const [show, setShow] = useState<'set' | 'all'>('set');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [newKey, setNewKey] = useState('');
-  const [newValue, setNewValue] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
 
-  const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ['env'] });
-  };
-
+  const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['env'] });
   const setVar = useMutation({
     mutationFn: ({ key, value }: { key: string; value: string }) => putEnv(key, value),
-    onSuccess: (_data, variables) => {
-      setMessage(`${variables.key} saved.`);
+    onSuccess: (_data, { key }) => {
+      toast(`${key} saved. ${RESTART_NOTE}`, 'success', { durationMs: 7000 });
+      setEditing(null);
+      setAdding(false);
       setNewKey('');
-      setNewValue('');
       invalidate();
     },
-    onError: (error) => setMessage(error.message),
+    onError: (error) => toastError(error),
   });
-
   const removeVar = useMutation({
     mutationFn: (key: string) => deleteEnv(key),
     onSuccess: (_data, key) => {
-      setMessage(`${key} removed.`);
+      toast(`${key} removed.`, 'success');
       invalidate();
     },
-    onError: (error) => setMessage(error.message),
+    onError: (error) => toastError(error),
   });
 
-  if (envQuery.isPending) {
-    return (
-      <SettingsPage title="Environment">
-        <p className="text-sm text-text-secondary">Loading environment…</p>
-      </SettingsPage>
-    );
-  }
-  if (envQuery.isError) {
-    return (
-      <SettingsPage title="Environment">
-        <SettingsError message={envQuery.error.message} />
-      </SettingsPage>
-    );
-  }
-
-  const all = Object.entries(envQuery.data);
+  const all = Object.entries(envQuery.data ?? {});
+  const needle = filter.trim().toLowerCase();
   const filtered = all
-    .filter(([, info]) => (onlySet ? info.is_set : true))
-    .filter(([name]) => name.toLowerCase().includes(filter.trim().toLowerCase()));
+    .filter(([, info]) => (show === 'set' ? info.is_set : true))
+    .filter(([name, info]) => `${name} ${info.description ?? ''}`.toLowerCase().includes(needle));
 
   return (
-    <SettingsPage title="Environment">
-      <p className="mb-3 text-xs text-text-secondary">
-        Secrets live in Hermes' .env and are always shown masked. Values never leave the server
-        unmasked (PRD 32).
-      </p>
-
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-          placeholder="Filter variables…"
-          aria-label="Filter environment variables"
-          className="h-9 flex-1 yu-card rounded-2xl px-3 text-sm outline-none focus:border-accent"
-        />
-        <label className="flex items-center gap-1.5 text-xs text-text-secondary">
-          <input type="checkbox" checked={onlySet} onChange={(event) => setOnlySet(event.target.checked)} />
-          only set
+    <SettingsPage
+      title="Environment"
+      description="API keys and settings in Hermes' .env. Values are always masked; to change one, type the new value."
+      actions={
+        <button type="button" onClick={() => setAdding(true)} className="yu-btn yu-btn-tonal h-9 gap-1.5 px-3.5 text-[13px]">
+          <Plus className="size-4" aria-hidden /> Add variable
+        </button>
+      }
+    >
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <label className="yu-input flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl px-3">
+          <Search className="size-4 shrink-0 text-text-tertiary" aria-hidden />
+          <input
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            placeholder="Filter variables"
+            aria-label="Filter environment variables"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-text-tertiary"
+          />
         </label>
+        <Segmented
+          label="Show"
+          value={show}
+          onChange={setShow}
+          options={[
+            { value: 'set', label: 'Set' },
+            { value: 'all', label: 'All known' },
+          ]}
+        />
       </div>
 
-      <form
-        className="mb-4 flex flex-col gap-2 yu-card rounded-2xl p-3 sm:flex-row sm:items-end"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (newKey.trim() !== '' && newValue !== '') {
-            setVar.mutate({ key: newKey.trim(), value: newValue });
-          }
-        }}
-      >
-        <input
-          value={newKey}
-          onChange={(event) => setNewKey(event.target.value)}
-          placeholder="VARIABLE_NAME"
-          aria-label="Variable name"
-          className="h-9 w-full rounded-lg border border-border-subtle bg-surface px-3 font-mono text-xs outline-none focus:border-accent sm:w-56"
-        />
-        <input
-          value={newValue}
-          onChange={(event) => setNewValue(event.target.value)}
-          placeholder="value"
-          aria-label="Variable value"
-          type="password"
-          className="h-9 min-w-0 flex-1 yu-input px-3 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={newKey.trim() === '' || newValue === '' || setVar.isPending}
-          className="yu-btn yu-btn-primary h-9 px-3 text-sm"
-        >
-          Save
-        </button>
-      </form>
-
-      {message ? <p className="mb-3 text-xs text-text-secondary">{message}</p> : null}
-
-      <ul className="space-y-1.5">
-        {filtered.map(([name, info]) => (
-          <li
-            key={name}
-            className="flex flex-wrap items-center justify-between gap-2 yu-card rounded-2xl px-3 py-2"
-          >
-            <div className="min-w-0">
-              <p className="truncate font-mono text-xs font-medium">{name}</p>
-              <p className="truncate text-[11px] text-text-secondary">
-                {info.description ?? (info.is_set ? 'set' : 'not set')}
-                {info.is_set && info.redacted_value ? ` · ${info.redacted_value}` : ''}
-              </p>
-            </div>
-            {info.is_set ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void confirmDialog({
-                    title: `Remove ${name}?`,
-                    description: 'The variable is deleted from the Hermes .env. Anything that needs it stops working until it is set again.',
-                    confirmLabel: 'Remove',
-                    tone: 'danger',
-                  }).then((ok) => {
-                    if (ok) removeVar.mutate(name);
-                  });
-                }}
-                className="yu-btn yu-btn-danger h-7 shrink-0 rounded-lg px-2 text-[11px]"
-              >
-                Remove
+      {adding ? (
+        <Card className="mb-4 p-4">
+          <p className="mb-2 text-sm font-medium text-text-primary">New variable</p>
+          <input
+            value={newKey}
+            onChange={(event) => setNewKey(event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'))}
+            placeholder="VARIABLE_NAME"
+            aria-label="Variable name"
+            className="yu-input h-9 w-full px-3 font-mono text-[13px]"
+          />
+          {newKey.trim() !== '' ? (
+            <ValueForm
+              name={newKey}
+              busy={setVar.isPending}
+              onCancel={() => {
+                setAdding(false);
+                setNewKey('');
+              }}
+              onSave={(value) => setVar.mutate({ key: newKey.trim(), value })}
+            />
+          ) : (
+            <div className="mt-2.5 flex justify-end">
+              <button type="button" onClick={() => setAdding(false)} className="yu-btn yu-btn-ghost h-8 px-3 text-xs">
+                Cancel
               </button>
-            ) : (
-              <span className="shrink-0 text-[11px] text-text-secondary">not set</span>
-            )}
-          </li>
-        ))}
-        {filtered.length === 0 ? (
-          <li className="px-1 py-2 text-sm text-text-secondary">No variables match.</li>
-        ) : null}
-      </ul>
+            </div>
+          )}
+        </Card>
+      ) : null}
+
+      {envQuery.isError ? (
+        <ErrorNote message={envQuery.error.message} onRetry={() => void envQuery.refetch()} />
+      ) : envQuery.isPending ? (
+        <SkeletonRows rows={5} />
+      ) : (
+        <Card>
+          <ul className="divide-y divide-border-subtle">
+            {filtered.map(([name, info]) => (
+              <li key={name} className="px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <KeyRound className={['size-4 shrink-0', info.is_set ? 'text-success' : 'text-text-tertiary'].join(' ')} aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-mono text-[13px] text-text-primary">{name}</p>
+                    <p className="truncate text-[11.5px] text-text-tertiary">
+                      {info.is_set ? (info.redacted_value ?? 'set') : 'not set'}
+                      {info.description ? ` · ${info.description}` : ''}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(editing === name ? null : name)}
+                    className="yu-btn yu-btn-ghost h-8 gap-1.5 px-2.5 text-xs"
+                  >
+                    <Pencil className="size-3.5" aria-hidden /> {info.is_set ? 'Change' : 'Set'}
+                  </button>
+                  {info.is_set ? (
+                    <button
+                      type="button"
+                      aria-label={`Remove ${name}`}
+                      onClick={async () => {
+                        const ok = await confirmDialog({
+                          title: `Remove ${name}?`,
+                          description: 'The variable is deleted from the Hermes .env. Anything that needs it stops working until it is set again.',
+                          confirmLabel: 'Remove',
+                          tone: 'danger',
+                        });
+                        if (ok) removeVar.mutate(name);
+                      }}
+                      className="yu-btn yu-btn-ghost size-8 rounded-lg hover:text-danger"
+                    >
+                      <Trash2 className="size-3.5" aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
+                {editing === name ? (
+                  <ValueForm name={name} busy={setVar.isPending} onCancel={() => setEditing(null)} onSave={(value) => setVar.mutate({ key: name, value })} />
+                ) : null}
+              </li>
+            ))}
+            {filtered.length === 0 ? <li className="px-4 py-4 text-[13px] text-text-secondary">No variables match.</li> : null}
+          </ul>
+        </Card>
+      )}
     </SettingsPage>
   );
 }

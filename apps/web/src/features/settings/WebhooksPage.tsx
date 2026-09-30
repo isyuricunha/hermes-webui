@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, Webhook } from 'lucide-react';
-import { fetchWebhooks, setWebhookEnabled, type WebhookRoute } from '../../lib/hx';
+import { Copy, MoreHorizontal, Power, Trash2, Webhook } from 'lucide-react';
+import { deleteWebhook, enableWebhooks, fetchWebhooks, setWebhookEnabled, type WebhookRoute } from '../../lib/hx';
+import { confirmDialog } from '../../lib/dialog';
 import { copyText } from '../../lib/clipboard';
 import { relativeTime } from '../../lib/format';
 import { toast, toastError } from '../../lib/toast';
-import { Badge, Card, EmptyNote, ErrorNote, SkeletonRows, Switch } from '../../components/ui';
+import { Badge, Card, EmptyNote, ErrorNote, Menu, SkeletonRows, Switch } from '../../components/ui';
 import { SettingsPage } from './SettingsLayout';
 
 type WebhooksData = Awaited<ReturnType<typeof fetchWebhooks>>;
@@ -37,6 +38,31 @@ export function WebhooksPage() {
     onSuccess: (_data, { name, enabled }) => toast(`${name} ${enabled ? 'enabled' : 'paused'}.`, 'success'),
   });
 
+  const turnOn = useMutation({
+    mutationFn: enableWebhooks,
+    onSuccess: (result) => {
+      toast(result.needs_restart === true ? 'Webhooks on. Restart the gateway (Settings > System) to start listening.' : 'Webhooks on. The gateway restarted to listen for them.', 'success');
+      void queryClient.invalidateQueries({ queryKey: ['webhooks'] });
+    },
+    onError: (error) => toastError(error),
+  });
+  const remove = async (name: string) => {
+    const ok = await confirmDialog({
+      title: `Delete webhook ${name}?`,
+      description: 'Its URL stops working immediately. Services still calling it get an error.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await deleteWebhook(name);
+      toast(`${name} deleted.`, 'success');
+      void queryClient.invalidateQueries({ queryKey: ['webhooks'] });
+    } catch (error) {
+      toastError(error);
+    }
+  };
+
   return (
     <SettingsPage title="Webhooks" description="Events from other services that wake Hermes with a prompt.">
       {hooks.isError ? (
@@ -44,9 +70,29 @@ export function WebhooksPage() {
       ) : hooks.isPending ? (
         <SkeletonRows rows={3} />
       ) : !hooks.data.enabled ? (
-        <EmptyNote icon={<Webhook className="size-6" />} title="Webhooks are off">
-          Turn the webhook platform on in the Hermes dashboard (Channels) to receive events.
-        </EmptyNote>
+        <Card className="flex flex-col items-center px-6 py-10 text-center">
+          <Webhook className="mb-3 size-6 text-text-tertiary" aria-hidden />
+          <p className="text-sm font-medium text-text-primary">Webhooks are off</p>
+          <p className="mt-1 max-w-sm text-[13px] text-text-secondary">
+            The webhook platform is disabled in Hermes, so no URL is listening. Turning it on writes the setting and restarts the gateway (a few seconds offline).
+          </p>
+          <button
+            type="button"
+            disabled={turnOn.isPending}
+            onClick={async () => {
+              const ok = await confirmDialog({
+                title: 'Turn webhooks on?',
+                description: 'Hermes enables the webhook platform and restarts the gateway. Running replies are interrupted.',
+                confirmLabel: 'Turn on',
+              });
+              if (ok) turnOn.mutate();
+            }}
+            className="yu-btn yu-btn-primary mt-4 h-9 gap-1.5 px-4 text-[13px]"
+          >
+            <Power className="size-4" aria-hidden />
+            {turnOn.isPending ? 'Turning on…' : 'Turn on webhooks'}
+          </button>
+        </Card>
       ) : hooks.data.subscriptions.length === 0 ? (
         <EmptyNote icon={<Webhook className="size-6" />} title="No webhooks yet">
           Create one with <code className="font-mono text-xs">hermes webhooks add</code> or in the dashboard.
@@ -70,6 +116,11 @@ export function WebhooksPage() {
                   label={`${hook.name} enabled`}
                   checked={hook.enabled}
                   onChange={(next) => toggle.mutate({ name: hook.name, enabled: next })}
+                />
+                <Menu
+                  label={`Actions for ${hook.name}`}
+                  trigger={<MoreHorizontal className="size-4" aria-hidden />}
+                  items={[{ label: 'Delete', icon: <Trash2 />, danger: true, onSelect: () => void remove(hook.name) }]}
                 />
               </div>
               <div className="mt-3 flex items-center gap-2 rounded-xl bg-surface-input px-3 py-2">

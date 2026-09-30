@@ -21,6 +21,8 @@ export interface TranscriptMessage {
   /** Unix seconds, when known. */
   timestamp?: number;
   attachments?: MessageAttachment[];
+  /** Context a Hermes plugin appended to the user turn (shown collapsed). */
+  injected?: string;
 }
 
 export interface TranscriptCommentary {
