@@ -30,45 +30,45 @@ export async function runRoutes(
           type: 'object',
           required: ['input'],
           properties: {
+            // One union type instead of anyOf: Fastify's Ajv coerces types
+            // ("array" mode), and inside anyOf the string branch unwrapped a
+            // one-element array (an image with no text) before the array
+            // branch ever saw it. Length keywords only apply to their type.
             input: {
-              anyOf: [
-                { type: 'string', minLength: 1 },
-                {
-                  type: 'array',
-                  minItems: 1,
-                  maxItems: 11,
-                  items: {
-                    anyOf: [
-                      {
+              type: ['string', 'array'],
+              minLength: 1,
+              minItems: 1,
+              maxItems: 11,
+              items: {
+                anyOf: [
+                  {
+                    type: 'object',
+                    required: ['type', 'text'],
+                    properties: { type: { const: 'text' }, text: { type: 'string' } },
+                    additionalProperties: false,
+                  },
+                  {
+                    type: 'object',
+                    required: ['type', 'image_url'],
+                    properties: {
+                      type: { const: 'image_url' },
+                      image_url: {
                         type: 'object',
-                        required: ['type', 'text'],
-                        properties: { type: { const: 'text' }, text: { type: 'string' } },
-                        additionalProperties: false,
-                      },
-                      {
-                        type: 'object',
-                        required: ['type', 'image_url'],
+                        required: ['url'],
                         properties: {
-                          type: { const: 'image_url' },
-                          image_url: {
-                            type: 'object',
-                            required: ['url'],
-                            properties: {
-                              url: {
-                                type: 'string',
-                                pattern: '^data:image/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$',
-                                maxLength: 16 * 1024 * 1024,
-                              },
-                            },
-                            additionalProperties: false,
+                          url: {
+                            type: 'string',
+                            pattern: '^data:image/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$',
+                            maxLength: 16 * 1024 * 1024,
                           },
                         },
                         additionalProperties: false,
                       },
-                    ],
+                    },
+                    additionalProperties: false,
                   },
-                },
-              ],
+                ],
+              },
             },
             session_id: { type: 'string' },
             model: { type: 'string' },

@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream';
 import type { ReadableStream as NodeWebReadableStream } from 'node:stream/web';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { isDeliverableMediaPath } from '@hermes-webui/shared';
 import type { HermesDashboardClient } from '../hermes/dashboard';
 import { sendHermesError } from '../hermes/errors';
 
@@ -16,7 +17,10 @@ import { sendHermesError } from '../hermes/errors';
  *
  * Deliberately absent: anything that returns provider secrets
  * (`/api/audio/voice-config`, `/api/env/reveal`), writes arbitrary files or
- * runs git/shell operations.
+ * runs git/shell operations. File reads exist only for `MEDIA:` deliveries
+ * and are narrowed by `isDeliverableMediaPath` (absolute path, media or
+ * document extension, no credential folders) on top of the dashboard's own
+ * sensitive-file guard.
  */
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -33,6 +37,10 @@ export interface ProxyRule {
   timeoutMs?: number;
   /** Request body cap for large JSON payloads (base64 audio). */
   bodyLimit?: number;
+  /** Extra check on the forwarded query; false answers 400 without calling Hermes. */
+  guard?: (query: URLSearchParams) => boolean;
+  /** Cache-Control for the response (default: no-store). */
+  cacheControl?: string;
 }
 
 export const PROXY_RULES: readonly ProxyRule[] = [
@@ -67,6 +75,15 @@ export const PROXY_RULES: readonly ProxyRule[] = [
   // Webhooks
   { method: 'GET', path: 'webhooks' },
   { method: 'PUT', path: 'webhooks/:name/enabled' },
+  // Files the assistant delivered with MEDIA:/path (images, audio, documents)
+  {
+    method: 'GET',
+    path: 'fs/download',
+    query: ['path'],
+    download: true,
+    guard: (query) => isDeliverableMediaPath(query.get('path') ?? ''),
+    cacheControl: 'private, max-age=600',
+  },
   // Voice (relay mode: audio goes through Hermes, keys never reach the browser)
   { method: 'POST', path: 'audio/transcribe', timeoutMs: 180_000, bodyLimit: 32 * 1024 * 1024 },
   { method: 'POST', path: 'audio/speak', timeoutMs: 180_000 },
@@ -74,7 +91,7 @@ export const PROXY_RULES: readonly ProxyRule[] = [
 
 const SAFE_PARAM = /^[A-Za-z0-9._:@-]{1,200}$/;
 
-function buildTarget(rule: ProxyRule, request: FastifyRequest): string | null {
+function buildTarget(rule: ProxyRule, request: FastifyRequest): { url: string; query: URLSearchParams } | null {
   const params = (request.params ?? {}) as Record<string, string>;
   const segments: string[] = [];
   for (const segment of rule.path.split('/')) {
@@ -93,12 +110,12 @@ function buildTarget(rule: ProxyRule, request: FastifyRequest): string | null {
   const incoming = (request.query ?? {}) as Record<string, unknown>;
   for (const key of rule.query ?? []) {
     const value = incoming[key];
-    if (typeof value === 'string' && value.length <= 500) {
+    if (typeof value === 'string' && value.length <= 1024) {
       query.set(key, value);
     }
   }
   const qs = query.toString();
-  return `/api/${segments.join('/')}${qs === '' ? '' : `?${qs}`}`;
+  return { url: `/api/${segments.join('/')}${qs === '' ? '' : `?${qs}`}`, query };
 }
 
 async function forward(
@@ -107,13 +124,14 @@ async function forward(
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> {
-  const target = buildTarget(rule, request);
-  if (target === null) {
+  const built = buildTarget(rule, request);
+  if (built === null || (rule.guard !== undefined && !rule.guard(built.query))) {
     return reply.status(400).send({
-      error: { code: 'INVALID_PARAMETER', message: 'Invalid path parameter.' },
+      error: { code: 'INVALID_PARAMETER', message: 'Invalid or disallowed parameter.' },
       requestId: request.id,
     });
   }
+  const target = built.url;
   try {
     if (rule.download === true) {
       const upstream = await dashboard.download(target, rule.timeoutMs);
@@ -122,7 +140,9 @@ async function forward(
       if (disposition !== null) {
         reply.header('content-disposition', disposition);
       }
-      reply.header('cache-control', 'no-store');
+      reply.header('cache-control', rule.cacheControl ?? 'no-store');
+      // Downloaded files are untrusted content: never let one run as a page here.
+      reply.header('content-security-policy', "sandbox; default-src 'none'; frame-ancestors 'none'");
       if (upstream.body === null) {
         return await reply.send('');
       }

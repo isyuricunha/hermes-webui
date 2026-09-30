@@ -5,6 +5,7 @@ import { relativeTime } from '../../lib/format';
 import { toast, toastError } from '../../lib/toast';
 import { Badge, Card, ErrorNote, Section, SkeletonRows, Stat, Switch } from '../../components/ui';
 import { SettingsPage } from './SettingsLayout';
+import { PendingWrites } from './PendingWrites';
 
 const STATUS: Record<MemoryProviderInfo['status'], { label: string; tone: 'success' | 'warning' | 'neutral' | 'danger' }> = {
   ready: { label: 'Ready', tone: 'success' },
@@ -32,6 +33,12 @@ export function MemoryPage() {
       title="Memory"
       description="How Hermes remembers you across Telegram, this app and every other channel."
     >
+      <Section
+        title="Waiting for approval"
+        description="Memory changes Hermes staged for you to review (the /memory command)."
+      >
+        <PendingWrites subsystem="memory" />
+      </Section>
       {memory.isError ? (
         <ErrorNote message={memory.error.message} onRetry={() => void memory.refetch()} />
       ) : memory.isPending ? (

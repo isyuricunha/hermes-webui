@@ -15,6 +15,8 @@ import {
   X,
 } from 'lucide-react';
 import type { TranscriptReasoning, TranscriptSystem, TranscriptTool } from './transcript';
+import { stagedWriteOf } from '../../lib/writeApprovals';
+import { StagedWriteActions } from '../settings/PendingWrites';
 
 /**
  * Native transcript cards (Chat UX goal): compact by default, inspectable on
@@ -96,6 +98,8 @@ export function ToolCard({ tool }: { tool: TranscriptTool }) {
   const truncated = output.length > MAX_EXPANDED_CHARS;
   const duration = formatDuration(tool.durationMs);
   const running = tool.state === 'running';
+  // A memory/skill write the approval gate held back: approve it right here.
+  const staged = useMemo(() => stagedWriteOf(tool.name, tool.preview), [tool.name, tool.preview]);
 
   return (
     <div className="yu-card my-1.5 w-full overflow-hidden rounded-xl text-[13px]" data-tool-card={tool.name}>
@@ -147,6 +151,7 @@ export function ToolCard({ tool }: { tool: TranscriptTool }) {
           {tool.error ? `\n[error] ${tool.error}` : ''}
         </pre>
       ) : null}
+      {staged !== null ? <StagedWriteActions subsystem={staged.subsystem} id={staged.id} /> : null}
     </div>
   );
 }

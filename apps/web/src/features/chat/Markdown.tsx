@@ -1,9 +1,11 @@
 import { isValidElement, memo, useRef, useState, type ReactNode } from 'react';
-import ReactMarkdown, { type Components } from 'react-markdown';
+import ReactMarkdown, { defaultUrlTransform, type Components } from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
 import { copyText } from '../../lib/clipboard';
 import { Check, Copy } from 'lucide-react';
+import { MEDIA_URL_SCHEME, rewriteMediaTags } from '@hermes-webui/shared';
+import { MediaEmbed } from './MediaEmbed';
 
 /** Reads `language-xyz` off the <code> child that remark/rehype produce. */
 function languageOf(children: ReactNode): string | null {
@@ -47,6 +49,14 @@ function CodeBlock({ children }: { children: ReactNode }) {
   );
 }
 
+function decodeMediaPath(encoded: string): string | null {
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return null;
+  }
+}
+
 const COMPONENTS: Components = {
   pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
   a: ({ children, href }) => (
@@ -59,15 +69,32 @@ const COMPONENTS: Components = {
       <table>{children}</table>
     </div>
   ),
-  img: ({ src, alt }) =>
-    typeof src === 'string' ? (
+  img: ({ src, alt }) => {
+    if (typeof src !== 'string' || src === '') return null;
+    if (src.startsWith(MEDIA_URL_SCHEME)) {
+      const path = decodeMediaPath(src.slice(MEDIA_URL_SCHEME.length));
+      return path === null ? null : <MediaEmbed path={path} />;
+    }
+    return (
       <a href={src} target="_blank" rel="noreferrer noopener">
         <img src={src} alt={alt ?? ''} loading="lazy" className="max-h-96 rounded-xl border border-border-subtle" />
       </a>
-    ) : null,
+    );
+  },
 };
 
 const REHYPE = [[rehypeHighlight, { detect: true, ignoreMissing: true }]] as const;
+
+/**
+ * Keeps our `hermes-media:` embeds and inline raster images (the gateway's
+ * chat endpoints inline MEDIA images as data URLs); everything else goes
+ * through react-markdown's safe default.
+ */
+function urlTransform(url: string, key: string): string {
+  if (url.startsWith(MEDIA_URL_SCHEME)) return url;
+  if (key === 'src' && /^data:image\/(png|jpeg|gif|webp);base64,/i.test(url)) return url;
+  return defaultUrlTransform(url);
+}
 
 /** Assistant markdown: GFM, highlighted code with a language header + copy. */
 export const Markdown = memo(function Markdown({ text }: { text: string }) {
@@ -77,8 +104,9 @@ export const Markdown = memo(function Markdown({ text }: { text: string }) {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={REHYPE as unknown as Parameters<typeof ReactMarkdown>[0]['rehypePlugins']}
         components={COMPONENTS}
+        urlTransform={urlTransform}
       >
-        {text}
+        {rewriteMediaTags(text)}
       </ReactMarkdown>
     </div>
   );

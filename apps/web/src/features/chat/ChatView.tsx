@@ -38,6 +38,8 @@ import { ChatHeader } from './ChatHeader';
 import { historyToItems } from './history';
 import { buildRunInput, type PendingAttachment } from './attachments';
 import { notifyRunFinished } from '../../lib/notify';
+import { pendingWritesKey, resolvePendingWrite, setWriteApproval } from '../../lib/writeApprovals';
+import { PendingWrites } from '../settings/PendingWrites';
 
 // --- Subcomponents -----------------------------------------------------------
 
@@ -74,7 +76,14 @@ function TranscriptItemView({
     case 'reasoning':
       return <ReasoningBlock reasoning={item} />;
     case 'system':
-      return <SystemCommandCard card={item} />;
+      return item.widget === 'memory-approvals' ? (
+        <div className="mx-auto w-full max-w-3xl px-4 py-1" data-system-card>
+          <p className="mb-2 text-[13px] font-medium text-text-primary">{item.title}</p>
+          <PendingWrites subsystem="memory" showGate={false} />
+        </div>
+      ) : (
+        <SystemCommandCard card={item} />
+      );
     case 'commentary':
       return (
         <div className="mx-auto w-full max-w-3xl px-4 py-1">
@@ -115,6 +124,7 @@ type ChatAction =
       title: string;
       detail?: string;
       tone: 'info' | 'success' | 'warning';
+      widget?: 'memory-approvals';
     }
   | { type: 'approvalResolved'; approvalId: string; choice: string };
 
@@ -175,6 +185,7 @@ function transcriptReducer(state: TranscriptState, action: ChatAction): Transcri
             title: action.title,
             detail: action.detail,
             tone: action.tone,
+            ...(action.widget !== undefined ? { widget: action.widget } : {}),
           },
         ],
       };
@@ -399,6 +410,54 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         case 'navigate-skills':
           void navigate({ to: '/settings/skills' });
           return;
+        case 'memory-approvals': {
+          // Same grammar as Hermes: /memory [pending|approve|reject|approval] [id|all|on|off]
+          const [sub = 'pending', arg = ''] = argsText.trim().split(/\s+/).filter((part) => part !== '');
+          const verb = sub.toLowerCase();
+          if (verb === 'pending' || verb === 'list') {
+            dispatch({ type: 'systemCard', title: 'Pending memory writes', tone: 'info', widget: 'memory-approvals' });
+            return;
+          }
+          if (verb === 'approve' || verb === 'apply' || verb === 'reject' || verb === 'deny' || verb === 'drop') {
+            const action = verb === 'approve' || verb === 'apply' ? 'approve' : 'reject';
+            if (arg === '') {
+              notice('Which write?', `Usage: /memory ${action} <id|all>. Type /memory to see what is pending.`, 'warning');
+              return;
+            }
+            void resolvePendingWrite('memory', arg, action)
+              .then((result) => {
+                notice(action === 'approve' ? 'Memory approval' : 'Memory rejection', result.message, result.ok ? 'success' : 'warning');
+                void queryClient.invalidateQueries({ queryKey: pendingWritesKey('memory') });
+              })
+              .catch((error: unknown) =>
+                notice('Memory approvals unavailable', error instanceof Error ? error.message : 'Unknown error.', 'warning'),
+              );
+            return;
+          }
+          if (verb === 'approval' || verb === 'mode') {
+            const value = arg.toLowerCase();
+            const enabled = ['on', 'true', 'yes', '1', 'enable', 'enabled'].includes(value)
+              ? true
+              : ['off', 'false', 'no', '0', 'disable', 'disabled'].includes(value)
+                ? false
+                : null;
+            if (enabled === null) {
+              notice('Memory approval gate', 'Usage: /memory approval <on|off>', 'warning');
+              return;
+            }
+            void setWriteApproval('memory', enabled)
+              .then(() => {
+                notice('Memory approval gate', enabled ? 'On: Hermes asks before saving memories.' : 'Off: Hermes saves memories directly.', 'success');
+                void queryClient.invalidateQueries({ queryKey: pendingWritesKey('memory') });
+              })
+              .catch((error: unknown) =>
+                notice('Could not change the gate', error instanceof Error ? error.message : 'Unknown error.', 'warning'),
+              );
+            return;
+          }
+          notice('Unknown /memory subcommand', 'Use: pending, approve <id|all>, reject <id|all>, approval <on|off>.', 'warning');
+          return;
+        }
         case 'stop-run':
           if (activeRunId !== null && !transcript.runDone) {
             void stop();
@@ -411,7 +470,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           const total = commandsQuery.data?.commands.length ?? 0;
           notice(
             'Hermes commands',
-            `Native here: /new /model /status /sessions /settings /skills /stop /help.\nType "/" to browse all ${total} registry commands (CLI/TUI-only ones are labeled).`,
+            `Native here: /new /model /status /sessions /settings /skills /memory /stop /help.\nType "/" to browse all ${total} registry commands (CLI/TUI-only ones are labeled).`,
           );
           return;
         }
@@ -424,7 +483,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeRunId, transcript.runDone, commandsQuery.data, currentModel, currentProvider],
+    [activeRunId, transcript.runDone, commandsQuery.data, currentModel, currentProvider, queryClient],
   );
 
   const send = async (text: string, attachments: PendingAttachment[] = []) => {

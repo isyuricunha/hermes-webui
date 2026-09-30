@@ -40,6 +40,26 @@ const SAMPLE_COMMANDS: NormalizedCommand[] = [
     executionMode: 'disabled',
     disabledReason: 'CLI/TUI command',
   },
+  {
+    name: '/journey',
+    description: 'Open the learning journey',
+    category: 'Tools & Skills',
+    aliases: ['memory-graph'],
+    argsHint: null,
+    availability: 'unsupported',
+    executionMode: 'disabled',
+    disabledReason: 'CLI/TUI command',
+  },
+  {
+    name: '/memory',
+    description: 'Review pending memory writes',
+    category: 'Tools & Skills',
+    aliases: [],
+    argsHint: null,
+    availability: 'native',
+    executionMode: 'webui-native',
+    handler: 'memory-approvals',
+  },
 ];
 
 function renderComposer(onSend = vi.fn(), onCommand = vi.fn()) {
@@ -113,5 +133,15 @@ describe('Composer slash menu', () => {
       expect.objectContaining({ name: '/new' }),
       'monday plan',
     );
+  });
+
+  it('Enter on a fully typed name runs that command, not an alias match listed earlier', async () => {
+    const user = userEvent.setup();
+    const { onCommand } = renderComposer();
+    const input = screen.getByLabelText('Message input');
+    await user.type(input, '/memory');
+    await screen.findByRole('listbox', { name: 'Hermes commands' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onCommand).toHaveBeenCalledWith(expect.objectContaining({ name: '/memory' }), '');
   });
 });

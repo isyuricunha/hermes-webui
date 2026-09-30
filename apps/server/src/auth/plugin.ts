@@ -312,8 +312,12 @@ async function fastifyAuthPlugin(
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('Referrer-Policy', 'no-referrer');
     reply.header('X-Frame-Options', 'DENY');
-    reply.header('Content-Security-Policy', "frame-ancestors 'none'");
-    reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    // Routes serving untrusted files set a stricter policy (sandbox); keep it.
+    if (!reply.hasHeader('Content-Security-Policy')) {
+      reply.header('Content-Security-Policy', "frame-ancestors 'none'");
+    }
+    // The composer's dictation records from this origin's microphone.
+    reply.header('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()');
   });
 
   // Session invalidation: abort streams bound to the session (spec 2.18).

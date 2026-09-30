@@ -100,6 +100,39 @@ describe('allowlisted dashboard proxy (/api/hx/*)', () => {
     expect(calls[0]!.url.pathname).toBe('/api/sessions/s1/export');
   });
 
+  it('serves MEDIA files through the dashboard, sandboxed and briefly cacheable', async () => {
+    handler = () => new Response(new Uint8Array([137, 80, 78, 71]), { status: 200, headers: { 'content-type': 'image/png' } });
+    const file = '/home/ubuntu/ella/images/docs 1440.png';
+    const response = await app.inject({ method: 'GET', url: `/api/hx/fs/download?path=${encodeURIComponent(file)}&profile=x` });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toBe('image/png');
+    expect(response.headers['content-security-policy']).toContain('sandbox');
+    expect(response.headers['cache-control']).toBe('private, max-age=600');
+    expect(calls[0]!.url.pathname).toBe('/api/fs/download');
+    expect(calls[0]!.url.searchParams.get('path')).toBe(file);
+    expect(calls[0]!.url.searchParams.has('profile')).toBe(false);
+  });
+
+  it('refuses file paths outside the MEDIA policy without calling Hermes', async () => {
+    handler = () => new Response('secret', { status: 200 });
+    for (const file of [
+      '/home/ubuntu/.ssh/id_ed25519',
+      '/home/ubuntu/.ssh/look.png',
+      '/home/ubuntu/.hermes/config.yaml',
+      '/home/ubuntu/.env',
+      'relative/a.png',
+      '/home/ubuntu/../../etc/shadow.txt',
+      '/etc/passwd.txt',
+      '',
+    ]) {
+      const response = await app.inject({ method: 'GET', url: `/api/hx/fs/download?path=${encodeURIComponent(file)}` });
+      expect(response.statusCode, file).toBe(400);
+    }
+    const missing = await app.inject({ method: 'GET', url: '/api/hx/fs/download' });
+    expect(missing.statusCode).toBe(400);
+    expect(calls).toHaveLength(0);
+  });
+
   it('maps upstream failures onto the error envelope', async () => {
     handler = () => json({ detail: 'Unknown skill' }, 404);
     const response = await app.inject({ method: 'GET', url: '/api/hx/skills/content?name=nope' });
@@ -158,6 +191,26 @@ describe('run input with images', () => {
     const sent = JSON.parse(String(calls[0]!.init?.body));
     expect(sent.input).toEqual([{ role: 'user', content: parts }]);
     expect(sent.session_id).toBe('s1');
+  });
+
+  it('accepts an image with no text (a one-element part list)', async () => {
+    handler = () => json({ run_id: 'run_1', status: 'running' });
+    const parts = [{ type: 'image_url', image_url: { url: 'data:image/png;base64,iVBORw0KGgo=' } }];
+    const response = await app.inject({ method: 'POST', url: '/api/runs', payload: { input: parts } });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(String(calls[0]!.init?.body)).input).toEqual([{ role: 'user', content: parts }]);
+  });
+
+  it('keeps plain text input as a string and rejects empty input', async () => {
+    handler = () => json({ run_id: 'run_1', status: 'running' });
+    const ok = await app.inject({ method: 'POST', url: '/api/runs', payload: { input: 'hello' } });
+    expect(ok.statusCode).toBe(200);
+    expect(JSON.parse(String(calls[0]!.init?.body)).input).toBe('hello');
+    for (const input of ['', [], ['hello'], { type: 'text', text: 'x' }]) {
+      const response = await app.inject({ method: 'POST', url: '/api/runs', payload: { input } });
+      expect(response.statusCode).toBe(400);
+    }
+    expect(calls).toHaveLength(1);
   });
 
   it('rejects non-image data URLs and unknown part types', async () => {

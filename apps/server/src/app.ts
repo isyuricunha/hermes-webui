@@ -13,6 +13,8 @@ import { settingsRoutes } from './routes/settings';
 import { hermesProxyRoutes } from './routes/hermesProxy';
 import { cliRoutes } from './routes/cli';
 import { commandRoutes } from './routes/commands';
+import { writeApprovalRoutes } from './routes/writeApprovals';
+import { WriteApprovalBridge } from './hermes/writeApprovals';
 import { openDatabase } from './db/database';
 import { AuthStore } from './auth/store';
 import { AuthService } from './auth/service';
@@ -31,6 +33,8 @@ export interface BuildAppOptions {
   hermesIdentity?: HermesIdentity;
   /** Test seam: fetch used by the default dashboard client. */
   dashboardFetch?: typeof fetch;
+  /** Test seam: write-approval bridge (runs Hermes' Python otherwise). */
+  writeApprovals?: WriteApprovalBridge;
 }
 
 /**
@@ -211,6 +215,15 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   await app.register(settingsRoutes, { dashboard });
   await app.register(hermesProxyRoutes, { dashboard });
   await app.register(cliRoutes, { hermesBin: config.hermesBin });
+  await app.register(writeApprovalRoutes, {
+    bridge:
+      options.writeApprovals ??
+      new WriteApprovalBridge({
+        hermesBin: config.hermesBin,
+        python: config.hermesPython,
+        sourceDir: config.hermesSourceDir,
+      }),
+  });
   await app.register(commandRoutes);
 
   return app;

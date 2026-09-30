@@ -6,6 +6,7 @@ import { toast, toastError } from '../../lib/toast';
 import { Badge, Card, EmptyNote, ErrorNote, Section, SkeletonRows, Sheet, Switch } from '../../components/ui';
 import { Markdown } from '../chat/Markdown';
 import { SettingsPage } from './SettingsLayout';
+import { PendingWrites } from './PendingWrites';
 
 /** Strips YAML front matter so the sheet shows the readable body. */
 function body(markdown: string): string {
@@ -78,6 +79,9 @@ export function SkillsPage() {
           : 'Reusable know-how Hermes loads when a task calls for it.'
       }
     >
+      <Section title="Changes waiting for approval" description="Skill writes Hermes staged for review (skills.write_approval).">
+        <PendingWrites subsystem="skills" />
+      </Section>
       <label className="yu-input mb-6 flex h-10 items-center gap-2 rounded-xl px-3">
         <Search className="size-4 shrink-0 text-text-tertiary" aria-hidden />
         <input

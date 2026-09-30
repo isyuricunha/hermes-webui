@@ -44,6 +44,8 @@ export interface TranscriptSystem {
   title: string;
   detail?: string;
   tone: 'info' | 'success' | 'warning';
+  /** Interactive body under the card (e.g. `/memory` pending writes). */
+  widget?: 'memory-approvals';
 }
 
 export interface TranscriptTool {

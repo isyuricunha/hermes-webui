@@ -4,6 +4,15 @@ All notable changes to Hermes WebUI are documented here.
 
 ## Post-RC1
 
+### Added (Hermes parity)
+- **Files the assistant sends** (`MEDIA:/path` tags, as used on Telegram): images render inline (click to enlarge, download), audio and video get players, documents become download cards. Files come through a guarded `/api/hx/fs/download` (absolute path, media/document extensions only, credential folders and system roots refused, sandboxed response); tags inside code stay text.
+- **Memory write approvals** (`memory.write_approval`): Settings > Memory lists the writes Hermes staged, with approve/reject (one or all) and the gate switch; `/memory [pending|approve|reject|approval]` works in chat; a staged Memory tool card gets Approve/Reject inline. Skills get the same queue in Settings > Skills. The server runs Hermes' own `/memory` handler in Hermes' runtime (found via `hermes --print-runtime-command`, or `HERMES_PYTHON` + `HERMES_SOURCE_DIR`).
+
+### Fixed
+- Sending an image with no text failed with `body/input must be string…`: Fastify's type coercion unwrapped the one-part message inside the schema's `anyOf`.
+- The microphone was blocked for the whole app (`Permissions-Policy: microphone=()`), so dictation could never start; it is now allowed for this origin only.
+- The server build left a runtime import of the shared TypeScript package; it is bundled now.
+
 ### Added (full UI/UX pass)
 - **Chat**: syntax-highlighted code blocks (YuTheme syntax colors, language header, copy), styled tables, message actions (copy, edit and resend, retry the last turn, read aloud through Hermes TTS, timestamps), a conversation header (rename, source, messages, tokens, cost, last activity) with pin, fork, export as Markdown or JSON, archive with undo and delete, prompt starters on new chats.
 - **Attachments**: attach, drag and drop or paste images (downscaled client-side, sent as vision parts) and text/code files (inlined as fenced blocks); previews with remove; images show in your message bubble.

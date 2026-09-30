@@ -43,6 +43,7 @@ recognized command **in the composer, before send**:
 | `/sessions` | `open-sessions` | Opens/focuses the conversations sidebar/drawer. |
 | `/settings` | `navigate-settings` | Navigates to the Settings workspace. |
 | `/skills` | `navigate-skills` | Navigates to Settings > Skills. |
+| `/memory [pending\|approve\|reject\|approval] [id\|all\|on\|off]` | `memory-approvals` | Pending memory writes card (approve/reject inline); subcommands run through the write-approval bridge (Hermes' own `/memory` handler). |
 | `/stop` | `stop-run` | Stops the active run, or explains there is none. |
 | `/help` | `help-card` | Lists native commands and the catalog size. |
 

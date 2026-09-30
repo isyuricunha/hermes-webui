@@ -19,6 +19,12 @@ export interface ServerConfig {
   hermesApiKey?: string;
   /** Hermes binary for the restricted CLI bridge. */
   hermesBin: string;
+  /**
+   * Hermes' Python interpreter and source dir for the write-approval bridge.
+   * Optional: discovered with `hermes --print-runtime-command` when unset.
+   */
+  hermesPython?: string;
+  hermesSourceDir?: string;
   /** Built web assets directory; served in production (PRD 42.5). */
   webDistDir: string;
   /** WebUI version reported by /api/app/status. */
@@ -101,6 +107,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     hermesDashboardToken: env.HERMES_DASHBOARD_SESSION_TOKEN,
     hermesApiKey: env.HERMES_API_KEY,
     hermesBin: env.HERMES_BIN ?? 'hermes',
+    hermesPython: env.HERMES_PYTHON,
+    hermesSourceDir: env.HERMES_SOURCE_DIR,
     webDistDir: env.WEB_DIST_DIR ?? path.resolve(process.cwd(), '../web/dist'),
     appVersion: env.npm_package_version ?? '0.0.0-dev',
     dataDir: defaultDataDir(env),

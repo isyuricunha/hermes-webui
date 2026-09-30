@@ -73,15 +73,20 @@ function matchCommands(commands: NormalizedCommand[], value: string): SlashMatch
   if (!value.startsWith('/') || value.length < 1) return null;
   const token = value.slice(1).split(/\s+/)[0] ?? '';
   const query = token.toLowerCase();
+  // Rank so Enter on a fully typed name runs that command: exact name, then
+  // name prefix, alias prefix (e.g. /journey's "memory-graph"), description.
+  const rank = (cmd: NormalizedCommand): number => {
+    const name = cmd.name.slice(1).toLowerCase();
+    if (query === '' || name === query) return 0;
+    if (name.startsWith(query)) return 1;
+    if (cmd.aliases.some((alias) => alias.toLowerCase().startsWith(query))) return 2;
+    return cmd.description.toLowerCase().includes(query) ? 3 : 4;
+  };
   const hits = commands
-    .filter((cmd) => {
-      const name = cmd.name.slice(1).toLowerCase();
-      if (query === '' || name.startsWith(query)) return true;
-      return (
-        cmd.aliases.some((alias) => alias.toLowerCase().startsWith(query)) ||
-        cmd.description.toLowerCase().includes(query)
-      );
-    })
+    .map((cmd, index) => ({ cmd, index, rank: rank(cmd) }))
+    .filter((hit) => hit.rank < 4)
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((hit) => hit.cmd)
     .slice(0, 12);
   return { query, hits };
 }

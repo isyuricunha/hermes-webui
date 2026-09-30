@@ -962,9 +962,9 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "memory-approvals"
   },
   {
    "name": "/bundles",
