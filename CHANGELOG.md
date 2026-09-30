@@ -2,6 +2,10 @@
 
 All notable changes to Hermes WebUI are documented here.
 
+## Unreleased
+
+- `HOST` accepts several comma-separated addresses, so the WebUI can serve a VPN address and loopback (for a Cloudflare Tunnel or reverse proxy on the same machine) at the same time. The install guide covers tunnels.
+
 ## 0.2.1
 
 - **Tool results** read as a compact property list: one row per field with hairlines, each value right next to its label, yes/no as chips, long text and nested values full width under their label.

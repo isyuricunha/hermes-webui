@@ -116,6 +116,8 @@ webui.example.com {
 }
 ```
 
+- **Cloudflare Tunnel (or any tunnel on the same machine):** point the tunnel at `http://127.0.0.1:8789` and make sure the WebUI listens there (keep `127.0.0.1` in `HOST`, e.g. `HOST=<vpn-ip>,127.0.0.1` if you also use a VPN address). Also set `HERMES_WEBUI_TRUST_PROXY=127.0.0.1` so the WebUI sees the tunnel's HTTPS and marks its cookies Secure.
+
 Do not expose it straight to the internet without one of these.
 
 ## Update
@@ -142,7 +144,7 @@ Files attached in the chat (audio, video, PDFs, documents...) are saved in `~/.l
 | `HERMES_BASE_URL` | `http://127.0.0.1:8642` | Hermes gateway |
 | `HERMES_DASHBOARD_URL` | `http://127.0.0.1:49173` | Hermes dashboard |
 | `HERMES_DASHBOARD_SESSION_TOKEN` | none | Only for an ungated dashboard with `local` sign-in |
-| `HOST` | `127.0.0.1` | Address the WebUI listens on |
+| `HOST` | `127.0.0.1` | Address the WebUI listens on. Several, comma-separated, are fine: `100.64.0.5,127.0.0.1` serves a VPN address and a tunnel on loopback without opening every interface |
 | `PORT` | `8789` | Port the WebUI listens on |
 | `HERMES_WEBUI_AUTH_MODE` | `hermes` | `hermes` or `local` sign-in |
 | `HERMES_WEBUI_HERMES_AUTH_PROVIDER` | `basic` | Dashboard auth provider used for sign-in |
