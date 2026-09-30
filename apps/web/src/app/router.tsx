@@ -25,6 +25,7 @@ import { EnvPage } from '../features/settings/EnvPage';
 import { CliPage } from '../features/settings/CliPage';
 import { FieldDetailPage } from '../features/settings/FieldDetailPage';
 import { AppearancePage } from '../features/settings/AppearancePage';
+import { AboutPage } from '../features/settings/AboutPage';
 import { UsagePage } from '../features/settings/UsagePage';
 import { MemoryPage } from '../features/settings/MemoryPage';
 import { ToolsPage } from '../features/settings/ToolsPage';
@@ -195,6 +196,7 @@ const appearanceRoute = createRoute({
   component: AppearancePage,
 });
 
+const aboutRoute = createRoute({ getParentRoute: () => settingsRoute, path: 'about', component: AboutPage });
 const usageRoute = createRoute({ getParentRoute: () => settingsRoute, path: 'usage', component: UsagePage });
 const memoryRoute = createRoute({ getParentRoute: () => settingsRoute, path: 'memory', component: MemoryPage });
 const toolsRoute = createRoute({ getParentRoute: () => settingsRoute, path: 'tools', component: ToolsPage });
@@ -230,6 +232,7 @@ const routeTree = rootRoute.addChildren([
       settingsIndexRoute,
       modelsRoute,
       appearanceRoute,
+      aboutRoute,
       mcpRoute,
       skillsRoute,
       cronRoute,

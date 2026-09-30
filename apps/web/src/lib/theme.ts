@@ -184,3 +184,64 @@ export function resolvedThemeLabel(theme: ThemeSetting): 'Light' | 'Dark' | 'Sys
   if (theme === 'dark' || theme === 'true-black') return 'Dark';
   return systemPrefersDark() ? 'Dark' : 'Light';
 }
+
+// --- Chat and code style -------------------------------------------------------
+
+/**
+ * How the chat and code blocks look, on top of the app theme: YuTheme (the
+ * default) or YuCode, the terminal-style skin Yuri Cunha made for Hermes
+ * (warm terracotta accent on near-black, monospace transcript). Applied as
+ * `data-chat-style` on <html>; the CSS scopes it to the chat surface.
+ */
+export type ChatStyle = 'yutheme' | 'yucode';
+
+const CHAT_STYLE_KEY = 'hermes-webui-chat-style';
+const CHAT_STYLE_EVENT = 'hermes-webui:chat-style-changed';
+
+export const CHAT_STYLE_OPTIONS: readonly { id: ChatStyle; label: string; hint: string; credit?: string }[] = [
+  { id: 'yutheme', label: 'YuTheme', hint: 'Follows the app theme (default)' },
+  { id: 'yucode', label: 'YuCode', hint: 'Terminal-style chat and code', credit: 'Created by Yuri Cunha' },
+];
+
+export function readStoredChatStyle(storage: Pick<Storage, 'getItem'> = localStorage): ChatStyle {
+  try {
+    return storage.getItem(CHAT_STYLE_KEY) === 'yucode' ? 'yucode' : 'yutheme';
+  } catch {
+    return 'yutheme';
+  }
+}
+
+export function applyChatStyle(style: ChatStyle): void {
+  if (style === 'yutheme') delete document.documentElement.dataset.chatStyle;
+  else document.documentElement.dataset.chatStyle = style;
+}
+
+export function useChatStyle(): { chatStyle: ChatStyle; setChatStyle: (style: ChatStyle) => void } {
+  const [chatStyle, setState] = useState<ChatStyle>(() => readStoredChatStyle());
+
+  useEffect(() => {
+    applyChatStyle(chatStyle);
+  }, [chatStyle]);
+
+  useEffect(() => {
+    const sync = () => setState(readStoredChatStyle());
+    window.addEventListener(CHAT_STYLE_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(CHAT_STYLE_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+
+  const setChatStyle = useCallback((next: ChatStyle) => {
+    setState(next);
+    try {
+      localStorage.setItem(CHAT_STYLE_KEY, next);
+    } catch {
+      // private mode: runtime only
+    }
+    window.dispatchEvent(new Event(CHAT_STYLE_EVENT));
+  }, []);
+
+  return { chatStyle, setChatStyle };
+}

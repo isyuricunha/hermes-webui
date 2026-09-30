@@ -176,7 +176,7 @@ export function UserMessage({ item, onEdit }: { item: TranscriptMessage; onEdit:
     return null;
   }
   return (
-    <article className="group mx-auto flex w-full max-w-3xl flex-col items-end px-4 py-2">
+    <article data-msg="user" className="group mx-auto flex w-full max-w-3xl flex-col items-end px-4 py-2">
       {item.attachments !== undefined && item.attachments.length > 0 ? <Attachments items={item.attachments} /> : null}
       {item.steer === true ? (
         <span
@@ -189,6 +189,7 @@ export function UserMessage({ item, onEdit }: { item: TranscriptMessage; onEdit:
       ) : null}
       {item.content !== '' ? (
         <div
+          data-msg-bubble
           className={[
             'max-w-[85%] rounded-2xl rounded-br-md bg-chip px-4 py-2.5 text-[15px] leading-relaxed text-text-primary shadow-[var(--yu-highlight)]',
             item.steer === true ? 'ring-1 ring-agent/35' : '',
@@ -233,7 +234,7 @@ export function AssistantMessage({
     return null;
   }
   return (
-    <article className="group mx-auto w-full max-w-3xl px-4 py-2">
+    <article data-msg="assistant" className="group mx-auto w-full max-w-3xl px-4 py-2">
       <Markdown text={item.content} />
       {item.streaming === true ? (
         <span className="yu-pulse ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 rounded-sm bg-agent text-agent" aria-hidden />

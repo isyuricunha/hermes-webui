@@ -2,7 +2,7 @@
   "name": "hermes-webui",
   "private": true,
   "type": "module",
-  "version": "0.1.0-rc.1",
+  "version": "0.2.0",
   "license": "AGPL-3.0-or-later",
   "description": "A modern, chat-first web interface for Hermes Agent. Self-hosted sidecar that runs alongside Hermes.",
   "packageManager": "pnpm@12.3.4",
@@ -11,6 +11,7 @@
   },
   "scripts": {
     "dev": "pnpm -r --parallel dev",
+    "start": "pnpm --dir apps/server start",
     "build": "pnpm -r build",
     "auth-cli": "node apps/server/dist/auth-cli.js",
     "test": "pnpm -r test",

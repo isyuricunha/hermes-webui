@@ -31,6 +31,9 @@
           if (accent === 'blue' || accent === 'green' || accent === 'violet' || accent === 'coral') {
             root.dataset.accent = accent;
           }
+          if (localStorage.getItem('hermes-webui-chat-style') === 'yucode') {
+            root.dataset.chatStyle = 'yucode';
+          }
         } catch (e) {
           root.dataset.theme = 'true-black';
         }

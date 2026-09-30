@@ -1,4 +1,5 @@
 import path from 'node:path';
+import packageJson from '../package.json';
 import os from 'node:os';
 
 /**
@@ -118,7 +119,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     hermesPython: env.HERMES_PYTHON,
     hermesSourceDir: env.HERMES_SOURCE_DIR,
     webDistDir: env.WEB_DIST_DIR ?? path.resolve(process.cwd(), '../web/dist'),
-    appVersion: env.npm_package_version ?? '0.0.0-dev',
+    appVersion: packageJson.version,
     dataDir: defaultDataDir(env),
     uploadDir: env.HERMES_WEBUI_UPLOAD_DIR,
     uploadMaxMb: intFromEnv(env.HERMES_WEBUI_UPLOAD_MAX_MB, 100),

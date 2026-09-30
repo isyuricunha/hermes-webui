@@ -2,6 +2,27 @@
 
 All notable changes to Hermes WebUI are documented here.
 
+## 0.2.0
+
+### Chat
+- **Every Hermes slash command works.** Commands run inside Hermes through the dashboard's websocket (the same path Hermes' desktop app uses), with the same output as the terminal. Commands that become a prompt (skills, `/plan`, `/queue`...) are sent as a turn; skill commands work too. Native in the WebUI: `/new`, `/model`, `/status`, `/context`, `/usage`, `/reasoning`, `/title`, `/fork`, `/export`, `/copy`, `/retry`, `/steer`, `/queue`, `/image`, `/skills`, `/memory`, `/help`...; only 12 terminal-screen commands say they are terminal-only.
+- `/status` shows the real model (no more "global default"), reasoning effort and context use; `/context` and `/usage` read the conversation's numbers from Hermes.
+- **Messages sent while Hermes works** show at once as "Sent while working" (a steer). After a reload they no longer appear wrapped in `[OUT-OF-BAND USER MESSAGE ...]`.
+- **Per reply**: tokens in and out, cache hits and an estimated tokens per second (hover explains it is measured in the browser, network delay included).
+- **Under the composer**: the real model name, the reasoning effort (click to change, applies from the next message) and a context bar with the percentage of the window in use.
+- **Attach any file**: audio, video, PDF, documents, archives, big images or text. The file is saved where Hermes reads it and the message carries the same note Hermes' Telegram gateway writes, so the agent transcribes or reads it itself. Audio and video play in the bubble.
+- Tool results are readable: labelled fields instead of raw JSON, with the raw payload one click away; better one-line summaries.
+
+### App
+- **Themed tooltips everywhere**: every icon button and hint explains itself on hover or keyboard focus.
+- **YuCode chat style** (Settings > Appearance > Chat and code), a terminal-style skin for conversations and code, created by Yuri Cunha.
+- **About** page: versions, source code on GitHub, GitLab and YuGit, credits, license.
+- Profiles: the default profile without a display name shows as "Default profile" with a "Name it" button; other profiles show their Hermes name (the profile folder) and the id when a display name differs.
+- The server reports its real version (it said `0.0.0-dev` when started without npm).
+
+### Docs
+- New README with screenshots and a five-minute quick start; installation and deployment guide rewritten (service, VPN or HTTPS proxy, updates, every setting, troubleshooting).
+
 ## Post-RC1
 
 ### Round 3 (review fixes)

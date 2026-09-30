@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Bell, BellOff, Check, Download, Keyboard } from 'lucide-react';
-import { useTheme, useAccent, THEME_OPTIONS, ACCENT_OPTIONS } from '../../lib/theme';
+import { useTheme, useAccent, useChatStyle, THEME_OPTIONS, ACCENT_OPTIONS, CHAT_STYLE_OPTIONS } from '../../lib/theme';
 import { notificationsSupported, requestNotificationPermission } from '../../lib/notify';
 import { OPEN_SHORTCUTS_EVENT } from '../../lib/events';
 import { toast } from '../../lib/toast';
@@ -25,6 +25,7 @@ interface InstallPromptEvent extends Event {
 export function AppearancePage() {
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
+  const { chatStyle, setChatStyle } = useChatStyle();
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(() =>
     notificationsSupported() ? Notification.permission : 'unsupported',
   );
@@ -67,6 +68,66 @@ export function AppearancePage() {
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13px] font-medium text-text-primary">{option.label}</span>
                     <span className="block truncate text-[11px] text-text-tertiary">{option.hint}</span>
+                  </span>
+                  {selected ? <Check className="size-4 shrink-0 text-accent" aria-hidden /> : null}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section
+        title="Chat and code"
+        description="How conversations and code blocks look. YuCode is a terminal-style skin; the rest of the app keeps the theme above."
+      >
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          {CHAT_STYLE_OPTIONS.map((option) => {
+            const selected = chatStyle === option.id;
+            const yucode = option.id === 'yucode';
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setChatStyle(option.id)}
+                aria-pressed={selected}
+                aria-label={`${option.label}: ${option.hint}`}
+                className={[
+                  'yu-card yu-lift overflow-hidden rounded-2xl text-left',
+                  selected ? '!border-accent/70 ring-1 ring-accent/50' : '',
+                ].join(' ')}
+              >
+                <span
+                  aria-hidden
+                  className="block space-y-1.5 px-3 py-3 text-[11px] leading-snug"
+                  style={
+                    yucode
+                      ? { background: '#0c0c0c', fontFamily: 'var(--font-mono)', color: '#cccccc' }
+                      : { background: 'var(--color-background)', color: 'var(--color-text-primary)' }
+                  }
+                >
+                  <span className="flex justify-end">
+                    <span
+                      className="rounded-md px-2 py-1"
+                      style={yucode ? { background: '#373737', color: '#ffffff' } : { background: 'var(--color-chip)' }}
+                    >
+                      {yucode ? '❯ fix the build' : 'Fix the build'}
+                    </span>
+                  </span>
+                  <span className="block">
+                    {yucode ? <span style={{ color: '#d77757' }}>● </span> : null}
+                    Done. The{' '}
+                    <span style={{ color: yucode ? '#d77757' : 'var(--color-accent)', fontFamily: 'var(--font-mono)' }}>tsconfig</span> path
+                    was wrong.
+                  </span>
+                </span>
+                <span className="flex items-center gap-2 border-t border-border-subtle px-3 py-2.5">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-medium text-text-primary">{option.label}</span>
+                    <span className="block truncate text-[11px] text-text-tertiary">
+                      {option.hint}
+                      {option.credit !== undefined ? ` · ${option.credit}` : ''}
+                    </span>
                   </span>
                   {selected ? <Check className="size-4 shrink-0 text-accent" aria-hidden /> : null}
                 </span>

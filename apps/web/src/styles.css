@@ -765,3 +765,79 @@ body {
   }
 }
 }
+
+/*
+ * YuCode chat style (Settings > Appearance > Chat and code), created by Yuri
+ * Cunha: his terminal skin for Hermes brought to the transcript. Terracotta
+ * accent on near-black, grey body text, monospace messages, "❯" on your
+ * turns and "●" on replies and tool calls. Scoped to the chat surface; the
+ * rest of the app keeps its theme.
+ */
+:root[data-chat-style='yucode'] [data-chat-surface] {
+  --color-background: #0c0c0c;
+  --color-surface: #111111;
+  --color-surface-editor: #151515;
+  --color-surface-input: #161616;
+  --color-surface-elevated: #1b1b1b;
+  --color-chip: #373737;
+  --color-text-primary: #cccccc;
+  --color-text-secondary: #999999;
+  --color-text-tertiary: #7c7c7c;
+  --color-border-subtle: #2e2e2e;
+  --color-border-strong: #505050;
+  --color-accent: #d77757;
+  --color-on-accent: #0c0c0c;
+  --color-link: #eb9f7f;
+  --color-success: #4eba65;
+  --color-agent: #d77757;
+  --color-agent-soft: #eb9f7f;
+  --color-warning: #ffc107;
+  --color-danger: #ff6b80;
+  --color-running: #d77757;
+  --yu-highlight: inset 0 0 0 0 transparent;
+  --yu-shimmer-base: #7c7c7c;
+  --yu-shimmer-peak: #ffffff;
+  --yu-syn-keyword: #d77757;
+  --yu-syn-string: #4eba65;
+  --yu-syn-number: #ffc107;
+  --yu-syn-title: #eb9f7f;
+  --yu-syn-type: #b1b9f9;
+  --yu-syn-comment: #6a6a6a;
+  --yu-syn-attr: #ffc107;
+  --yu-syn-meta: #999999;
+  --yu-syn-deletion: #ff6b80;
+  --yu-syn-addition: #4eba65;
+  background: #0c0c0c;
+}
+:root[data-chat-style='yucode'] [data-chat-surface] article,
+:root[data-chat-style='yucode'] [data-chat-surface] [data-system-card],
+:root[data-chat-style='yucode'] [data-chat-surface] textarea {
+  font-family: var(--font-mono, 'Geist Mono', ui-monospace, monospace);
+  font-size: 13.5px;
+}
+:root[data-chat-style='yucode'] [data-chat-surface] article[data-msg='assistant'] {
+  position: relative;
+}
+:root[data-chat-style='yucode'] [data-chat-surface] article[data-msg='assistant']::before {
+  content: '●';
+  position: absolute;
+  left: 0.05rem;
+  top: 0.62rem;
+  font-size: 11px;
+  color: var(--color-accent);
+}
+:root[data-chat-style='yucode'] [data-chat-surface] [data-msg-bubble] > p::before {
+  content: '❯ ';
+  color: #ffffff;
+}
+:root[data-chat-style='yucode'] [data-chat-surface] [data-msg-bubble] {
+  border-radius: 6px;
+  color: #ffffff;
+}
+:root[data-chat-style='yucode'] [data-chat-surface] ::selection {
+  background: #264f78;
+}
+:root[data-chat-style='yucode'] [data-chat-surface] .yu-input {
+  border-radius: 8px;
+  border-color: #888888;
+}

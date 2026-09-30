@@ -908,7 +908,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     !(lastItem?.kind === 'message' && lastItem.role === 'assistant' && lastItem.content !== '');
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
+    <div data-chat-surface className="relative flex h-full min-h-0 flex-col bg-background">
       {sessionId !== undefined ? <ChatHeader sessionId={sessionId} items={transcript.items} /> : null}
       <div
         ref={scrollRefCallback}

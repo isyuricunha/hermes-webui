@@ -2,7 +2,7 @@
 
 Source of truth: the installed Hermes registry — `hermes_cli/commands.py`
 (`COMMANDS_BY_CATEGORY`, `GATEWAY_KNOWN_COMMANDS`), verified against the live
-gateway (Hermes v0.21.3, upstream 30de041b). The normalized catalog is
+gateway (Hermes v0.21.5). The normalized catalog is
 generated into `apps/server/src/hermes/hermes-commands.json` (provenance
 header included) and served via `GET /api/commands`.
 
@@ -24,54 +24,71 @@ Then merge the result into `hermes-commands.json`, keeping the WebUI
 ## Execution model
 
 The API-server run path (`agent.run_conversation`) does NOT dispatch slash
-commands: recognized Hermes commands submitted through `POST /v1/runs` would
-reach the LLM as ordinary user text. The WebUI therefore intercepts every
-recognized command **in the composer, before send**:
+commands: text sent through `POST /v1/runs` reaches the LLM as-is. The WebUI
+therefore intercepts every `/word` **in the composer, before send**, and each
+catalog entry has an `availability`:
 
-- native commands execute in the browser (no network call to the LLM);
-- recognized-but-unsupported commands render a compact system card with the
-  reason and are never sent;
-- unrecognized `/…` input renders an "unknown command" card and is never sent.
+- **`native`** (30): runs in the WebUI (below).
+- **`hermes`** (76): runs inside Hermes through the dashboard's JSON-RPC
+  websocket, like Hermes' desktop app: `POST /api/auth/ws-ticket` gives a
+  single-use ticket, the WebUI server opens `/api/ws` with it, resumes the
+  conversation lazily (`session.resume`) and calls `slash.exec` (skill and
+  bundle commands go through `command.dispatch`). Results:
+  `output` renders as a terminal-style card, `send` (skills, `/plan`,
+  `/queue`...) is submitted as a normal turn, `prefill` goes to the composer.
+  See `apps/server/src/hermes/slashBridge.ts` and `POST /api/commands/exec`.
+- **`unsupported`** (12): about the terminal screen itself (`/redraw`,
+  `/statusbar`, `/footer`, `/timestamps`, `/compose`, `/quit`...); a card says
+  so and what to use instead.
+
+Any `/word` that is not in the catalog also goes to Hermes, so skill commands
+(`/<skill-name>`) and plugin commands work.
+
+Hermes' slash worker has no live agent for a resumed conversation, so the
+commands that read the live agent (`/context`, `/usage`, `/status`) are native
+and use the conversation's numbers from the dashboard session row (last prompt
+tokens in `model_config._usage_anchor`, token totals) and `/api/model/info`
+for the window size.
 
 ## Native WebUI commands
 
 | Command | Handler | Behavior |
 |---|---|---|
-| `/new [name]` | `new-chat` | Creates a session (existing semantics) and navigates to it. |
-| `/model` | `model-picker` | Opens the native model picker (session-scoped lock). |
-| `/status` | `status-card` | Compact status card: gateway state/version + session model. |
-| `/sessions` | `open-sessions` | Opens/focuses the conversations sidebar/drawer. |
-| `/settings` | `navigate-settings` | Navigates to the Settings workspace. |
-| `/skills` | `navigate-skills` | Navigates to Settings > Skills. |
-| `/memory [pending\|approve\|reject\|approval] [id\|all\|on\|off]` | `memory-approvals` | Pending memory writes card (approve/reject inline); subcommands run through the write-approval bridge (Hermes' own `/memory` handler). |
-| `/stop` | `stop-run` | Stops the active run, or explains there is none. |
-| `/help` | `help-card` | Lists native commands and the catalog size. |
+| `/new [name]`, `/reset`, `/clear` | `new-chat` | Creates a session and opens it. |
+| `/model` | `model-picker` | Model picker (session-scoped lock). |
+| `/status` | `status-card` | Gateway, WebUI version, real model, reasoning effort, context, tokens, run state. |
+| `/context`, `/ctx` | `context-card` | Messages, model, context used / window (%). |
+| `/usage` | `usage-card` | Session tokens (in, out, cache, reasoning), API calls, approx. cost. |
+| `/reasoning [level]` | `reasoning` | Shows or sets `agent.reasoning_effort` (applies from the next message); display options go to Hermes. |
+| `/title [name]` | `rename-session` | Renames the conversation. |
+| `/fork`, `/branch` | `fork-session` | Forks the conversation. |
+| `/export [json]` | `export-session` | Downloads Markdown (or JSON). |
+| `/copy` | `copy-last` | Copies the last reply. |
+| `/retry` | `retry-last` | Re-sends the last message. |
+| `/steer <msg>` | `steer` | Steers the running reply (or sends when idle). |
+| `/queue`, `/q <msg>` | `queue` | Sends when the current reply finishes. |
+| `/image`, `/paste` | `attach` | Opens the file picker. |
+| `/sessions`, `/resume` | `open-sessions` | Opens the conversations sidebar. |
+| `/settings` | `navigate-settings` | Opens Settings. |
+| `/skills [hub args]` | `navigate-skills` | Settings > Skills; with arguments, Hermes' skills hub. |
+| `/skin` | `navigate-appearance` | Settings > Appearance (themes, YuCode). |
+| `/palette` | `open-palette` | Command palette. |
+| `/voice` | `voice` | Points to the mic button and read aloud. |
+| `/memory [pending\|approve\|reject\|approval] [id\|all\|on\|off]` | `memory-approvals` | Pending memory writes, through Hermes' own `/memory` handler. |
+| `/stop` | `stop-run` | Stops the active run. |
+| `/help` | `help-card` | How commands work here. |
 
-## Session-scoped vs global model changes
+## Session-scoped vs global changes
 
-- `/model` and the composer chip change the **session model lock** only
-  (gateway `POST /api/sessions/{id}/model`). The dialog states this scope
-  explicitly.
-- Global defaults are changed exclusively in Settings > Models, never from a
-  chat session action.
-
-## Unsupported commands
-
-All remaining registry commands (~110, e.g. `/compact`, `/context`, `/tools`,
-`/memory`, `/undo`) are CLI/TUI-only: they execute in the Hermes terminal and
-have no WebUI mapping yet. They remain visible in the palette (labeled with
-their Hermes category) but selecting one renders an explanatory card instead
-of silently forwarding text to the LLM.
-
-Skills-as-slash-commands (`/<skill-name>`) rely on the gateway turn pipeline
-(`agent/skill_commands.py` scaffolding), which the API-server run path does
-not execute; skill bodies therefore cannot be loaded through a WebUI slash
-command. Skills remain browsable in Settings > Skills.
+- `/model` and the model chip change the **session model lock** only.
+- Commands that Hermes runs may change Hermes' config (e.g. `/personality`,
+  `/reasoning --global`); new runs pick it up, as in the terminal.
 
 ## Security notes
 
-- No slash command becomes shell execution; the restricted CLI bridge
-  (exact-argv allowlist) is untouched.
+- No slash command becomes shell execution in the WebUI; commands run in
+  Hermes' own slash worker with the signed-in dashboard session. The request
+  body is validated (one line, bounded, `/name` shape).
 - Tool result previews on the wire are secret-redacted and bounded (500
   chars) by the gateway; the WebUI only formats what it receives.
 - The composer/model picker never injects model/provider metadata into

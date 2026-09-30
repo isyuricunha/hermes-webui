@@ -3,6 +3,7 @@ import {
   Brain,
   Clock,
   FileCode,
+  Info,
   KeyRound,
   MessagesSquare,
   Palette,
@@ -56,7 +57,10 @@ export const SETTINGS_NAV: readonly { group: string; items: readonly SettingsNav
   },
   {
     group: 'App',
-    items: [{ to: '/settings/appearance', label: 'Appearance', icon: Palette, keywords: 'theme accent notifications' }],
+    items: [
+      { to: '/settings/appearance', label: 'Appearance', icon: Palette, keywords: 'theme accent notifications yucode chat style' },
+      { to: '/settings/about', label: 'About', icon: Info, keywords: 'version github gitlab source license credits' },
+    ],
   },
   {
     group: 'Advanced',

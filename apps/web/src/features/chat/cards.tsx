@@ -19,6 +19,7 @@ import {
 import type { TranscriptReasoning, TranscriptSystem, TranscriptTool } from './transcript';
 import { stagedWriteOf } from '../../lib/writeApprovals';
 import { copyText } from '../../lib/clipboard';
+import { ReadablePayload, parsePayload } from './ReadablePayload';
 import { StagedWriteActions } from '../settings/PendingWrites';
 
 /**
@@ -53,8 +54,20 @@ export function formatToolPayload(raw: string): string {
 }
 
 /** First meaningful line of a payload, for the collapsed card header. */
+const SUMMARY_KEYS = ['summary', 'message', 'output', 'stdout', 'result', 'content', 'text', 'path', 'url', 'query', 'command', 'error'];
+
 export function actionSummary(raw: string | undefined, fallback: string): string {
   if (raw === undefined || raw.trim() === '') return fallback;
+  // JSON results: the most telling field, not the first brace.
+  const parsed = parsePayload(raw);
+  if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const record = parsed as Record<string, unknown>;
+    const key = SUMMARY_KEYS.find((name) => typeof record[name] === 'string' && (record[name] as string).trim() !== '');
+    if (key !== undefined) {
+      const line = (record[key] as string).split('\n').map((part) => part.trim()).find((part) => part !== '') ?? '';
+      if (line !== '') return line.length > 96 ? `${line.slice(0, 93)}…` : line;
+    }
+  }
   const formatted = formatToolPayload(raw);
   const firstLine = formatted
     .split('\n')
@@ -93,6 +106,7 @@ function formatDuration(durationMs: number | undefined): string | null {
 
 export function ToolCard({ tool }: { tool: TranscriptTool }) {
   const [open, setOpen] = useState(false);
+  const [raw, setRaw] = useState(false);
   const summary = useMemo(() => actionSummary(tool.preview, ''), [tool.preview]);
   const output = useMemo(
     () => (tool.preview === undefined ? '' : formatToolPayload(tool.preview)),
@@ -149,10 +163,30 @@ export function ToolCard({ tool }: { tool: TranscriptTool }) {
         />
       </button>
       {open ? (
-        <pre className="max-h-80 overflow-auto border-t border-border-subtle bg-surface-editor px-3.5 py-3 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap break-words text-text-secondary">
-          {output === '' ? '(no output captured)' : truncated ? `${output.slice(0, MAX_EXPANDED_CHARS)}\n… truncated` : output}
-          {tool.error ? `\n[error] ${tool.error}` : ''}
-        </pre>
+        <div className="border-t border-border-subtle bg-surface-editor">
+          <div className="flex items-center justify-end gap-1 px-2 pt-1.5">
+            <button
+              type="button"
+              onClick={() => setRaw((value) => !value)}
+              title={raw ? 'Show as readable fields' : 'Show exactly what the tool returned'}
+              className="yu-btn yu-btn-ghost h-6 rounded-md px-2 text-[11px]"
+            >
+              {raw ? 'Readable' : 'Raw'}
+            </button>
+          </div>
+          <div className="max-h-96 overflow-auto px-3.5 pt-1 pb-3">
+            {output === '' ? (
+              <p className="font-mono text-[11.5px] text-text-tertiary">(no output captured)</p>
+            ) : raw ? (
+              <pre className="font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap break-words text-text-secondary">
+                {truncated ? `${output.slice(0, MAX_EXPANDED_CHARS)}\n… truncated` : output}
+              </pre>
+            ) : (
+              <ReadablePayload raw={truncated ? tool.preview?.slice(0, MAX_EXPANDED_CHARS) ?? '' : (tool.preview ?? '')} />
+            )}
+            {tool.error ? <p className="mt-2 text-[12px] text-danger">Error: {tool.error}</p> : null}
+          </div>
+        </div>
       ) : null}
       {staged !== null ? <StagedWriteActions subsystem={staged.subsystem} id={staged.id} /> : null}
     </div>

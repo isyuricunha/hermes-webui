@@ -21,16 +21,17 @@ const SHOW_DELAY_MS = 380;
 
 function tipTarget(node: EventTarget | null): HTMLElement | null {
   if (!(node instanceof Element)) return null;
-  return node.closest<HTMLElement>('[data-tip], [title], [data-tip-title]');
+  const element = node.closest<HTMLElement>('[data-tip], [title], [data-tip-title], button[aria-label], a[aria-label]');
+  if (element === null || element.hasAttribute('data-no-tip')) return null;
+  return textOf(element) === '' ? null : element;
 }
 
+/** Icon-only controls explain themselves with their aria-label. */
 function textOf(element: HTMLElement): string {
-  return (
-    element.getAttribute('data-tip') ??
-    element.getAttribute('title') ??
-    element.getAttribute('data-tip-title') ??
-    ''
-  ).trim();
+  const explicit = element.getAttribute('data-tip') ?? element.getAttribute('title') ?? element.getAttribute('data-tip-title');
+  if (explicit !== null) return explicit.trim();
+  const label = element.getAttribute('aria-label');
+  return label !== null && (element.textContent ?? '').trim() === '' ? label.trim() : '';
 }
 
 export function TooltipHost() {

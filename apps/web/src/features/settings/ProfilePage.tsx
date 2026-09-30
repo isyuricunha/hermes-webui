@@ -104,9 +104,20 @@ function SoulEditor({ profile }: { profile: string }) {
   );
 }
 
-/** Name shown for a profile: its display name, else its folder name. */
+/**
+ * Name shown for a profile. In Hermes a profile's name is its folder
+ * (~/.hermes/profiles/<name>), read from each install; only the default
+ * profile (~/.hermes itself) has no folder name, so it can carry an optional
+ * display name and otherwise shows as "Default profile".
+ */
 function profileLabel(profile: ProfileInfo): string {
-  return profile.display_name?.trim() || profile.name;
+  const name = profile.display_name?.trim();
+  if (name) return name;
+  return profile.is_default ? 'Default profile' : profile.name;
+}
+
+function hasName(profile: ProfileInfo): boolean {
+  return !profile.is_default || (profile.display_name?.trim() ?? '') !== '';
 }
 
 /** Profiles (rename, describe) and the selected profile's SOUL. */
@@ -125,10 +136,10 @@ export function ProfilePage() {
       description: profile.is_default
         ? 'The default profile keeps its folder; this only changes the name shown.'
         : 'Renames the profile folder. Its gateway is stopped during the rename, and anything that calls it by the old name (scripts, `hermes -p`) needs the new one.',
-      initialValue: profileLabel(profile),
+      initialValue: hasName(profile) ? profileLabel(profile) : '',
       confirmLabel: 'Rename',
     });
-    if (next === null || next.trim() === '' || next.trim() === profileLabel(profile)) return;
+    if (next === null || next.trim() === '' || (hasName(profile) && next.trim() === profileLabel(profile))) return;
     try {
       const result = await renameProfile(profile.name, next.trim());
       toast(`Renamed to ${result.display_name ?? result.name}.`, 'success');
@@ -188,18 +199,49 @@ export function ProfilePage() {
                       <UserRound className="size-4" aria-hidden />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-text-primary">
+                      <span
+                        className={[
+                          'flex flex-wrap items-center gap-2 text-sm font-medium',
+                          hasName(profile) ? 'text-text-primary' : 'text-text-secondary italic',
+                        ].join(' ')}
+                      >
                         {profileLabel(profile)}
                         {isServing ? <Badge tone="accent">This app</Badge> : null}
                         {profile.is_default ? <Badge>default</Badge> : null}
                         {isCurrent ? <CircleCheck className="size-3.5 text-accent" aria-label="Selected" /> : null}
                       </span>
                       {profileLabel(profile) !== profile.name ? (
-                        <span className="block font-mono text-[11px] text-text-tertiary">{profile.name}</span>
+                        <span
+                          className="block font-mono text-[11px] text-text-tertiary"
+                          title="Profile id in Hermes (hermes -p <id>)."
+                        >
+                          id: {profile.name}
+                        </span>
                       ) : null}
                       <span className="mt-0.5 line-clamp-2 block text-[13px] text-text-secondary">
                         {profile.description !== '' ? profile.description : 'No description yet.'}
                       </span>
+                      {!hasName(profile) ? (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void rename(profile);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              void rename(profile);
+                            }
+                          }}
+                          className="yu-btn yu-btn-tonal mt-2 inline-flex h-7 rounded-lg px-2.5 text-xs"
+                        >
+                          <Pencil className="size-3" aria-hidden />
+                          Name it
+                        </span>
+                      ) : null}
                       <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-text-tertiary">
                         <span className="inline-flex items-center gap-1.5">
                           <StatusDot tone={profile.gateway_running ? 'success' : 'neutral'} />
