@@ -132,6 +132,6 @@ test.describe('desktop regression', () => {
     await expect(page.getByRole('link', { name: 'System' })).toBeVisible();
     // Chat home is still the root.
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'New chat' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 });

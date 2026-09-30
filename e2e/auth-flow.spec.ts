@@ -37,7 +37,7 @@ test.describe('mobile login', () => {
 
   test('login page is usable at mobile width without overflow', async ({ page }) => {
     await page.goto('/login');
-    await expect(page.getByRole('heading', { name: 'Hermes WebUI' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Hermes' })).toBeVisible();
     await expect(page.getByLabel('Username')).toBeVisible();
     await expect(page.getByLabel('Password')).toBeVisible();
     await page.waitForFunction(() => {

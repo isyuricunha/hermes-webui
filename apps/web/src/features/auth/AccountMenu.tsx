@@ -43,6 +43,7 @@ export function AccountMenu() {
   };
 
   const username = stateQuery.data?.user?.username ?? '…';
+  const hermesMode = stateQuery.data?.mode !== 'local';
 
   return (
     <div ref={containerRef} className="relative">
@@ -51,30 +52,36 @@ export function AccountMenu() {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-label="Account menu"
-        className="flex min-h-[32px] items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-text-secondary hover:text-text-primary"
+        title={username}
+        className="yu-btn yu-btn-ghost size-8 rounded-lg"
       >
-        <span className="flex size-5 items-center justify-center rounded-full bg-accent text-[10px] font-semibold text-white">
+        <span className="flex size-6 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-on-accent">
           {username.slice(0, 1).toUpperCase()}
         </span>
-        <span className="hidden max-w-24 truncate sm:inline">{username}</span>
-        <span aria-hidden>▾</span>
       </button>
 
       {open ? (
         <div
           role="menu"
           aria-label="Account"
-          className="absolute bottom-full right-0 z-50 mb-2 w-64 rounded-xl border border-border-subtle bg-surface-elevated p-2 shadow-lg"
+          className="yu-pop absolute bottom-full left-0 z-50 mb-2 w-64 rounded-2xl p-1.5 md:right-0 md:left-auto"
         >
           {view === 'menu' ? (
             <>
-              <p className="truncate px-2 py-1.5 text-xs text-text-secondary">{username}</p>
-              <MenuItem
-                label="Change password"
-                onClick={() => {
-                  setView('password');
-                }}
-              />
+              <div className="px-2.5 pt-1.5 pb-2">
+                <p className="truncate text-[13px] font-medium text-text-primary">{username}</p>
+                <p className="text-[11px] text-text-tertiary">
+                  {hermesMode ? 'Signed in with your Hermes account' : 'Local WebUI account'}
+                </p>
+              </div>
+              {hermesMode ? null : (
+                <MenuItem
+                  label="Change password"
+                  onClick={() => {
+                    setView('password');
+                  }}
+                />
+              )}
               <MenuItem
                 label="Sessions"
                 onClick={() => {
@@ -117,7 +124,7 @@ function MenuItem({
       role="menuitem"
       onClick={onClick}
       className={[
-        'min-h-[40px] w-full rounded-lg px-2 text-left text-xs font-medium hover:bg-surface',
+        'min-h-[38px] w-full rounded-xl px-2.5 text-left text-[13px] font-medium transition-colors hover:bg-chip',
         danger ? 'text-danger' : 'text-text-primary',
       ].join(' ')}
     >
@@ -231,7 +238,7 @@ function PasswordForm({
           type="button"
           disabled={pending}
           onClick={() => void submit(needsReauth ? reauthPassword : undefined)}
-          className="h-9 flex-1 rounded-lg bg-accent text-xs font-medium text-white disabled:opacity-40"
+          className="yu-btn yu-btn-primary h-9 flex-1 text-xs"
         >
           {pending ? 'Saving…' : needsReauth ? 'Confirm' : 'Change'}
         </button>

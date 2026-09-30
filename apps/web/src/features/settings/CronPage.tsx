@@ -86,7 +86,7 @@ function CronJobRow({ job, onAct }: { job: CronJob; onAct: (action: 'run' | 'pau
           <button
             type="button"
             onClick={() => onAct('run')}
-            className="rounded-lg bg-accent px-2.5 py-1.5 text-xs font-medium text-white"
+            className="yu-btn yu-btn-primary px-2.5 py-1.5 text-xs"
           >
             Run now
           </button>

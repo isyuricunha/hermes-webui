@@ -5,6 +5,17 @@ All notable changes to Hermes WebUI are documented here.
 ## Post-RC1
 
 ### Added
+- **Sign in with your Hermes account** (`HERMES_WEBUI_AUTH_MODE=hermes`, the default): the WebUI verifies the Hermes dashboard's own username/password through `POST /auth/password-login`, never stores the password, and uses the dashboard session it receives (rotated via `/auth/native/refresh`) for Settings. `local` keeps the WebUI-owned Argon2id account.
+- **YuTheme 2.0** across the app: AMOLED canvas by default (Graphite, Light and System remain), canonical accents with gold as the action color, Geist / Geist Mono, 0.5px hairlines with a 1px top highlight, and the named effect set (shimmer, border sheen, pulse, blur-in rise, skeleton), all off under reduced motion.
+- **Chat redesign**: neutral user bubbles, full markdown styling (tables, lists, code blocks with copy), tool cards with per-tool icons and live status, a "Thinking…" state, an approval card with every choice the gateway offers, a single composer card that turns into a steer box while a run is active, a time-of-day greeting on new chats, and a sidebar grouped by Today / Yesterday / Previous 7 days / Older with the source of each conversation (Telegram, cron, WebUI).
+
+### Fixed
+- **Live run events were never rendered**: `EventSource` hands over the payload without its `data:` prefix and the frame parser dropped it, so tool cards, reasoning and approval requests only appeared (if at all) after the run finished. Approvals in particular could not be answered from the WebUI.
+- `tool.completed` from `/v1/runs` carries no `tool_call_id`, reports `duration` in seconds and `error` as a boolean: cards now close by tool name, show the right duration and no longer print `[error] false`.
+- A finished run's answer could render twice (stream completion plus the resume check); a failed run's error no longer disappears when history reloads.
+- Persisted tool results show the real tool name (from the assistant's `tool_calls`) instead of "Tool result".
+- A new chat appears in the sidebar as soon as its first message is sent.
+- Removed a leftover `[csrf-debug]` console log on every mutation.
 - **Native slash commands in Chat**: typing "/" opens a Hermes-derived command palette (118 registry commands) with filter-as-you-type, keyboard navigation and touch support. Recognized commands never reach the LLM as user text.
   - Native handlers: `/new`, `/model`, `/status`, `/sessions`, `/settings`, `/skills`, `/stop`, `/help`.
   - Unsupported registry commands render an explanatory system card instead of silently forwarding text.

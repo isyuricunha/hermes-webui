@@ -23,11 +23,25 @@ describe('transcript reducer', () => {
   it('tracks tool lifecycle and failures', () => {
     let state = applyEvent(emptyTranscript, frame('tool.started', { tool: 'terminal', tool_call_id: 't1', preview: 'ls' }));
     state = applyEvent(state, frame('tool.completed', { tool: 'terminal', tool_call_id: 't1', duration: 0.43, preview: 'file.txt' }));
-    expect(state.items[0]).toMatchObject({ kind: 'tool', name: 'terminal', state: 'completed', preview: 'file.txt', durationMs: 0.43 });
+    expect(state.items[0]).toMatchObject({ kind: 'tool', name: 'terminal', state: 'completed', preview: 'file.txt', durationMs: 430 });
 
     state = applyEvent(state, frame('tool.started', { tool: 'terminal', tool_call_id: 't2' }));
     state = applyEvent(state, frame('tool.completed', { tool: 'terminal', tool_call_id: 't2', error: 'boom' }));
     expect(state.items[1]).toMatchObject({ kind: 'tool', state: 'failed', error: 'boom' });
+  });
+
+  // Live /v1/runs shape (api_server_runs.py): no tool_call_id, duration in
+  // seconds, error as a boolean.
+  it('closes id-less tool calls by name, most recent first', () => {
+    let state = applyEvent(emptyTranscript, frame('tool.started', { tool: 'terminal', preview: 'ls' }));
+    state = applyEvent(state, frame('tool.started', { tool: 'web_search', preview: 'hermes' }));
+    state = applyEvent(state, frame('tool.completed', { tool: 'terminal', duration: 1.25, error: false }));
+    expect(state.items[0]).toMatchObject({ name: 'terminal', state: 'completed', durationMs: 1250 });
+    expect(state.items[0]).not.toHaveProperty('error', 'false');
+    expect(state.items[1]).toMatchObject({ name: 'web_search', state: 'running' });
+
+    state = applyEvent(state, frame('tool.completed', { tool: 'web_search', duration: 0.2, error: true }));
+    expect(state.items[1]).toMatchObject({ name: 'web_search', state: 'failed' });
   });
 
   it('records interim commentary, approvals and failures', () => {

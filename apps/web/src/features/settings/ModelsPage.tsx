@@ -134,7 +134,7 @@ export function ModelsPage() {
             type="button"
             disabled={assign.isPending}
             onClick={() => apply(needsConfirm !== null)}
-            className="w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40 sm:w-auto"
+            className="yu-btn yu-btn-primary w-full px-4 py-2.5 text-sm sm:w-auto"
           >
             {assign.isPending
               ? 'Applying…'

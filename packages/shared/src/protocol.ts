@@ -48,9 +48,12 @@ export interface ToolStartedEvent extends BaseEvent<'tool.started'> {
 
 export interface ToolCompletedEvent extends BaseEvent<'tool.completed'> {
   tool: string;
+  /** Absent on the /v1/runs stream (api_server_runs.py): match by tool name. */
   tool_call_id?: string;
+  /** Seconds (rounded to ms by the gateway). */
   duration?: number;
-  error?: string | null;
+  /** The /v1/runs stream sends a boolean; other surfaces may send a message. */
+  error?: boolean | string | null;
   preview?: string;
 }
 
@@ -87,17 +90,21 @@ export type NormalizedRunEvent =
       Record<string, unknown>);
 
 /**
- * Parses one raw SSE frame from the gateway. Frames are `data:`-only JSON
- * with the event name in `.event` (verified live); `: keepalive` comments and
+ * Parses one SSE frame from the gateway. Frames are `data:`-only JSON with
+ * the event name in `.event` (verified live); `: keepalive` comments and
  * empty frames yield null.
+ *
+ * Accepts either a raw frame (`data: {...}`) or the bare payload that
+ * `EventSource.onmessage` hands over, which has the `data:` prefix stripped.
  */
 export function parseGatewayFrame(raw: string): NormalizedRunEvent | null {
-  for (const line of raw.split('\n')) {
-    if (!line.startsWith('data:')) {
-      continue;
-    }
-    const payload = line.slice(5).trim();
-    if (payload === '' || payload === '[DONE]') {
+  const lines = raw.split('\n');
+  const payloads = lines.some((line) => line.startsWith('data:'))
+    ? lines.filter((line) => line.startsWith('data:')).map((line) => line.slice(5))
+    : [raw];
+  for (const candidate of payloads) {
+    const payload = candidate.trim();
+    if (payload === '' || payload === '[DONE]' || payload.startsWith(':')) {
       return null;
     }
     try {

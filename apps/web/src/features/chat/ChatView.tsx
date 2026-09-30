@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
+import ReactMarkdown, { type Components } from 'react-markdown';
+import { ArrowDown, Check, Copy, ShieldAlert, X } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
 import type { NormalizedCommand } from '@hermes-webui/shared';
 import { commandArgs, findCommandIn } from '@hermes-webui/shared';
@@ -31,16 +32,63 @@ import { Composer } from './Composer';
 import { ReasoningBlock, SystemCommandCard, ToolCard } from './cards';
 import { ModelPicker } from './ModelPicker';
 import { rememberChatSession } from '../../lib/navigation';
+import { useAuthState } from '../../lib/auth';
 
 // --- Subcomponents -----------------------------------------------------------
 
-function Markdown({ text }: { text: string }) {
+function CodeBlock({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLPreElement>(null);
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    const text = ref.current?.innerText ?? '';
+    void navigator.clipboard
+      ?.writeText(text)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => undefined);
+  };
   return (
-    <div className="text-sm leading-relaxed [&_a]:text-accent [&_code]:rounded [&_code]:bg-surface [&_code]:px-1 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-surface [&_pre]:p-3 [&_pre]:text-xs">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+    <div className="group/code relative">
+      <pre ref={ref}>{children}</pre>
+      <button
+        type="button"
+        onClick={copy}
+        aria-label={copied ? 'Copied' : 'Copy code'}
+        className="yu-btn yu-btn-tonal absolute top-2 right-2 size-7 rounded-lg opacity-0 group-hover/code:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+      >
+        {copied ? <Check className="size-3.5 text-success" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
+      </button>
     </div>
   );
 }
+
+const MARKDOWN_COMPONENTS: Components = {
+  pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
+  a: ({ children, href }) => (
+    <a href={href} target="_blank" rel="noreferrer noopener">
+      {children}
+    </a>
+  ),
+};
+
+function Markdown({ text }: { text: string }) {
+  return (
+    <div className="yu-prose min-w-0 break-words">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+const APPROVAL_LABELS: Record<string, string> = {
+  once: 'Allow once',
+  session: 'Allow for this session',
+  always: 'Always allow',
+  deny: 'Deny',
+};
 
 function ApprovalCard({
   approval,
@@ -51,8 +99,10 @@ function ApprovalCard({
   runId: string | null;
   onResolved: (choice: string) => void;
 }) {
+  const [pending, setPending] = useState<string | null>(null);
   const resolve = (choice: 'once' | 'session' | 'always' | 'deny') => {
-    if (runId === null) return;
+    if (runId === null || pending !== null) return;
+    setPending(choice);
     void resolveApproval(runId, {
       choice,
       ...(approval.requestId ? { request_id: approval.requestId } : {}),
@@ -61,43 +111,97 @@ function ApprovalCard({
       .finally(() => onResolved(choice));
   };
   if (approval.resolvedChoice) {
+    const denied = approval.resolvedChoice === 'deny';
     return (
-      <div className="my-1 rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2 text-xs text-text-secondary">
-        Approval {approval.resolvedChoice}
+      <div className="my-1.5">
+        <span className={['yu-chip', denied ? 'yu-chip-danger' : 'yu-chip-success'].join(' ')}>
+          {denied ? <X className="size-3" aria-hidden /> : <Check className="size-3" aria-hidden />}
+          {denied ? 'Denied' : `Approved · ${APPROVAL_LABELS[approval.resolvedChoice] ?? approval.resolvedChoice}`}
+        </span>
       </div>
     );
   }
+  const choices = (approval.choices.length > 0 ? approval.choices : ['once', 'deny']).filter(
+    (choice): choice is 'once' | 'session' | 'always' | 'deny' => choice in APPROVAL_LABELS,
+  );
+  const allow = choices.filter((choice) => choice !== 'deny');
   return (
-    <div className="my-2 rounded-lg border border-warning bg-surface-elevated p-3 text-sm">
-      <p className="font-medium">Hermes wants to execute:</p>
-      {approval.command ? (
-        <pre className="mt-1 overflow-x-auto rounded bg-surface p-2 font-mono text-xs">{approval.command}</pre>
-      ) : (
-        <p className="mt-1 text-text-secondary">{approval.tool}</p>
-      )}
-      <div className="mt-2 flex gap-2">
-        <button
-          type="button"
-          onClick={() => resolve('deny')}
-          className="rounded-lg border border-danger px-3 py-1 text-xs font-medium text-danger"
-        >
-          Deny
-        </button>
-        <button
-          type="button"
-          onClick={() => resolve('once')}
-          className="rounded-lg bg-accent px-3 py-1 text-xs font-medium text-white"
-        >
-          Allow once
-        </button>
-        <button
-          type="button"
-          onClick={() => resolve('session')}
-          className="rounded-lg border border-border-subtle px-3 py-1 text-xs"
-        >
-          Allow session
-        </button>
+    <div className="yu-sheen my-2 rounded-2xl p-4" role="group" aria-label="Approval required">
+      <div className="flex items-center gap-2.5">
+        <span className="yu-chip-accent flex size-7 items-center justify-center rounded-lg" aria-hidden>
+          <ShieldAlert className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-text-primary">Hermes wants to run this</p>
+          <p className="text-xs text-text-tertiary">
+            {approval.tool !== undefined ? `${approval.tool} · ` : ''}needs your approval
+          </p>
+        </div>
       </div>
+      {approval.command ? (
+        <pre className="mt-3 overflow-x-auto rounded-xl border border-border-subtle bg-surface-editor px-3.5 py-2.5 font-mono text-xs leading-relaxed text-text-primary">
+          {approval.command}
+        </pre>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {allow.map((choice, index) => (
+          <button
+            key={choice}
+            type="button"
+            disabled={pending !== null}
+            onClick={() => resolve(choice)}
+            className={['yu-btn h-9 px-3.5 text-[13px]', index === 0 ? 'yu-btn-primary' : 'yu-btn-secondary'].join(' ')}
+          >
+            {APPROVAL_LABELS[choice]}
+          </button>
+        ))}
+        {choices.includes('deny') ? (
+          <button
+            type="button"
+            disabled={pending !== null}
+            onClick={() => resolve('deny')}
+            className="yu-btn yu-btn-danger h-9 px-3.5 text-[13px]"
+          >
+            Deny
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ThinkingRow() {
+  return (
+    <div className="mx-auto w-full max-w-3xl px-4 py-2" role="status" aria-live="polite">
+      <span className="yu-shimmer-agent text-sm">Thinking…</span>
+    </div>
+  );
+}
+
+function greeting(hour: number): string {
+  if (hour < 5) return 'Up late';
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function EmptyState() {
+  const auth = useAuthState();
+  const name = auth.data?.user?.displayName ?? auth.data?.user?.username ?? null;
+  return (
+    <div className="flex h-full flex-col items-center justify-center px-6 pb-16 text-center">
+      <h1 className="yu-rise text-[34px] leading-tight font-normal tracking-[-0.03em] sm:text-[44px]">
+        {greeting(new Date().getHours())}
+        {name !== null ? (
+          <>
+            , <span className="yu-shimmer-gold pr-[0.12em] italic">{name.charAt(0).toUpperCase() + name.slice(1)}</span>
+          </>
+        ) : null}
+      </h1>
+      <p className="yu-rise mt-3 max-w-md text-sm text-text-secondary" style={{ ['--yu-delay' as string]: '100ms' }}>
+        Same Hermes as on Telegram: memory, skills and tools included. Type{' '}
+        <kbd className="rounded-md bg-chip px-1.5 py-0.5 font-mono text-xs">/</kbd> for commands.
+      </p>
     </div>
   );
 }
@@ -113,27 +217,24 @@ function TranscriptItemView({
 }) {
   switch (item.kind) {
     case 'message':
+      if (item.role === 'user') {
+        return (
+          <article className="mx-auto flex w-full max-w-3xl justify-end px-4 py-2">
+            <div className="max-w-[85%] rounded-2xl rounded-br-md bg-chip px-4 py-2.5 text-[15px] leading-relaxed text-text-primary shadow-[var(--yu-highlight)]">
+              <p className="whitespace-pre-wrap break-words">{item.content}</p>
+            </div>
+          </article>
+        );
+      }
+      if (item.content === '' && !item.streaming) {
+        return null;
+      }
       return (
-        <article
-          className={[
-            'mx-auto w-full max-w-3xl px-4 py-2',
-            item.role === 'user' ? 'flex justify-end' : '',
-          ].join(' ')}
-        >
-          <div
-            className={[
-              item.role === 'user'
-                ? 'max-w-[85%] rounded-2xl bg-accent px-4 py-2 text-sm text-white'
-                : 'w-full',
-            ].join(' ')}
-          >
-            {item.role === 'assistant' ? (
-              <Markdown text={item.content} />
-            ) : (
-              <p className="whitespace-pre-wrap">{item.content}</p>
-            )}
-            {item.streaming ? <span className="animate-pulse text-text-secondary">▍</span> : null}
-          </div>
+        <article className="mx-auto w-full max-w-3xl px-4 py-2">
+          <Markdown text={item.content} />
+          {item.streaming ? (
+            <span className="yu-pulse ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 rounded-sm bg-agent text-agent" aria-hidden />
+          ) : null}
         </article>
       );
     case 'reasoning':
@@ -142,10 +243,8 @@ function TranscriptItemView({
       return <SystemCommandCard card={item} />;
     case 'commentary':
       return (
-        <div className="mx-auto w-full max-w-3xl px-4">
-          <blockquote className="border-l-2 border-border-subtle pl-3 text-xs text-text-secondary italic">
-            {item.text}
-          </blockquote>
+        <div className="mx-auto w-full max-w-3xl px-4 py-1">
+          <p className="border-l border-border-strong pl-3.5 text-[13px] text-text-secondary italic">{item.text}</p>
         </div>
       );
     case 'tool':
@@ -157,18 +256,31 @@ function TranscriptItemView({
     case 'approval':
       return (
         <div className="mx-auto w-full max-w-3xl px-4">
-          <ApprovalCard approval={item} runId={runId ?? ''} onResolved={onResolved} />
+          <ApprovalCard approval={item} runId={runId} onResolved={onResolved} />
         </div>
       );
     case 'error':
       return (
-        <div className="mx-auto w-full max-w-3xl px-4">
-          <p className="rounded-lg border border-danger bg-surface-elevated px-3 py-2 text-sm text-danger">
+        <div className="mx-auto w-full max-w-3xl px-4 py-1">
+          <p role="alert" className="yu-chip-danger rounded-xl px-3.5 py-2.5 text-[13px]">
             {item.message}
           </p>
         </div>
       );
   }
+}
+
+/** Tool names recorded on assistant rows, keyed by call id (OpenAI shape). */
+function toolCallNames(toolCalls: unknown): { id: string | null; name: string }[] {
+  if (!Array.isArray(toolCalls)) return [];
+  return toolCalls.flatMap((call: unknown) => {
+    if (typeof call !== 'object' || call === null) return [];
+    const record = call as { id?: unknown; name?: unknown; function?: { name?: unknown } };
+    const name = record.function?.name ?? record.name;
+    return typeof name === 'string' && name !== ''
+      ? [{ id: typeof record.id === 'string' ? record.id : null, name }]
+      : [];
+  });
 }
 
 // --- Chat view ---------------------------------------------------------------
@@ -196,7 +308,13 @@ function transcriptReducer(state: TranscriptState, action: ChatAction): Transcri
           return state;
         }
       }
-      return { ...emptyTranscript, sessionId: action.sessionId, items: action.items };
+      return {
+        ...emptyTranscript,
+        sessionId: action.sessionId,
+        items: action.items,
+        // A failed run's message outlives the history reload that follows it.
+        runError: state.sessionId === action.sessionId ? state.runError : undefined,
+      };
     case 'event':
       // Drop events from a previous session after a switch.
       if (state.sessionId !== action.sessionId) return state;
@@ -266,7 +384,13 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     }
     const rows = [...messagesQuery.data.data].sort((a, b) => a.id - b.id);
     const items: TranscriptItem[] = [];
+    // Tool result rows carry no name: take it from the assistant row that
+    // issued the call (by tool_call_id, else in call order).
+    let pendingCalls: { id: string | null; name: string }[] = [];
     for (const row of rows) {
+      if (row.role === 'assistant') {
+        pendingCalls = toolCallNames(row.tool_calls);
+      }
       if (row.reasoning !== null && row.reasoning !== undefined && row.reasoning !== '') {
         items.push({ kind: 'reasoning', id: `history-rsn-${row.id}`, text: row.reasoning });
       }
@@ -274,10 +398,13 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         items.push({ kind: 'message', id: `history-${row.id}`, role: 'user', content: row.content });
       } else if (row.role === 'tool') {
         // Persisted tool result: compact card, never raw JSON in the chat.
+        const callId = row.tool_call_id;
+        const byId = pendingCalls.findIndex((call) => call.id !== null && call.id === callId);
+        const [call] = pendingCalls.splice(byId === -1 ? 0 : byId, 1);
         items.push({
           kind: 'tool',
           id: `history-tool-${row.id}`,
-          name: 'Tool result',
+          name: call?.name ?? 'tool',
           state: 'completed',
           preview: row.content,
         });
@@ -378,6 +505,10 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         if (sessionId !== undefined) {
           saveActiveRunId(sessionId, null);
         }
+        // Forget the run in state too: the history reload below resets the
+        // transcript (runDone=false), and a still-set run id would make the
+        // resume effect append the final output a second time.
+        setActiveRunId(null);
         void queryClient.invalidateQueries({ queryKey: ['messages', sessionId] });
       }
     },
@@ -533,6 +664,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       if (targetSession === undefined) {
         const created = await createSession({ title: text.slice(0, 60) });
         targetSession = created.session.id;
+        void queryClient.invalidateQueries({ queryKey: ['sessions'] });
       }
       rememberDerivedTitle(targetSession, text);
       dispatch({ type: 'appendUser', text, sessionId: targetSession });
@@ -553,24 +685,26 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
   const pendingApprovals = transcript.items.filter(
     (item): item is TranscriptApproval => item.kind === 'approval' && item.resolvedChoice === undefined,
   );
+  // "Thinking…" fills the gap until something visible streams in.
+  const lastItem = transcript.items[transcript.items.length - 1];
+  const showThinking =
+    running &&
+    pendingApprovals.length === 0 &&
+    !transcript.items.some((item) => item.kind === 'tool' && item.state === 'running') &&
+    !(lastItem?.kind === 'message' && lastItem.role === 'assistant' && lastItem.content !== '');
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col">
       <div
         ref={scrollRefCallback}
         onScroll={(event) => {
           const node = event.currentTarget;
           setNearBottom(node.scrollHeight - node.scrollTop - node.clientHeight < 80);
         }}
-        className="flex-1 overflow-y-auto py-4"
+        className="flex-1 overflow-y-auto pt-6 pb-4"
       >
-        {transcript.items.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight">New chat</h1>
-            <p className="max-w-md text-sm text-text-secondary">
-              Talk to Hermes. Sessions, tools and settings stay one click away.
-            </p>
-          </div>
+        {transcript.items.length === 0 && !running ? (
+          <EmptyState />
         ) : (
           transcript.items.map((item) => (
             <TranscriptItemView
@@ -583,9 +717,10 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
             />
           ))
         )}
+        {showThinking ? <ThinkingRow /> : null}
         {transcript.runError ? (
-          <div className="mx-auto w-full max-w-3xl px-4">
-            <p className="rounded-lg border border-danger px-3 py-2 text-sm text-danger">
+          <div className="mx-auto w-full max-w-3xl px-4 py-1">
+            <p role="alert" className="yu-chip-danger rounded-xl px-3.5 py-2.5 text-[13px]">
               {transcript.runError}
             </p>
           </div>
@@ -602,52 +737,33 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
               setNearBottom(true);
             }
           }}
-          className="absolute bottom-24 left-1/2 z-10 -translate-x-1/2 rounded-full border border-border-subtle bg-surface-elevated px-3 py-1 text-xs shadow"
+          className="yu-pop yu-btn absolute bottom-32 left-1/2 z-10 h-8 -translate-x-1/2 rounded-full px-3 text-xs text-text-secondary hover:text-text-primary"
         >
-          ↓ Latest
+          <ArrowDown className="size-3.5" aria-hidden />
+          Latest
         </button>
       ) : null}
 
-      {error !== null ? (
-        <p className="border-t border-danger bg-surface px-4 py-2 text-xs text-danger">{error}</p>
-      ) : null}
-
-      {running && pendingApprovals.length > 0 ? (
-        <p className="px-4 pb-1 text-xs text-warning">
-          {pendingApprovals.length} approval{pendingApprovals.length > 1 ? 's' : ''} pending in the
-          transcript above.
-        </p>
-      ) : null}
-
-      <div className="sticky bottom-0">
-        {running ? (
-          <form
-            className="flex items-center gap-2 border-t border-border-subtle bg-surface px-3 py-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const input = (event.currentTarget.elements.namedItem('steer') as HTMLInputElement);
-              const text = input.value.trim();
-              if (text !== '') {
-                void steer(text);
-                input.value = '';
-              }
-            }}
-          >
-            <input
-              name="steer"
-              placeholder="Steer the running task… (Enter)"
-              aria-label="Steer the running task"
-              className="h-9 min-w-0 flex-1 rounded-xl border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
-            />
-            <button type="submit" className="rounded-xl border border-border-subtle px-3 py-2 text-xs">
-              Steer
-            </button>
-          </form>
+      <div className="relative mx-auto w-full max-w-3xl px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-background to-transparent"
+        />
+        {error !== null ? (
+          <p role="alert" className="yu-chip-danger mb-2 rounded-xl px-3.5 py-2 text-xs">
+            {error}
+          </p>
+        ) : null}
+        {running && pendingApprovals.length > 0 ? (
+          <p className="mb-2 px-1 text-xs text-accent">
+            {pendingApprovals.length} approval{pendingApprovals.length > 1 ? 's' : ''} waiting above.
+          </p>
         ) : null}
         <Composer
           key={sessionId ?? 'new'}
           running={running || sending}
           onSend={(text) => void send(text)}
+          onSteer={running ? (text) => void steer(text) : undefined}
           onCommand={(cmd, args) => runCommand(cmd, args)}
           onOpenModelPicker={() => setPickerOpen(true)}
           modelLabel={modelLabel}

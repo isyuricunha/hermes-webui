@@ -37,16 +37,16 @@ describe('theme settings validation', () => {
     expect(isThemeSetting(42)).toBe(false);
   });
 
-  it('reads a stored true-black theme and falls back to system', () => {
-    localStorage.setItem('hermes-webui-theme', 'true-black');
-    expect(readStoredTheme()).toBe('true-black');
+  it('reads a stored theme and falls back to AMOLED (true-black)', () => {
+    localStorage.setItem('hermes-webui-theme', 'light');
+    expect(readStoredTheme()).toBe('light');
 
     localStorage.setItem('hermes-webui-theme', 'garbage');
-    expect(readStoredTheme()).toBe('system');
+    expect(readStoredTheme()).toBe('true-black');
   });
 
-  it('falls back to system when storage is unavailable', () => {
-    expect(readStoredTheme(throwingStorage)).toBe('system');
+  it('falls back to AMOLED when storage is unavailable', () => {
+    expect(readStoredTheme(throwingStorage)).toBe('true-black');
   });
 
   it('cycles through all four settings and wraps around', () => {
@@ -59,22 +59,23 @@ describe('theme settings validation', () => {
 
 describe('accent settings validation', () => {
   it('accepts every documented accent and rejects anything else', () => {
-    for (const accent of ['indigo', 'blue', 'green', 'amber', 'red', 'violet']) {
+    for (const accent of ['gold', 'blue', 'green', 'violet', 'coral']) {
       expect(isAccentSetting(accent)).toBe(true);
     }
-    expect(isAccentSetting('gold')).toBe(false);
+    expect(isAccentSetting('indigo')).toBe(false);
+    expect(isAccentSetting(7)).toBe(false);
   });
 
-  it('reads a stored accent and falls back to indigo', () => {
+  it('reads a stored accent and falls back to gold', () => {
     localStorage.setItem('hermes-webui-accent', 'green');
     expect(readStoredAccent()).toBe('green');
 
     localStorage.setItem('hermes-webui-accent', 'garbage');
-    expect(readStoredAccent()).toBe('indigo');
+    expect(readStoredAccent()).toBe('gold');
   });
 
-  it('falls back to indigo when storage is unavailable', () => {
-    expect(readStoredAccent(throwingStorage)).toBe('indigo');
+  it('falls back to gold when storage is unavailable', () => {
+    expect(readStoredAccent(throwingStorage)).toBe('gold');
   });
 });
 
@@ -90,11 +91,11 @@ describe('applying theme and accent to <html>', () => {
     expect(document.documentElement.dataset.theme).toBeUndefined();
   });
 
-  it('sets data-accent for non-default accents and removes it for indigo', () => {
+  it('sets data-accent for non-default accents and removes it for gold', () => {
     applyAccent('green');
     expect(document.documentElement.dataset.accent).toBe('green');
 
-    applyAccent('indigo');
+    applyAccent('gold');
     expect(document.documentElement.dataset.accent).toBeUndefined();
   });
 });
@@ -108,9 +109,9 @@ describe('labels and option tables', () => {
     expect(resolvedThemeLabel('system')).toBe('Light');
   });
 
-  it('offers the true-black theme and all six accents with swatches', () => {
-    expect(THEME_OPTIONS.map((option) => option.id)).toContain('true-black');
-    expect(ACCENT_OPTIONS).toHaveLength(6);
+  it('offers AMOLED first and the five YuTheme accents with swatches', () => {
+    expect(THEME_OPTIONS[0]?.id).toBe('true-black');
+    expect(ACCENT_OPTIONS.map((option) => option.id)).toEqual(['gold', 'blue', 'green', 'violet', 'coral']);
     expect(ACCENT_OPTIONS.every((option) => option.swatch.startsWith('#'))).toBe(true);
   });
 });

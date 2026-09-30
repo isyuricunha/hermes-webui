@@ -40,7 +40,7 @@ Chat works with the gateway alone. Settings (config edits, env/secrets, models, 
 systemctl --user enable --now hermes-dashboard.service
 ```
 
-Give both processes the same session token so the WebUI can authenticate:
+With sign-in mode `hermes` (the default, see below) the WebUI reuses the dashboard session it gets when you sign in, so no shared token is needed. Only for an ungated loopback dashboard, give both processes the same session token so the WebUI can authenticate:
 
 ```bash
 # mint once, never print it
@@ -52,6 +52,13 @@ chmod 600 ~/.config/systemd/user/hermes-dashboard.service.d/override.conf
 systemctl --user daemon-reload && systemctl --user restart hermes-dashboard.service
 # then put the same value in apps/server/.env (HERMES_DASHBOARD_SESSION_TOKEN)
 ```
+
+### Sign-in
+
+The WebUI always requires sign-in (cookie session, CSRF on mutations, rate-limited login).
+
+- **`HERMES_WEBUI_AUTH_MODE=hermes`** (default): sign in with the same username and password as the Hermes dashboard (`dashboard.basic_auth` in `config.yaml`). The WebUI verifies them through the dashboard's `POST /auth/password-login`, never stores the password, and keeps the dashboard session server-side for Settings (rotated through `/auth/native/refresh`). Change the password in Hermes, not here.
+- **`HERMES_WEBUI_AUTH_MODE=local`**: a WebUI-owned Argon2id account. On first start the server writes a one-time setup token to its data directory (`~/.local/share/hermes-webui/setup-token`); open the WebUI and claim it.
 
 ## Run
 
@@ -99,6 +106,6 @@ The WebUI **never runs `hermes update`**. Update checks are read-only; applying 
 
 ## Security notes
 
-- Default bind is loopback (`127.0.0.1`). Exposing the WebUI to a LAN requires adding authentication first (not part of RC1).
+- Default bind is loopback (`127.0.0.1`). Every route except `/healthz` and the sign-in endpoints requires a session; still, publish it through a VPN or an authenticating proxy rather than directly to the internet.
 - The dashboard companion must stay bound to loopback; its session token is the WebUI's server-side secret.
 - See [docs/SECURITY.md](SECURITY.md) for the full model, including CLI bridge controls.

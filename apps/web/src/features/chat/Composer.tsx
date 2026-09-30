@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ArrowUp, ChevronDown, Sparkles, Square } from 'lucide-react';
 import type { NormalizedCommand } from '@hermes-webui/shared';
 import { fetchCommands } from '../../lib/api';
 
@@ -14,6 +15,11 @@ export interface ComposerProps {
   /** Short real model id shown on the picker chip (UI-side metadata). */
   modelLabel?: string;
   onStop: () => void;
+  /**
+   * While a run is active, Enter steers it instead (gateway
+   * /v1/runs/:id/steer) when provided.
+   */
+  onSteer?: (text: string) => void;
   /** Draft persistence key; drafts survive chat switches (PRD 16.4). */
   draftKey?: string;
   placeholder?: string;
@@ -92,6 +98,7 @@ export function Composer({
   onOpenModelPicker,
   modelLabel,
   onStop,
+  onSteer,
   draftKey,
   placeholder,
 }: ComposerProps) {
@@ -121,12 +128,28 @@ export function Composer({
     setHighlight(0);
   };
 
+  const steering = running && onSteer !== undefined;
+
+  // Auto-grow the textarea up to its max height.
+  useLayoutEffect(() => {
+    const node = inputRef.current;
+    if (node === null) return;
+    node.style.height = 'auto';
+    node.style.height = `${Math.min(node.scrollHeight, 240)}px`;
+  }, [value]);
+
   const submit = () => {
     const text = value.trim();
-    if (text === '' || running) {
+    if (text === '') {
       return;
     }
-    onSend(text);
+    if (steering) {
+      onSteer(text);
+    } else if (running) {
+      return;
+    } else {
+      onSend(text);
+    }
     update('');
     setMenuOpen(false);
   };
@@ -144,12 +167,12 @@ export function Composer({
   };
 
   return (
-    <div className="relative border-t border-border-subtle bg-surface px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <div className="relative">
       {menuVisible ? (
         <div
           role="listbox"
           aria-label="Hermes commands"
-          className="absolute bottom-full left-2 right-2 z-30 mb-1 max-h-72 overflow-y-auto rounded-xl border border-border-subtle bg-surface-elevated shadow-lg md:left-3 md:right-auto md:w-[26rem]"
+          className="yu-pop absolute bottom-full left-0 right-0 z-30 mb-2 max-h-72 overflow-y-auto rounded-2xl p-1.5 md:right-auto md:w-[26rem]"
         >
           {hits.map((cmd, index) => (
             <button
@@ -160,41 +183,28 @@ export function Composer({
               onMouseEnter={() => setHighlight(index)}
               onClick={() => selectCommand(cmd)}
               className={[
-                'flex min-h-[44px] w-full flex-col items-start gap-0.5 px-3 py-2 text-left',
-                index === activeIndex ? 'bg-surface' : '',
+                'flex min-h-[44px] w-full flex-col items-start gap-0.5 rounded-xl px-3 py-2 text-left',
+                index === activeIndex ? 'bg-chip' : '',
               ].join(' ')}
             >
               <span className="flex w-full items-center gap-2">
                 <span className="font-mono text-xs font-medium text-text-primary">{cmd.name}</span>
                 <span
                   className={[
-                    'shrink-0 rounded px-1 py-0.5 text-[10px] font-medium',
-                    cmd.availability === 'native'
-                      ? 'bg-accent/15 text-accent'
-                      : 'bg-surface text-text-secondary',
+                    'yu-chip shrink-0 px-1.5 py-0 text-[10px]',
+                    cmd.availability === 'native' ? 'yu-chip-accent' : 'yu-chip-neutral',
                   ].join(' ')}
                 >
                   {categoryLabel(cmd)}
                 </span>
               </span>
-              <span className="line-clamp-1 text-[11px] text-text-secondary">{cmd.description}</span>
+              <span className="line-clamp-1 text-[11px] text-text-tertiary">{cmd.description}</span>
             </button>
           ))}
         </div>
       ) : null}
 
-      <div className="flex items-end gap-2">
-        {onOpenModelPicker !== undefined ? (
-          <button
-            type="button"
-            onClick={onOpenModelPicker}
-            aria-label="Change model"
-            title={`Change model${modelLabel !== undefined ? ` (current: ${modelLabel})` : ''}`}
-            className="h-10 max-w-28 shrink-0 truncate rounded-xl border border-border-subtle px-2.5 text-xs font-medium text-text-secondary hover:text-text-primary"
-          >
-            ✦ {modelLabel ?? 'Model'} ▾
-          </button>
-        ) : null}
+      <div className="yu-input rounded-[20px] px-2 pt-2 pb-2 transition-shadow">
         <textarea
           ref={inputRef}
           value={value}
@@ -225,36 +235,66 @@ export function Composer({
                 return;
               }
             }
-            if (event.key === 'Enter' && !event.shiftKey) {
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault();
               submit();
             }
           }}
           rows={1}
-          placeholder={placeholder ?? 'Message Hermes… ("/" for commands)'}
+          placeholder={
+            steering ? 'Steer the running task…' : (placeholder ?? 'Message Hermes… ("/" for commands)')
+          }
           aria-label="Message input"
-          className="min-w-0 max-h-40 min-h-[2.5rem] flex-1 resize-none rounded-xl border border-border-subtle bg-surface-elevated px-3 py-2 text-sm outline-none focus:border-accent"
+          className="block max-h-60 min-h-[2.75rem] w-full resize-none bg-transparent px-2.5 py-2 text-[15px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary"
         />
-        {running ? (
-          <button
-            type="button"
-            onClick={onStop}
-            aria-label="Stop run"
-            className="h-10 shrink-0 rounded-xl border border-danger px-4 text-sm font-medium text-danger hover:bg-surface-elevated"
-          >
-            ■ Stop
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={submit}
-            disabled={value.trim() === ''}
-            aria-label="Send message"
-            className="h-10 shrink-0 rounded-xl bg-accent px-4 text-sm font-medium text-white disabled:opacity-40"
-          >
-            Send
-          </button>
-        )}
+        <div className="flex items-center gap-2 pt-1">
+          {onOpenModelPicker !== undefined ? (
+            <button
+              type="button"
+              onClick={onOpenModelPicker}
+              aria-label="Change model"
+              title={`Change model${modelLabel !== undefined ? ` (current: ${modelLabel})` : ''}`}
+              className="yu-btn yu-btn-ghost h-8 max-w-[14rem] gap-1.5 rounded-lg px-2.5 text-xs"
+            >
+              <Sparkles className="size-3.5 shrink-0 text-accent" aria-hidden />
+              <span className="truncate font-mono">{modelLabel ?? 'Model'}</span>
+              <ChevronDown className="size-3 shrink-0" aria-hidden />
+            </button>
+          ) : null}
+          <span className="flex-1" />
+          {steering && value.trim() !== '' ? (
+            <button
+              type="button"
+              onClick={submit}
+              aria-label="Steer"
+              className="yu-btn yu-btn-tonal h-8 rounded-lg px-3 text-xs"
+            >
+              Steer
+            </button>
+          ) : null}
+          {running ? (
+            <button
+              type="button"
+              onClick={onStop}
+              aria-label="Stop run"
+              title="Stop"
+              className="yu-btn yu-btn-tonal size-9 rounded-full"
+            >
+              <Square className="size-3.5 fill-current" aria-hidden />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={submit}
+              disabled={value.trim() === ''}
+              aria-label="Send message"
+              title="Send (Enter)"
+              className="yu-btn yu-btn-primary size-9 rounded-full"
+            >
+              <ArrowUp className="size-4" aria-hidden />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

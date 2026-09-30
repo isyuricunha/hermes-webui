@@ -22,7 +22,7 @@ test.describe.serial('chat over real Hermes', () => {
   test('opens into the chat home', async ({ page }) => {
     await loginViaApi(page);
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'New chat' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByText('Hermes: Connected')).toBeVisible();
   });
 

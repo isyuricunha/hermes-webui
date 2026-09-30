@@ -9,7 +9,7 @@ test.describe('mobile', () => {
   test('drawer opens, navigates and the composer stays usable', async ({ page }) => {
     await loginViaApi(page);
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'New chat' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     await page.getByRole('button', { name: 'Open conversations' }).click();
     await expect(page.getByRole('button', { name: 'New chat', exact: true })).toBeVisible();
@@ -17,7 +17,7 @@ test.describe('mobile', () => {
 
     await page.getByRole('button', { name: 'New chat', exact: true }).click();
     // Drawer closed, chat still visible.
-    await expect(page.getByRole('heading', { name: 'New chat' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     const composer = page.getByLabel('Message input');
     await composer.scrollIntoViewIfNeeded();

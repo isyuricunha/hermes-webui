@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useSearch } from '@tanstack/react-router';
 import { ArrowRight, LockKeyhole } from 'lucide-react';
 import { storeCsrfToken, useAuthState } from '../../lib/auth';
 
@@ -22,7 +22,6 @@ function safeNextPath(next: string | undefined): string {
 }
 
 export function LoginPage() {
-  const navigate = useNavigate();
   const search = useSearch({ from: '/login' }) as LoginSearch;
   const authState = useAuthState();
   const hermesMode = authState.data?.mode !== 'local';
@@ -64,7 +63,7 @@ export function LoginPage() {
       <div className="w-full max-w-[380px]">
         <div className="yu-rise mb-8 text-center" style={{ ['--yu-delay' as string]: '0ms' }}>
           <h1 className="text-[44px] leading-none font-normal tracking-[-0.03em]">
-            <span className="yu-shimmer-gold italic">Hermes</span>
+            <span className="yu-shimmer-gold pr-[0.12em] italic">Hermes</span>
           </h1>
           <p className="mt-3 text-sm text-text-secondary">Sign in to continue</p>
         </div>
@@ -121,13 +120,6 @@ export function LoginPage() {
           ) : null}
         </form>
 
-        <button
-          type="button"
-          onClick={() => void navigate({ to: '/' })}
-          className="mt-5 w-full text-center text-xs text-text-tertiary transition-colors hover:text-text-primary"
-        >
-          Back to home
-        </button>
       </div>
     </div>
   );

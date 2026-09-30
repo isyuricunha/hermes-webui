@@ -1,6 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
+  Clock,
+  GitFork,
+  MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Pencil,
+  Send,
+  Settings,
+  SquarePen,
+  SquareTerminal,
+  Trash2,
+} from 'lucide-react';
+import {
   createSession,
   deleteSession,
   fetchAppStatus,
@@ -19,19 +32,53 @@ function HermesStatusPill() {
     retry: false,
   });
 
-  if (isPending) {
-    return <span className="text-xs text-text-secondary">Hermes: Connecting…</span>;
-  }
-  if (isError || data.hermes.state === 'offline') {
-    return <span className="text-xs font-medium text-danger">Hermes: Offline</span>;
-  }
-  if (data.hermes.state === 'degraded') {
-    return <span className="text-xs font-medium text-warning">Hermes: Degraded</span>;
-  }
+  const state = isPending ? 'connecting' : isError || data.hermes.state === 'offline' ? 'offline' : data.hermes.state;
+  const label =
+    state === 'connecting'
+      ? 'Hermes: Connecting…'
+      : state === 'offline'
+        ? 'Hermes: Offline'
+        : state === 'degraded'
+          ? 'Hermes: Degraded'
+          : 'Hermes: Connected';
+  const dot =
+    state === 'offline' ? 'bg-danger text-danger' : state === 'connected' ? 'bg-success text-success' : 'bg-warning text-warning';
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
-      <span className="inline-block size-1.5 rounded-full bg-success" aria-hidden />
-      Hermes: Connected
+    <span
+      className={[
+        'inline-flex h-7 items-center gap-2 rounded-full px-3 text-xs text-text-secondary',
+        state === 'connected' ? 'yu-sheen' : 'border border-border-subtle',
+      ].join(' ')}
+    >
+      <span className={['size-1.5 rounded-full', dot, state === 'connected' ? 'yu-pulse' : ''].join(' ')} aria-hidden />
+      {label}
+    </span>
+  );
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  telegram: 'Telegram',
+  cron: 'Cron',
+  cli: 'CLI',
+  tui: 'Terminal',
+};
+
+function SourceIcon({ source }: { source: string }) {
+  const key = source.toLowerCase();
+  const label = SOURCE_LABELS[key] ?? 'WebUI';
+  const className = 'size-3.5';
+  return (
+    <span title={label} className="flex shrink-0 text-text-tertiary">
+      {key === 'telegram' ? (
+        <Send className={className} aria-hidden />
+      ) : key === 'cron' ? (
+        <Clock className={className} aria-hidden />
+      ) : key === 'cli' || key === 'tui' ? (
+        <SquareTerminal className={className} aria-hidden />
+      ) : (
+        <MessageSquare className={className} aria-hidden />
+      )}
+      <span className="sr-only">{`(${label})`}</span>
     </span>
   );
 }
@@ -49,10 +96,16 @@ function sessionLabel(id: string, title: string | null): string {
   return derivedTitle(id) ?? 'New chat';
 }
 
-function groupLabel(startedAt: number): 'Today' | 'Earlier' {
-  const start = new Date(startedAt * 1000);
-  const now = new Date();
-  return start.toDateString() === now.toDateString() ? 'Today' : 'Earlier';
+const GROUPS = ['Today', 'Yesterday', 'Previous 7 days', 'Older'] as const;
+type GroupLabel = (typeof GROUPS)[number];
+
+function groupLabel(startedAt: number, now = new Date()): GroupLabel {
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const started = startedAt * 1000;
+  if (started >= startOfToday) return 'Today';
+  if (started >= startOfToday - 86_400_000) return 'Yesterday';
+  if (started >= startOfToday - 7 * 86_400_000) return 'Previous 7 days';
+  return 'Older';
 }
 
 interface SessionSidebarProps {
@@ -115,7 +168,7 @@ export function SessionSidebar({
   });
 
   const sessions = [...(sessionsQuery.data?.data ?? [])].sort((a, b) => b.started_at - a.started_at);
-  const groups = new Map<'Today' | 'Earlier', typeof sessions>();
+  const groups = new Map<GroupLabel, typeof sessions>();
   for (const session of sessions) {
     const label = groupLabel(session.started_at);
     const list = groups.get(label) ?? [];
@@ -123,80 +176,91 @@ export function SessionSidebar({
     groups.set(label, list);
   }
 
+  const iconButton = 'yu-btn yu-btn-ghost size-8 rounded-lg';
+
   return (
     <div className="flex h-full flex-col">
-      <div className={collapsed ? 'flex justify-center p-2' : 'p-3'}>
+      <div className={['flex items-center gap-1 px-3 pt-3 pb-2', collapsed ? 'flex-col' : ''].join(' ')}>
+        {collapsed ? null : (
+          <Link
+            to="/"
+            onClick={onNavigate}
+            className="flex-1 px-1.5 text-[17px] font-medium tracking-[-0.02em] text-text-primary"
+            aria-label="Hermes WebUI home"
+          >
+            Hermes
+          </Link>
+        )}
+        <button
+          type="button"
+          onClick={onCollapseToggle}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className={[iconButton, 'hidden md:inline-flex'].join(' ')}
+        >
+          {collapsed ? <PanelLeftOpen className="size-4" aria-hidden /> : <PanelLeftClose className="size-4" aria-hidden />}
+        </button>
+      </div>
+
+      <div className={collapsed ? 'flex justify-center px-3 pb-2' : 'px-3 pb-3'}>
         <button
           type="button"
           onClick={() => newChat.mutate()}
           disabled={newChat.isPending}
           aria-label="New chat"
           title="New chat"
-          className={[
-            'rounded-lg border border-border-subtle bg-surface-elevated font-medium hover:bg-surface disabled:opacity-50',
-            collapsed ? 'w-full px-2 py-2 text-base' : 'w-full px-3 py-2 text-left text-sm',
-          ].join(' ')}
+          className={
+            collapsed
+              ? iconButton
+              : 'yu-btn yu-btn-secondary h-9 w-full justify-start rounded-xl px-3 text-[13px]'
+          }
         >
-          {collapsed ? '+' : '+ New chat'}
+          <SquarePen className="size-4" aria-hidden />
+          {collapsed ? null : <span>New chat</span>}
         </button>
       </div>
 
       {collapsed ? (
-        <div className="flex justify-center pb-2">
-          <button
-            type="button"
-            onClick={onCollapseToggle}
-            aria-label="Expand sidebar"
-            title="Expand sidebar"
-            className="rounded-md border border-border-subtle px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
-          >
-            »
-          </button>
-        </div>
+        <div className="flex-1" />
       ) : (
-        <>
-          <div className="flex justify-end px-3 pb-1">
-            <button
-              type="button"
-              onClick={onCollapseToggle}
-              aria-label="Collapse sidebar"
-              title="Collapse sidebar"
-              className="rounded-md border border-border-subtle px-2 py-0.5 text-xs text-text-secondary hover:text-text-primary"
-            >
-              «
-            </button>
-          </div>
-          <nav className="flex-1 overflow-y-auto px-3" aria-label="Conversations">
-            {sessionsQuery.isPending ? (
-              <p className="px-1 py-2 text-sm text-text-secondary">Loading sessions…</p>
-            ) : sessions.length === 0 ? (
-              <p className="px-1 py-2 text-sm text-text-secondary">No conversations yet.</p>
-            ) : (
-              (['Today', 'Earlier'] as const).map((label) => {
-                const list = groups.get(label) ?? [];
-                if (list.length === 0) return null;
-                return (
-                  <div key={label}>
-                    <p className="px-1 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-text-secondary uppercase">
-                      {label}
-                    </p>
-                    <ul>
-                      {list.map((session) => (
+        <nav className="flex-1 overflow-y-auto px-2 pb-3" aria-label="Conversations">
+          {sessionsQuery.isPending ? (
+            <div className="space-y-2.5 px-2 pt-2" aria-label="Loading sessions">
+              {[72, 54, 64, 40].map((width) => (
+                <div key={width} className="yu-skel h-3" style={{ width: `${width}%` }} />
+              ))}
+            </div>
+          ) : sessions.length === 0 ? (
+            <p className="px-2 py-2 text-[13px] text-text-tertiary">No conversations yet.</p>
+          ) : (
+            GROUPS.map((label) => {
+              const list = groups.get(label) ?? [];
+              if (list.length === 0) return null;
+              return (
+                <div key={label} className="mb-2">
+                  <p className="yu-eyebrow px-2.5 pt-2 pb-1">{label}</p>
+                  <ul>
+                    {list.map((session) => {
+                      const name = sessionLabel(session.id, session.title);
+                      return (
                         <li key={session.id} className="group relative">
                           <Link
                             to="/chat/$sessionId"
                             params={{ sessionId: session.id }}
                             onClick={onNavigate}
-                            className="block truncate rounded-lg px-2 py-1.5 pr-20 text-sm hover:bg-surface-elevated"
-                            title={`${sessionLabel(session.id, session.title)} (${session.id})`}
+                            className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] text-text-secondary transition-colors hover:bg-surface-input hover:text-text-primary"
+                            activeProps={{ className: 'bg-chip !text-text-primary' }}
+                            title={`${name} (${session.id})`}
                           >
-                            {sessionLabel(session.id, session.title)}
+                            <SourceIcon source={session.source} />
+                            <span className="min-w-0 flex-1 truncate group-hover:pr-20 group-focus-within:pr-20">{name}</span>
                           </Link>
-                          <span className="absolute top-1.5 right-2 hidden gap-1 group-hover:flex group-focus-within:flex">
+                          <span className="absolute top-1/2 right-1.5 hidden -translate-y-1/2 gap-0.5 group-hover:flex group-focus-within:flex">
                             <button
                               type="button"
-                              aria-label={`Rename ${sessionLabel(session.id, session.title)}`}
-                              className="rounded px-1 text-xs text-text-secondary hover:text-text-primary"
+                              aria-label={`Rename ${name}`}
+                              title="Rename"
+                              className="yu-btn yu-btn-ghost size-7 rounded-md"
                               onClick={() => {
                                 const title = window.prompt('New title:', session.title ?? '');
                                 if (title !== null && title.trim() !== '') {
@@ -204,65 +268,61 @@ export function SessionSidebar({
                                 }
                               }}
                             >
-                              ✎
+                              <Pencil className="size-3.5" aria-hidden />
                             </button>
                             <button
                               type="button"
-                              aria-label={`Fork ${sessionLabel(session.id, session.title)}`}
-                              className="rounded px-1 text-xs text-text-secondary hover:text-text-primary"
+                              aria-label={`Fork ${name}`}
                               title="Fork this conversation"
+                              className="yu-btn yu-btn-ghost size-7 rounded-md"
                               onClick={() => fork.mutate(session.id)}
                             >
-                              ⑂
+                              <GitFork className="size-3.5" aria-hidden />
                             </button>
                             <button
                               type="button"
-                              aria-label={`Delete ${sessionLabel(session.id, session.title)}`}
-                              className="rounded px-1 text-xs text-text-secondary hover:text-danger"
+                              aria-label={`Delete ${name}`}
+                              title="Delete"
+                              className="yu-btn yu-btn-ghost size-7 rounded-md hover:!text-danger"
                               onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `Delete "${sessionLabel(session.id, session.title)}"?`,
-                                  )
-                                ) {
+                                if (window.confirm(`Delete "${name}"?`)) {
                                   remove.mutate(session.id);
                                 }
                               }}
                             >
-                              ✕
+                              <Trash2 className="size-3.5" aria-hidden />
                             </button>
                           </span>
                         </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })
-            )}
-          </nav>
-        </>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })
+          )}
+        </nav>
       )}
 
       <div
         className={[
-          'flex flex-wrap items-center gap-2 border-t border-border-subtle py-3 px-3',
-          collapsed ? 'flex-col' : 'justify-between',
+          'flex flex-col gap-2 border-t border-border-subtle p-3',
+          collapsed ? 'items-center' : '',
         ].join(' ')}
       >
         {collapsed ? null : <HermesStatusPill />}
-        <div className="flex items-center justify-between gap-2 w-full">
-          <div className="flex items-center gap-1.5">
-            <ThemeToggle />
-            {collapsed ? null : (
-              <Link
-                to="/settings"
-                onClick={onNavigate}
-                className="text-xs font-medium text-text-secondary hover:text-text-primary"
-              >
-                Settings
-              </Link>
-            )}
-          </div>
+        <div className={['flex w-full items-center gap-1', collapsed ? 'flex-col' : ''].join(' ')}>
+          <Link
+            to="/settings"
+            onClick={onNavigate}
+            aria-label="Settings"
+            title="Settings"
+            className={collapsed ? iconButton : 'yu-btn yu-btn-ghost h-8 flex-1 justify-start rounded-lg px-2 text-[13px]'}
+          >
+            <Settings className="size-4" aria-hidden />
+            {collapsed ? null : <span>Settings</span>}
+          </Link>
+          <ThemeToggle />
           <AccountMenu />
         </div>
       </div>

@@ -89,6 +89,23 @@ function nextId(prefix: string): string {
   return `${prefix}-${idCounter}`;
 }
 
+function findOpenToolIndex(items: TranscriptItem[], toolCallId: unknown, toolName: unknown): number {
+  if (toolCallId !== undefined && toolCallId !== null && toolCallId !== '') {
+    return items.findIndex((item) => item.kind === 'tool' && item.id === String(toolCallId));
+  }
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (
+      item?.kind === 'tool' &&
+      item.state === 'running' &&
+      (toolName === undefined || item.name === String(toolName))
+    ) {
+      return index;
+    }
+  }
+  return -1;
+}
+
 /**
  * Appends one normalized gateway event to the transcript. Unknown events are
  * ignored (forward compatibility), matching PRD 48.
@@ -125,18 +142,21 @@ export function applyEvent(
       return { ...state, items };
     }
     case 'tool.completed': {
-      const toolId = String(frame.tool_call_id ?? '');
-      const index = items.findIndex((item) => item.kind === 'tool' && item.id === toolId);
+      // The /v1/runs stream sends {tool, duration (seconds), error (bool)}
+      // with no tool_call_id, so match by id when present, else close the
+      // most recent still-running call of that tool.
+      const index = findOpenToolIndex(items, frame.tool_call_id, frame.tool);
       if (index === -1) {
         return state;
       }
       const tool = items[index] as TranscriptTool;
+      const failed = frame.error === true || (typeof frame.error === 'string' && frame.error !== '');
       items[index] = {
         ...tool,
-        state: frame.error ? 'failed' : 'completed',
+        state: failed ? 'failed' : 'completed',
         preview: frame.preview === undefined ? tool.preview : String(frame.preview),
-        durationMs: typeof frame.duration === 'number' ? frame.duration : tool.durationMs,
-        error: frame.error === undefined ? tool.error : String(frame.error),
+        durationMs: typeof frame.duration === 'number' ? frame.duration * 1000 : tool.durationMs,
+        error: typeof frame.error === 'string' && frame.error !== '' ? frame.error : tool.error,
       };
       return { ...state, items };
     }

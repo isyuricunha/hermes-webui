@@ -109,7 +109,7 @@ export function EnvPage() {
         <button
           type="submit"
           disabled={newKey.trim() === '' || newValue === '' || setVar.isPending}
-          className="h-9 rounded-lg bg-accent px-3 text-sm font-medium text-white disabled:opacity-40"
+          className="yu-btn yu-btn-primary h-9 px-3 text-sm"
         >
           Save
         </button>

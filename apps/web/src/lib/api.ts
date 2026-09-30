@@ -17,7 +17,6 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   // Phase 1 auth: session-bound CSRF token on every mutation (spec 2.12).
   if (method !== 'GET' && method !== 'HEAD') {
     const token = getCsrfToken();
-    console.info(`[csrf-debug] ${method} ${url} token=${token === null ? 'NULL' : 'present'}`);
     if (token !== null) {
       headers['x-csrf-token'] = token;
     }
@@ -124,6 +123,8 @@ export interface MessageRow {
   timestamp: number;
   reasoning: string | null;
   tool_calls: unknown;
+  /** Present on role "tool" rows: the assistant call this result answers. */
+  tool_call_id?: string | null;
 }
 
 export interface MessageListResponse {

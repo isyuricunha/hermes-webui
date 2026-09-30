@@ -28,6 +28,9 @@ export default defineConfig({
       PORT: '8795',
       HOST: '127.0.0.1',
       HERMES_WEBUI_DATA_DIR: '/tmp/hwui-e2e-data',
+      // The suite claims its own local owner account (global-setup), so it
+      // never needs the real Hermes dashboard password.
+      HERMES_WEBUI_AUTH_MODE: 'local',
       WEB_DIST_DIR: path.resolve('apps/web/dist'),
       LOG_LEVEL: 'warn',
     },

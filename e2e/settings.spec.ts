@@ -59,21 +59,21 @@ test.describe('settings', () => {
     await page.goto('/settings/appearance');
     await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
 
-    await page.getByRole('button', { name: /True Black/ }).click();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'true-black');
+    await page.getByRole('button', { name: /Graphite/ }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
     await page.getByRole('button', { name: 'Accent Green' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-accent', 'green');
 
     // Both settings survive a reload (index.html anti-flash re-applies them).
     await page.reload();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'true-black');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-accent', 'green');
 
-    // Defaults remove the attributes: system deletes data-theme, indigo the accent.
+    // System deletes data-theme; gold (the default accent) deletes data-accent.
     await page.getByRole('button', { name: /System/ }).click();
     expect(await page.locator('html').getAttribute('data-theme')).toBeNull();
-    await page.getByRole('button', { name: 'Accent Indigo (default)' }).click();
+    await page.getByRole('button', { name: 'Accent Gold (default)' }).click();
     expect(await page.locator('html').getAttribute('data-accent')).toBeNull();
   });
 });

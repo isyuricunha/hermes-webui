@@ -63,7 +63,9 @@ describe('App shell', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'New chat' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: /^(Good (morning|afternoon|evening)|Up late)/ }),
+      ).toBeInTheDocument();
     });
     await waitFor(() => {
       expect(screen.getByText('Hermes: Offline')).toBeInTheDocument();

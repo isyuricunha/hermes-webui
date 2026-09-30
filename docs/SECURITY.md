@@ -49,8 +49,8 @@ Verified live against the real Hermes install: allowed commands execute (`hermes
 ## Network exposure
 
 - Default bind is `127.0.0.1` for both the WebUI and the dashboard companion.
-- Binding the WebUI to a LAN/VPN address is an operator decision; authentication for non-loopback binds (cookie session, CSRF on mutations, Argon2id hashing per PRD 49) is **not implemented yet** and must land before exposing the WebUI beyond loopback/trusted VPN.
-- The dashboard companion must stay on loopback: a non-loopback bind switches it to an OAuth-cookie gate that a machine client cannot use.
+- Binding the WebUI to a LAN/VPN address is an operator decision. All `/api/*` routes are deny-by-default behind a server-side cookie session with CSRF on mutations and login rate limiting (PRD 49); sign-in is delegated to the Hermes dashboard's password provider (`HERMES_WEBUI_AUTH_MODE=hermes`, default) or a local Argon2id account (`local`).
+- In `hermes` mode the dashboard session obtained at sign-in (access + refresh token) is stored server-side in the WebUI database (0600) and sent as `Authorization: Bearer` to the dashboard; it never reaches the browser, and the password is never stored.
 
 ## Destructive actions
 

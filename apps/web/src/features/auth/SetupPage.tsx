@@ -142,7 +142,7 @@ export function SetupPage() {
         <button
           type="submit"
           disabled={pending}
-          className="mt-5 h-10 w-full rounded-xl bg-accent text-sm font-medium text-white disabled:opacity-40"
+          className="yu-btn yu-btn-primary mt-5 h-10 w-full text-sm"
         >
           {pending ? 'Setting up…' : 'Create owner account'}
         </button>
