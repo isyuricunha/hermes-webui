@@ -8,7 +8,7 @@ import { chromium } from '@playwright/test';
  * inline via Playwright's chromium.
  */
 
-const OUT = '/home/ubuntu/ella/reports/hermes-webui-rc1/ux-mobile';
+const OUT = process.env.OUT_DIR ?? 'e2e-output/ux-mobile';
 mkdirSync(OUT, { recursive: true });
 
 const BASE = 'http://127.0.0.1:5173';

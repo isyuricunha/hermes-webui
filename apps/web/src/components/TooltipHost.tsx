@@ -100,8 +100,9 @@ export function TooltipHost() {
       const element = tipTarget(event.target);
       if (element !== null && (event.target as Element).matches(':focus-visible')) enter(element, 0);
     };
+    // Typing (or Escape) dismisses a hover tip; Tab moves focus, which shows the next one.
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') hide();
+      if (event.key !== 'Tab' && event.key !== 'Shift') hide();
     };
     document.addEventListener('pointerover', onOver);
     document.addEventListener('focusin', onFocus);

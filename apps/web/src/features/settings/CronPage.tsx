@@ -106,7 +106,7 @@ function CronEditor({ job, onClose }: { job: CronJob | 'new'; onClose: () => voi
             value={form.prompt}
             onChange={(event) => set({ prompt: event.target.value })}
             className="yu-input min-h-32 w-full resize-y px-3 py-2.5 text-sm leading-relaxed"
-            placeholder="Check yesterday's backups on cloud-dbs and tell me if anything failed."
+            placeholder="Check yesterday's backups on my database server and tell me if anything failed."
           />
         </label>
         <div>

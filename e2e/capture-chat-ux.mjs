@@ -7,7 +7,7 @@ import { chromium } from '@playwright/test';
  * BOTH the local Playwright Chromium and Ella's remote CDP browser.
  */
 
-const OUT = '/home/ubuntu/ella/reports/hermes-webui-rc1/chat-ux';
+const OUT = process.env.OUT_DIR ?? 'e2e-output/chat-ux';
 mkdirSync(OUT, { recursive: true });
 
 const BASE = process.env.CHAT_UX_BASE ?? 'http://127.0.0.1:5173';

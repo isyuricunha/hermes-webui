@@ -176,7 +176,7 @@ export function UsagePage() {
                 <BarList
                   label="Conversations by source"
                   format={compactNumber}
-                  rows={Object.entries(stats.data.by_source)
+                  rows={Object.entries(stats.data.by_source ?? {})
                     .map(([source, count]) => ({ key: source, label: SOURCE_LABELS[source] ?? source, value: count }))
                     .sort((a, b) => b.value - a.value)}
                 />

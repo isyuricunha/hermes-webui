@@ -1,8 +1,8 @@
 import { chromium } from '@playwright/test';
 
 const CDP = 'http://100.64.234.49:49222';
-const BASE = 'http://100.78.106.99:5173';
-const OUT = '/home/ubuntu/ella/reports/hermes-webui-rc1/chat-ux';
+const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5173';
+const OUT = process.env.OUT_DIR ?? 'e2e-output/chat-ux';
 
 await new Promise((resolve) => setTimeout(resolve, 8000));
 const browser = await chromium.connectOverCDP(CDP);

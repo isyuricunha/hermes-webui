@@ -102,7 +102,7 @@ describe('allowlisted dashboard proxy (/api/hx/*)', () => {
 
   it('serves MEDIA files through the dashboard, sandboxed and briefly cacheable', async () => {
     handler = () => new Response(new Uint8Array([137, 80, 78, 71]), { status: 200, headers: { 'content-type': 'image/png' } });
-    const file = '/home/ubuntu/ella/images/docs 1440.png';
+    const file = '/home/me/pictures/docs 1440.png';
     const response = await app.inject({ method: 'GET', url: `/api/hx/fs/download?path=${encodeURIComponent(file)}&profile=x` });
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toBe('image/png');
@@ -116,12 +116,12 @@ describe('allowlisted dashboard proxy (/api/hx/*)', () => {
   it('refuses file paths outside the MEDIA policy without calling Hermes', async () => {
     handler = () => new Response('secret', { status: 200 });
     for (const file of [
-      '/home/ubuntu/.ssh/id_ed25519',
-      '/home/ubuntu/.ssh/look.png',
-      '/home/ubuntu/.hermes/config.yaml',
-      '/home/ubuntu/.env',
+      '/home/me/.ssh/id_ed25519',
+      '/home/me/.ssh/look.png',
+      '/home/me/.hermes/config.yaml',
+      '/home/me/.env',
       'relative/a.png',
-      '/home/ubuntu/../../etc/shadow.txt',
+      '/home/me/../../etc/shadow.txt',
       '/etc/passwd.txt',
       '',
     ]) {

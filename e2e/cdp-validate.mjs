@@ -2,15 +2,15 @@ import { mkdirSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 
 /**
- * Remote CDP validation (Ella's ella-browser on cloud-lab, Chrome 152):
+ * Remote CDP validation (a remote Chrome over CDP):
  * renders the WebUI from a REAL remote browser over the tailnet and captures
  * the mobile UX evidence set. This is the real-device-style visual sign-off
  * path required by the mission — not the local Playwright Chromium.
  */
 
 const CDP = 'http://100.64.234.49:49222';
-const BASE = 'http://100.78.106.99:5173';
-const OUT = '/home/ubuntu/ella/reports/hermes-webui-rc1/ux-mobile';
+const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5173';
+const OUT = process.env.OUT_DIR ?? 'e2e-output/ux-mobile';
 mkdirSync(OUT, { recursive: true });
 
 const shots = [

@@ -8,7 +8,7 @@ const E2E_DATA_DIR = '/tmp/hwui-e2e-data';
 fs.rmSync(E2E_DATA_DIR, { recursive: true, force: true });
 const { spawn } = await import('node:child_process');
 const server = spawn('node', ['dist/main.js'], {
-  cwd: new URL('.', 'file:///home/ubuntu/ella-repos/hermes-webui/apps/server/').pathname,
+  cwd: new URL('.', 'file://' + process.cwd() + '/apps/server/').pathname,
   env: { ...process.env, PORT: '8795', HOST: '127.0.0.1', HERMES_WEBUI_DATA_DIR: E2E_DATA_DIR },
   stdio: 'ignore',
 });

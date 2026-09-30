@@ -87,7 +87,7 @@ function AddServerSheet({ onClose }: { onClose: () => void }) {
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs text-text-secondary">Arguments (one per line)</span>
-              <textarea value={args} onChange={(e) => setArgs(e.target.value)} className="yu-input min-h-20 w-full px-3 py-2 font-mono text-[13px]" placeholder={'-y\n@modelcontextprotocol/server-filesystem\n/home/ubuntu/docs'} />
+              <textarea value={args} onChange={(e) => setArgs(e.target.value)} className="yu-input min-h-20 w-full px-3 py-2 font-mono text-[13px]" placeholder={'-y\n@modelcontextprotocol/server-filesystem\n/home/me/docs'} />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs text-text-secondary">Environment (KEY=value per line, optional)</span>

@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 
 /**
- * Remote CDP visual sign-off (Ella's ella-browser, Chrome 152 on cloud-lab):
+ * Remote CDP visual sign-off (a remote Chrome over CDP):
  * renders the chat UX from a real remote browser over the tailnet, drives one
  * disposable real-Hermes session with a terminal tool call, and captures the
  * evidence set (tool card, expanded detail, reasoning, session titles, mobile
@@ -10,8 +10,8 @@ import { chromium } from '@playwright/test';
  */
 
 const CDP = 'http://100.64.234.49:49222';
-const BASE = 'http://100.78.106.99:5173';
-const OUT = '/home/ubuntu/ella/reports/hermes-webui-rc1/chat-ux';
+const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5173';
+const OUT = process.env.OUT_DIR ?? 'e2e-output/chat-ux';
 mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.connectOverCDP(CDP);
