@@ -28,7 +28,7 @@ export function MessagingPage() {
         {platforms.map((platform) => (
           <li
             key={platform.id}
-            className="w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2"
+            className="w-full yu-card rounded-2xl px-3 py-2"
           >
             <p className="text-sm font-medium">{platform.name}</p>
             {platform.description ? (

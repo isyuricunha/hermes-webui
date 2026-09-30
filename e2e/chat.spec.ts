@@ -61,11 +61,12 @@ test.describe.serial('chat over real Hermes', () => {
     const listItem = page.locator('li').filter({ has: page.getByRole('link', { name: MARKER }) }).first();
     await expect(listItem).toBeVisible();
 
-    // Action buttons reveal on hover/focus (group-hover / group-focus-within).
+    // The actions menu reveals on hover/focus (group-hover / group-focus-within).
     await listItem.hover();
-    await listItem.getByRole('button', { name: /Delete/ }).click();
-
-    // Confirm dialog is accepted by the context handler below.
+    await listItem.getByRole('button', { name: /^Actions for/ }).click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
+    // In-app confirm dialog (no native window.confirm anymore).
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
     await expect(listItem).toBeHidden({ timeout: 15_000 });
     sessionId = null;
   });

@@ -59,7 +59,7 @@ test.describe('Settings is never a dead end', () => {
 
         // Open the Settings drawer and use the Chat destination.
         await page.getByRole('button', { name: 'Open Settings navigation' }).click();
-        await page.getByRole('button', { name: '← Chat' }).click();
+        await page.getByRole('button', { name: 'Chat', exact: true }).click();
         await expect(page).toHaveURL(`/chat/${sessionId}`);
         await waitForNoHorizontalOverflow(page);
       } finally {
@@ -83,7 +83,7 @@ test.describe('Settings is never a dead end', () => {
         await expect(page).toHaveURL(/\/settings/);
 
         // Desktop nav exposes the Chat destination directly.
-        await page.getByRole('button', { name: '← Chat' }).click();
+        await page.getByRole('button', { name: 'Chat', exact: true }).click();
         await expect(page).toHaveURL(`/chat/${sessionId}`);
 
         // Browser history: Back returns to Settings, Forward returns to Chat.
@@ -105,7 +105,7 @@ test.describe('Settings is never a dead end', () => {
     await waitForNoHorizontalOverflow(page);
 
     // No remembered session in this fresh context: Chat destination goes home.
-    await page.getByRole('button', { name: '← Chat' }).last().click();
+    await page.getByRole('button', { name: 'Chat', exact: true }).last().click();
     await expect(page).toHaveURL('/');
     await waitForNoHorizontalOverflow(page);
   });

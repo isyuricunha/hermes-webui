@@ -65,7 +65,7 @@ export function McpPage() {
           {servers.map((server) => (
             <li
               key={server.name}
-              className="w-full rounded-lg border border-border-subtle bg-surface-elevated p-3"
+              className="w-full yu-card rounded-2xl p-3"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="break-words text-sm font-medium">{server.name}</p>
@@ -87,7 +87,7 @@ export function McpPage() {
                 <button
                   type="button"
                   onClick={() => toggle.mutate({ name: server.name, enabled: !server.enabled })}
-                  className="rounded-lg border border-border-subtle px-2.5 py-1 text-xs"
+                  className="yu-btn yu-btn-secondary h-8 rounded-lg px-2.5 text-xs"
                 >
                   {server.enabled ? 'Disable' : 'Enable'}
                 </button>
@@ -95,7 +95,7 @@ export function McpPage() {
                   type="button"
                   onClick={() => test.mutate(server.name)}
                   disabled={test.isPending}
-                  className="rounded-lg border border-border-subtle px-2.5 py-1 text-xs"
+                  className="yu-btn yu-btn-secondary h-8 rounded-lg px-2.5 text-xs"
                 >
                   Test
                 </button>

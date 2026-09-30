@@ -4,6 +4,17 @@ All notable changes to Hermes WebUI are documented here.
 
 ## Post-RC1
 
+### Added (full UI/UX pass)
+- **Chat**: syntax-highlighted code blocks (YuTheme syntax colors, language header, copy), styled tables, message actions (copy, edit and resend, retry the last turn, read aloud through Hermes TTS, timestamps), a conversation header (rename, source, messages, tokens, cost, last activity) with pin, fork, export as Markdown or JSON, archive with undo and delete, prompt starters on new chats.
+- **Attachments**: attach, drag and drop or paste images (downscaled client-side, sent as vision parts) and text/code files (inlined as fenced blocks); previews with remove; images show in your message bubble.
+- **Voice**: dictation through the Hermes STT provider (`/api/audio/transcribe`), with recording and transcribing states.
+- **Sidebar**: full-text search across every conversation with highlighted snippets, a Pinned group, grouping by last activity, inline rename (double-click or menu), per-conversation menu (pin, fork, archive with undo, delete).
+- **Command palette** (Ctrl/Cmd+K): conversations, every settings page and actions, keyboard navigable. **Shortcuts**: Ctrl/Cmd+Shift+O new chat, Ctrl/Cmd+Shift+S sidebar, `/` focus, `?` help.
+- **Settings, reorganized** (Assistant, Automation, Insights, App, Advanced) with new pages: **Usage** (tokens, cost, sessions and API calls over 7/30/90 days, daily chart, by model, top skills, conversations by source), **Profile & SOUL** (profiles, read and edit SOUL.md), **Tools** (toolsets with their tools and switches), **Memory** (providers, MEMORY/USER counts, curator pause), **Webhooks**, **Logs** (live tail with file, level and text filters). **System** now shows gateway, channel and host health (CPU, memory, disk, uptime). **Cron** gained status, next/last run and each job's run history linking to the run's conversation.
+- **Installable app (PWA)**: manifest, icons and a service worker that caches only the app shell (never `/api`); background-run notifications and a title badge. Needs HTTPS.
+- Toasts and in-app confirm/prompt dialogs replace `window.alert/confirm/prompt`; a friendly error screen replaces the router's default.
+- Server: an allowlisted dashboard proxy (`/api/hx/*`) with safe path parameters, query-key filtering and download streaming; `/api/runs` accepts text plus image parts.
+
 ### Added
 - **Sign in with your Hermes account** (`HERMES_WEBUI_AUTH_MODE=hermes`, the default): the WebUI verifies the Hermes dashboard's own username/password through `POST /auth/password-login`, never stores the password, and uses the dashboard session it receives (rotated via `/auth/native/refresh`) for Settings. `local` keeps the WebUI-owned Argon2id account.
 - **YuTheme 2.0** across the app: AMOLED canvas by default (Graphite, Light and System remain), canonical accents with gold as the action color, Geist / Geist Mono, 0.5px hairlines with a 1px top highlight, and the named effect set (shimmer, border sheen, pulse, blur-in rise, skeleton), all off under reduced motion.

@@ -101,11 +101,11 @@ export function RawConfigPage() {
       </p>
 
       {dirty ? (
-        <details className="mb-3 rounded-lg border border-border-subtle bg-surface-elevated p-3 text-xs">
+        <details className="mb-3 yu-card rounded-2xl p-3 text-xs">
           <summary className="cursor-pointer select-none font-medium">
             Review changes ({changedLines} changed lines)
           </summary>
-          <div className="mt-2 max-h-72 overflow-auto rounded bg-surface p-2 font-mono">
+          <div className="mt-2 max-h-72 overflow-auto rounded-xl bg-surface-editor p-3 font-mono text-text-secondary">
             {diff.map((line, index) => (
               <div
                 key={index}
@@ -133,7 +133,7 @@ export function RawConfigPage() {
         }}
         spellCheck={false}
         aria-label="Raw config.yaml"
-        className="h-[60vh] w-full resize-none rounded-xl border border-border-subtle bg-surface-elevated p-4 font-mono text-xs outline-none focus:border-accent"
+        className="h-[60vh] w-full resize-none yu-card rounded-2xl p-4 font-mono text-xs outline-none focus:border-accent"
       />
 
       <div className="mt-3 flex items-center gap-3">
@@ -152,7 +152,7 @@ export function RawConfigPage() {
               setEdited(original);
               setSaved(false);
             }}
-            className="rounded-xl border border-border-subtle px-4 py-2 text-sm"
+            className="yu-btn yu-btn-secondary h-9 px-4 text-sm"
           >
             Discard
           </button>

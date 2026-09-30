@@ -82,8 +82,8 @@ export function ModelsPage() {
 
   return (
     <SettingsPage title="Models">
-      <div className="w-full rounded-lg border border-border-subtle bg-surface-elevated p-4">
-        <p className="text-xs font-semibold tracking-wide text-text-secondary uppercase">Main model</p>
+      <div className="w-full yu-card rounded-2xl p-4">
+        <p className="text-[13px] font-medium text-text-secondary">Main model</p>
         <p className="mt-1 break-words text-lg font-medium">{info.model}</p>
         <p className="break-words text-sm text-text-secondary">
           Provider: {info.provider}
@@ -91,7 +91,7 @@ export function ModelsPage() {
         </p>
       </div>
 
-      <p className="mb-2 mt-6 text-xs font-semibold tracking-wide text-text-secondary uppercase">
+      <p className="mb-2 mt-6 text-[13px] font-medium text-text-secondary">
         Switch main model
       </p>
       <div className="space-y-2">
@@ -102,7 +102,7 @@ export function ModelsPage() {
             setModel('');
           }}
           aria-label="Provider"
-          className="h-10 w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
+          className="h-10 w-full yu-card rounded-2xl px-3 text-sm outline-none focus:border-accent"
         >
           <option value="">Select provider…</option>
           {providers.map((p) => (
@@ -116,7 +116,7 @@ export function ModelsPage() {
             value={model}
             onChange={(event) => setModel(event.target.value)}
             aria-label="Model"
-            className="h-10 w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
+            className="h-10 w-full yu-card rounded-2xl px-3 text-sm outline-none focus:border-accent"
           >
             <option value="">Select model…</option>
             {selected.models?.map((m) => {
@@ -151,7 +151,7 @@ export function ModelsPage() {
         ) : null}
       </div>
 
-      <p className="mb-2 mt-6 text-xs font-semibold tracking-wide text-text-secondary uppercase">
+      <p className="mb-2 mt-6 text-[13px] font-medium text-text-secondary">
         Provider readiness
       </p>
       {optionsQuery.isError ? (
@@ -180,7 +180,7 @@ function ProvidersList({ data }: { data: unknown }) {
       {providers.map((provider, index) => (
         <li
           key={provider.slug ?? `provider-${index}`}
-          className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2 text-sm"
+          className="flex items-center justify-between yu-card rounded-2xl px-3 py-2 text-sm"
         >
           <span>
             {provider.slug ?? 'unknown'}

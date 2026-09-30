@@ -4,6 +4,10 @@ import type { FastifyInstance } from 'fastify';
 import type { HermesClient } from '../hermes/client';
 import { sendHermesError } from '../hermes/errors';
 
+type RunInputPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } };
+
 /**
  * Run lifecycle routes (PRD 17): durable run submission, status polling,
  * SSE event pass-through, stop, steer and approvals. The gateway owns runs;
@@ -14,15 +18,58 @@ export async function runRoutes(
   opts: { client: HermesClient },
 ): Promise<void> {
   const client = opts.client;
+  // A message is plain text, or text plus images (vision parts). Images
+  // travel as data URLs in the gateway's canonical image_url shape; other
+  // files are not accepted by /v1/runs (text files are inlined client-side).
   app.post(
     '/api/runs',
     {
+      bodyLimit: 48 * 1024 * 1024,
       schema: {
         body: {
           type: 'object',
           required: ['input'],
           properties: {
-            input: { type: 'string', minLength: 1 },
+            input: {
+              anyOf: [
+                { type: 'string', minLength: 1 },
+                {
+                  type: 'array',
+                  minItems: 1,
+                  maxItems: 11,
+                  items: {
+                    anyOf: [
+                      {
+                        type: 'object',
+                        required: ['type', 'text'],
+                        properties: { type: { const: 'text' }, text: { type: 'string' } },
+                        additionalProperties: false,
+                      },
+                      {
+                        type: 'object',
+                        required: ['type', 'image_url'],
+                        properties: {
+                          type: { const: 'image_url' },
+                          image_url: {
+                            type: 'object',
+                            required: ['url'],
+                            properties: {
+                              url: {
+                                type: 'string',
+                                pattern: '^data:image/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$',
+                                maxLength: 16 * 1024 * 1024,
+                              },
+                            },
+                            additionalProperties: false,
+                          },
+                        },
+                        additionalProperties: false,
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
             session_id: { type: 'string' },
             model: { type: 'string' },
           },
@@ -32,8 +79,22 @@ export async function runRoutes(
     },
     async (request, reply) => {
       try {
-        const body = request.body as { input: string; session_id?: string; model?: string };
-        const payload = await client.createRun(body, crypto.randomUUID());
+        const body = request.body as {
+          input: string | RunInputPart[];
+          session_id?: string;
+          model?: string;
+        };
+        const images = Array.isArray(body.input) ? body.input.filter((part) => part.type === 'image_url') : [];
+        if (images.length > 10) {
+          return await reply.status(400).send({
+            error: { code: 'TOO_MANY_IMAGES', message: 'Attach at most 10 images per message.' },
+            requestId: request.id,
+          });
+        }
+        const input = Array.isArray(body.input)
+          ? [{ role: 'user' as const, content: body.input }]
+          : body.input;
+        const payload = await client.createRun({ ...body, input }, crypto.randomUUID());
         return await reply.send(payload);
       } catch (error) {
         return sendHermesError(reply, request.id, error);

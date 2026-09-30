@@ -110,7 +110,7 @@ describe('SettingsLayout mobile shell', () => {
       name: 'Open Settings navigation',
     });
     await user.click(hamburger);
-    expect(await screen.findByRole('button', { name: '← Chat' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Chat' })).toBeInTheDocument();
   });
 
   it('Back to Chat restores the last active session when one is remembered', async () => {

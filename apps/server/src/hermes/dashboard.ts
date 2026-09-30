@@ -76,12 +76,18 @@ export class HermesDashboardClient {
     });
   }
 
-  private async request<T>(
+  /**
+   * One authenticated exchange with the dashboard: bearer/session header,
+   * a single refresh-and-retry on 401, and error mapping. Returns the raw
+   * Response on success so callers can parse JSON or stream bytes.
+   */
+  private async exchange(
     path: string,
-    init: { method: string; body?: string; headers?: Record<string, string> } = { method: 'GET' },
-  ): Promise<T> {
+    init: { method: string; body?: string; headers?: Record<string, string> },
+    timeoutMs: number,
+  ): Promise<Response> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       let response = await this.send(path, init, controller.signal);
       if (response.status === 401 && this.tokenSource !== undefined) {
@@ -113,11 +119,12 @@ export class HermesDashboardClient {
             : bodyText || `Dashboard returned ${response.status} for ${init.method} ${path}`;
         throw new HermesHttpError(response.status, `HERMES_DASHBOARD_${response.status}`, message, detail);
       }
-      if (response.status === 204) {
-        return undefined as T;
-      }
-      return (await response.json()) as T;
+      // The timeout guards connect + headers; bodies are small JSON or a
+      // stream the caller owns.
+      clearTimeout(timer);
+      return response;
     } catch (error) {
+      clearTimeout(timer);
       if (error instanceof HermesHttpError) {
         throw error;
       }
@@ -126,9 +133,41 @@ export class HermesDashboardClient {
         'HERMES_DASHBOARD_UNREACHABLE',
         `Could not reach the Hermes dashboard API at ${this.baseUrl}: ${error instanceof Error ? error.message : 'unknown error'}`,
       );
-    } finally {
-      clearTimeout(timer);
     }
+  }
+
+  private async request<T>(
+    path: string,
+    init: { method: string; body?: string; headers?: Record<string, string> } = { method: 'GET' },
+    timeoutMs = this.timeoutMs,
+  ): Promise<T> {
+    const response = await this.exchange(path, init, timeoutMs);
+    if (response.status === 204) {
+      return undefined as T;
+    }
+    try {
+      return (await response.json()) as T;
+    } catch (error) {
+      throw new HermesHttpError(
+        502,
+        'HERMES_DASHBOARD_BAD_RESPONSE',
+        `The Hermes dashboard returned an unreadable response for ${init.method} ${path}: ${error instanceof Error ? error.message : 'invalid JSON'}`,
+      );
+    }
+  }
+
+  /** Allowlisted pass-through (routes/hermesProxy.ts): JSON in, JSON out. */
+  call<T = unknown>(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<T> {
+    return this.request<T>(
+      path,
+      { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) },
+      timeoutMs ?? this.timeoutMs,
+    );
+  }
+
+  /** Allowlisted pass-through for downloads: the caller streams the body. */
+  download(path: string, timeoutMs?: number): Promise<Response> {
+    return this.exchange(path, { method: 'GET', headers: { accept: '*/*' } }, timeoutMs ?? this.timeoutMs * 4);
   }
 
   // -- Config (PRD 31: raw config + schema-driven settings) -------------------

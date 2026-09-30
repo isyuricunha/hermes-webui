@@ -25,6 +25,13 @@ import { EnvPage } from '../features/settings/EnvPage';
 import { CliPage } from '../features/settings/CliPage';
 import { FieldDetailPage } from '../features/settings/FieldDetailPage';
 import { AppearancePage } from '../features/settings/AppearancePage';
+import { UsagePage } from '../features/settings/UsagePage';
+import { MemoryPage } from '../features/settings/MemoryPage';
+import { ToolsPage } from '../features/settings/ToolsPage';
+import { ProfilePage } from '../features/settings/ProfilePage';
+import { WebhooksPage } from '../features/settings/WebhooksPage';
+import { LogsPage } from '../features/settings/LogsPage';
+import { RouteError } from '../components/RouteError';
 import { LoginPage } from '../features/auth/LoginPage';
 import { SetupPage } from '../features/auth/SetupPage';
 
@@ -188,6 +195,13 @@ const appearanceRoute = createRoute({
   component: AppearancePage,
 });
 
+const usageRoute = createRoute({ getParentRoute: () => settingsRoute, path: 'usage', component: UsagePage });
+const memoryRoute = createRoute({ getParentRoute: () => settingsRoute, path: 'memory', component: MemoryPage });
+const toolsRoute = createRoute({ getParentRoute: () => settingsRoute, path: 'tools', component: ToolsPage });
+const profileRoute = createRoute({ getParentRoute: () => settingsRoute, path: 'profile', component: ProfilePage });
+const webhooksRoute = createRoute({ getParentRoute: () => settingsRoute, path: 'webhooks', component: WebhooksPage });
+const logsRoute = createRoute({ getParentRoute: () => settingsRoute, path: 'logs', component: LogsPage });
+
 const fieldRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: 'field',
@@ -224,13 +238,19 @@ const routeTree = rootRoute.addChildren([
       rawConfigRoute,
       environmentRoute,
       cliRoute,
+      usageRoute,
+      memoryRoute,
+      toolsRoute,
+      profileRoute,
+      webhooksRoute,
+      logsRoute,
       fieldRoute,
     ]),
   ]),
 ]);
 
 export function createAppRouter(history?: RouterHistory, queryClient?: QueryClient) {
-  return createRouter({ routeTree, history, context: { queryClient } });
+  return createRouter({ routeTree, history, context: { queryClient }, defaultErrorComponent: RouteError });
 }
 
 declare module '@tanstack/react-router' {

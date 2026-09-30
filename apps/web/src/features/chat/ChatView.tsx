@@ -1,9 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
-import ReactMarkdown, { type Components } from 'react-markdown';
-import { ArrowDown, Check, Copy, ShieldAlert, X } from 'lucide-react';
-import remarkGfm from 'remark-gfm';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { ArrowDown } from 'lucide-react';
 import type { NormalizedCommand } from '@hermes-webui/shared';
 import { commandArgs, findCommandIn } from '@hermes-webui/shared';
 import {
@@ -14,7 +12,6 @@ import {
   fetchRun,
   fetchSessionMessages,
   fetchSessionModel,
-  resolveApproval,
   stopRun,
   steerRun,
 } from '../../lib/api';
@@ -22,6 +19,7 @@ import { rememberDerivedTitle } from '../../lib/sessionTitles';
 import {
   applyEvent,
   emptyTranscript,
+  type MessageAttachment,
   type TranscriptApproval,
   type TranscriptItem,
   type TranscriptState,
@@ -29,146 +27,19 @@ import {
 import { loadActiveRunId, saveActiveRunId } from './runRegistry';
 import { useRunStream } from './useRunStream';
 import { Composer } from './Composer';
+import { insertIntoComposer } from './composerBus';
 import { ReasoningBlock, SystemCommandCard, ToolCard } from './cards';
 import { ModelPicker } from './ModelPicker';
 import { rememberChatSession } from '../../lib/navigation';
-import { useAuthState } from '../../lib/auth';
+import { ApprovalCard } from './ApprovalCard';
+import { AssistantMessage, UserMessage } from './MessageView';
+import { EmptyState } from './EmptyState';
+import { ChatHeader } from './ChatHeader';
+import { historyToItems } from './history';
+import { buildRunInput, type PendingAttachment } from './attachments';
+import { notifyRunFinished } from '../../lib/notify';
 
 // --- Subcomponents -----------------------------------------------------------
-
-function CodeBlock({ children }: { children: ReactNode }) {
-  const ref = useRef<HTMLPreElement>(null);
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    const text = ref.current?.innerText ?? '';
-    void navigator.clipboard
-      ?.writeText(text)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      })
-      .catch(() => undefined);
-  };
-  return (
-    <div className="group/code relative">
-      <pre ref={ref}>{children}</pre>
-      <button
-        type="button"
-        onClick={copy}
-        aria-label={copied ? 'Copied' : 'Copy code'}
-        className="yu-btn yu-btn-tonal absolute top-2 right-2 size-7 rounded-lg opacity-0 group-hover/code:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
-      >
-        {copied ? <Check className="size-3.5 text-success" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
-      </button>
-    </div>
-  );
-}
-
-const MARKDOWN_COMPONENTS: Components = {
-  pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
-  a: ({ children, href }) => (
-    <a href={href} target="_blank" rel="noreferrer noopener">
-      {children}
-    </a>
-  ),
-};
-
-function Markdown({ text }: { text: string }) {
-  return (
-    <div className="yu-prose min-w-0 break-words">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
-        {text}
-      </ReactMarkdown>
-    </div>
-  );
-}
-
-const APPROVAL_LABELS: Record<string, string> = {
-  once: 'Allow once',
-  session: 'Allow for this session',
-  always: 'Always allow',
-  deny: 'Deny',
-};
-
-function ApprovalCard({
-  approval,
-  runId,
-  onResolved,
-}: {
-  approval: TranscriptApproval;
-  runId: string | null;
-  onResolved: (choice: string) => void;
-}) {
-  const [pending, setPending] = useState<string | null>(null);
-  const resolve = (choice: 'once' | 'session' | 'always' | 'deny') => {
-    if (runId === null || pending !== null) return;
-    setPending(choice);
-    void resolveApproval(runId, {
-      choice,
-      ...(approval.requestId ? { request_id: approval.requestId } : {}),
-    })
-      .catch(() => undefined)
-      .finally(() => onResolved(choice));
-  };
-  if (approval.resolvedChoice) {
-    const denied = approval.resolvedChoice === 'deny';
-    return (
-      <div className="my-1.5">
-        <span className={['yu-chip', denied ? 'yu-chip-danger' : 'yu-chip-success'].join(' ')}>
-          {denied ? <X className="size-3" aria-hidden /> : <Check className="size-3" aria-hidden />}
-          {denied ? 'Denied' : `Approved · ${APPROVAL_LABELS[approval.resolvedChoice] ?? approval.resolvedChoice}`}
-        </span>
-      </div>
-    );
-  }
-  const choices = (approval.choices.length > 0 ? approval.choices : ['once', 'deny']).filter(
-    (choice): choice is 'once' | 'session' | 'always' | 'deny' => choice in APPROVAL_LABELS,
-  );
-  const allow = choices.filter((choice) => choice !== 'deny');
-  return (
-    <div className="yu-sheen my-2 rounded-2xl p-4" role="group" aria-label="Approval required">
-      <div className="flex items-center gap-2.5">
-        <span className="yu-chip-accent flex size-7 items-center justify-center rounded-lg" aria-hidden>
-          <ShieldAlert className="size-4" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-text-primary">Hermes wants to run this</p>
-          <p className="text-xs text-text-tertiary">
-            {approval.tool !== undefined ? `${approval.tool} · ` : ''}needs your approval
-          </p>
-        </div>
-      </div>
-      {approval.command ? (
-        <pre className="mt-3 overflow-x-auto rounded-xl border border-border-subtle bg-surface-editor px-3.5 py-2.5 font-mono text-xs leading-relaxed text-text-primary">
-          {approval.command}
-        </pre>
-      ) : null}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {allow.map((choice, index) => (
-          <button
-            key={choice}
-            type="button"
-            disabled={pending !== null}
-            onClick={() => resolve(choice)}
-            className={['yu-btn h-9 px-3.5 text-[13px]', index === 0 ? 'yu-btn-primary' : 'yu-btn-secondary'].join(' ')}
-          >
-            {APPROVAL_LABELS[choice]}
-          </button>
-        ))}
-        {choices.includes('deny') ? (
-          <button
-            type="button"
-            disabled={pending !== null}
-            onClick={() => resolve('deny')}
-            className="yu-btn yu-btn-danger h-9 px-3.5 text-[13px]"
-          >
-            Deny
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
 
 function ThinkingRow() {
   return (
@@ -178,64 +49,27 @@ function ThinkingRow() {
   );
 }
 
-function greeting(hour: number): string {
-  if (hour < 5) return 'Up late';
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function EmptyState() {
-  const auth = useAuthState();
-  const name = auth.data?.user?.displayName ?? auth.data?.user?.username ?? null;
-  return (
-    <div className="flex h-full flex-col items-center justify-center px-6 pb-16 text-center">
-      <h1 className="yu-rise text-[34px] leading-tight font-normal tracking-[-0.03em] sm:text-[44px]">
-        {greeting(new Date().getHours())}
-        {name !== null ? (
-          <>
-            , <span className="yu-shimmer-gold pr-[0.12em] italic">{name.charAt(0).toUpperCase() + name.slice(1)}</span>
-          </>
-        ) : null}
-      </h1>
-      <p className="yu-rise mt-3 max-w-md text-sm text-text-secondary" style={{ ['--yu-delay' as string]: '100ms' }}>
-        Same Hermes as on Telegram: memory, skills and tools included. Type{' '}
-        <kbd className="rounded-md bg-chip px-1.5 py-0.5 font-mono text-xs">/</kbd> for commands.
-      </p>
-    </div>
-  );
-}
-
 function TranscriptItemView({
   item,
   runId,
+  canRetry,
   onResolved,
+  onRetry,
+  onEdit,
 }: {
   item: TranscriptItem;
   runId: string | null;
+  canRetry: boolean;
   onResolved: (choice: string) => void;
+  onRetry: () => void;
+  onEdit: (text: string) => void;
 }) {
   switch (item.kind) {
     case 'message':
-      if (item.role === 'user') {
-        return (
-          <article className="mx-auto flex w-full max-w-3xl justify-end px-4 py-2">
-            <div className="max-w-[85%] rounded-2xl rounded-br-md bg-chip px-4 py-2.5 text-[15px] leading-relaxed text-text-primary shadow-[var(--yu-highlight)]">
-              <p className="whitespace-pre-wrap break-words">{item.content}</p>
-            </div>
-          </article>
-        );
-      }
-      if (item.content === '' && !item.streaming) {
-        return null;
-      }
-      return (
-        <article className="mx-auto w-full max-w-3xl px-4 py-2">
-          <Markdown text={item.content} />
-          {item.streaming ? (
-            <span className="yu-pulse ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 rounded-sm bg-agent text-agent" aria-hidden />
-          ) : null}
-        </article>
+      return item.role === 'user' ? (
+        <UserMessage item={item} onEdit={onEdit} />
+      ) : (
+        <AssistantMessage item={item} canRetry={canRetry} onRetry={onRetry} />
       );
     case 'reasoning':
       return <ReasoningBlock reasoning={item} />;
@@ -270,25 +104,12 @@ function TranscriptItemView({
   }
 }
 
-/** Tool names recorded on assistant rows, keyed by call id (OpenAI shape). */
-function toolCallNames(toolCalls: unknown): { id: string | null; name: string }[] {
-  if (!Array.isArray(toolCalls)) return [];
-  return toolCalls.flatMap((call: unknown) => {
-    if (typeof call !== 'object' || call === null) return [];
-    const record = call as { id?: unknown; name?: unknown; function?: { name?: unknown } };
-    const name = record.function?.name ?? record.name;
-    return typeof name === 'string' && name !== ''
-      ? [{ id: typeof record.id === 'string' ? record.id : null, name }]
-      : [];
-  });
-}
-
 // --- Chat view ---------------------------------------------------------------
 
 type ChatAction =
   | { type: 'reset'; items: TranscriptItem[]; sessionId: string; force?: boolean }
   | { type: 'event'; frame: Parameters<typeof applyEvent>[1]; sessionId: string }
-  | { type: 'appendUser'; text: string; sessionId: string }
+  | { type: 'appendUser'; text: string; attachments: MessageAttachment[]; sessionId: string }
   | {
       type: 'systemCard';
       title: string;
@@ -325,7 +146,14 @@ function transcriptReducer(state: TranscriptState, action: ChatAction): Transcri
         sessionId: action.sessionId,
         items: [
           ...state.items,
-          { kind: 'message', id: `local-${Date.now()}`, role: 'user', content: action.text },
+          {
+            kind: 'message',
+            id: `local-${Date.now()}`,
+            role: 'user',
+            content: action.text,
+            timestamp: Date.now() / 1000,
+            ...(action.attachments.length > 0 ? { attachments: action.attachments } : {}),
+          },
         ],
       };
     case 'approvalResolved': {
@@ -382,49 +210,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     if (sessionId === undefined || !messagesQuery.data) {
       return;
     }
-    const rows = [...messagesQuery.data.data].sort((a, b) => a.id - b.id);
-    const items: TranscriptItem[] = [];
-    // Tool result rows carry no name: take it from the assistant row that
-    // issued the call (by tool_call_id, else in call order).
-    let pendingCalls: { id: string | null; name: string }[] = [];
-    for (const row of rows) {
-      if (row.role === 'assistant') {
-        pendingCalls = toolCallNames(row.tool_calls);
-      }
-      if (row.reasoning !== null && row.reasoning !== undefined && row.reasoning !== '') {
-        items.push({ kind: 'reasoning', id: `history-rsn-${row.id}`, text: row.reasoning });
-      }
-      if (row.role === 'user') {
-        items.push({ kind: 'message', id: `history-${row.id}`, role: 'user', content: row.content });
-      } else if (row.role === 'tool') {
-        // Persisted tool result: compact card, never raw JSON in the chat.
-        const callId = row.tool_call_id;
-        const byId = pendingCalls.findIndex((call) => call.id !== null && call.id === callId);
-        const [call] = pendingCalls.splice(byId === -1 ? 0 : byId, 1);
-        items.push({
-          kind: 'tool',
-          id: `history-tool-${row.id}`,
-          name: call?.name ?? 'tool',
-          state: 'completed',
-          preview: row.content,
-        });
-      } else if (row.role === 'system') {
-        items.push({
-          kind: 'system',
-          id: `history-sys-${row.id}`,
-          title: 'System notice',
-          detail: row.content,
-          tone: 'info',
-        });
-      } else {
-        items.push({
-          kind: 'message',
-          id: `history-${row.id}`,
-          role: 'assistant',
-          content: row.content,
-        });
-      }
-    }
+    const items = historyToItems(messagesQuery.data.data);
     dispatch({ type: 'reset', items, sessionId, force: true });
   }, [sessionId, messagesQuery.data]);
 
@@ -510,6 +296,8 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         // resume effect append the final output a second time.
         setActiveRunId(null);
         void queryClient.invalidateQueries({ queryKey: ['messages', sessionId] });
+        void queryClient.invalidateQueries({ queryKey: ['session-detail', sessionId] });
+        notifyRunFinished(frame.type, frame.type === 'run.completed' ? String((frame as { output?: unknown }).output ?? '') : '');
       }
     },
     [sessionId, queryClient],
@@ -639,36 +427,48 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     [activeRunId, transcript.runDone, commandsQuery.data, currentModel, currentProvider],
   );
 
-  const send = async (text: string) => {
+  const send = async (text: string, attachments: PendingAttachment[] = []) => {
     if (sending) return;
     // Command interception: recognized -> native execution; unrecognized
     // slash input -> explanatory card. Neither becomes a user message.
-    const command = findCommandIn(commandsQuery.data?.commands ?? [], text);
-    if (command !== undefined) {
-      runCommand(command, commandArgs(text));
-      return;
-    }
-    if (text.startsWith('/')) {
-      dispatch({
-        type: 'systemCard',
-        title: `Unknown command ${text.split(/\s+/)[0]}`,
-        detail: 'Type "/" to browse the Hermes command catalog.',
-        tone: 'warning',
-      });
-      return;
+    if (attachments.length === 0) {
+      const command = findCommandIn(commandsQuery.data?.commands ?? [], text);
+      if (command !== undefined) {
+        runCommand(command, commandArgs(text));
+        return;
+      }
+      if (text.startsWith('/')) {
+        dispatch({
+          type: 'systemCard',
+          title: `Unknown command ${text.split(/\s+/)[0]}`,
+          detail: 'Type "/" to browse the Hermes command catalog.',
+          tone: 'warning',
+        });
+        return;
+      }
     }
     setError(null);
     setSending(true);
     try {
       let targetSession = sessionId;
+      const titleSeed = text !== '' ? text : (attachments[0]?.name ?? 'Attachment');
       if (targetSession === undefined) {
-        const created = await createSession({ title: text.slice(0, 60) });
+        const created = await createSession({ title: titleSeed.slice(0, 60) });
         targetSession = created.session.id;
         void queryClient.invalidateQueries({ queryKey: ['sessions'] });
       }
-      rememberDerivedTitle(targetSession, text);
-      dispatch({ type: 'appendUser', text, sessionId: targetSession });
-      const run = await createRun(text, targetSession);
+      rememberDerivedTitle(targetSession, titleSeed);
+      dispatch({
+        type: 'appendUser',
+        text,
+        attachments: attachments.map((item) =>
+          item.kind === 'image'
+            ? { kind: 'image' as const, name: item.name, url: item.dataUrl }
+            : { kind: 'file' as const, name: item.name },
+        ),
+        sessionId: targetSession,
+      });
+      const run = await createRun(buildRunInput(text, attachments), targetSession);
       saveActiveRunId(targetSession, run.run_id);
       setActiveRunId(run.run_id);
       if (targetSession !== sessionId) {
@@ -679,6 +479,21 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     } finally {
       setSending(false);
     }
+  };
+
+  // Retry re-sends the last user turn (images included) as a new run.
+  const lastUser = [...transcript.items]
+    .reverse()
+    .find((item): item is Extract<TranscriptItem, { kind: 'message' }> => item.kind === 'message' && item.role === 'user');
+  const lastAssistantId = [...transcript.items]
+    .reverse()
+    .find((item) => item.kind === 'message' && item.role === 'assistant')?.id;
+  const retry = () => {
+    if (lastUser === undefined) return;
+    const images: PendingAttachment[] = (lastUser.attachments ?? [])
+      .filter((item) => item.kind === 'image' && item.url !== undefined)
+      .map((item, index) => ({ id: `retry-${index}`, kind: 'image', name: item.name, size: 0, dataUrl: item.url }));
+    void send(lastUser.content, images);
   };
 
   const running = activeRunId !== null && !transcript.runDone;
@@ -695,6 +510,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
+      {sessionId !== undefined ? <ChatHeader sessionId={sessionId} items={transcript.items} /> : null}
       <div
         ref={scrollRefCallback}
         onScroll={(event) => {
@@ -711,9 +527,12 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
               key={item.id}
               item={item}
               runId={activeRunId}
+              canRetry={!running && !sending && item.id === lastAssistantId && lastUser !== undefined}
               onResolved={(choice) =>
                 dispatch({ type: 'approvalResolved', approvalId: item.id, choice })
               }
+              onRetry={retry}
+              onEdit={insertIntoComposer}
             />
           ))
         )}
@@ -762,7 +581,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         <Composer
           key={sessionId ?? 'new'}
           running={running || sending}
-          onSend={(text) => void send(text)}
+          onSend={(text, attachments) => void send(text, attachments)}
           onSteer={running ? (text) => void steer(text) : undefined}
           onCommand={(cmd, args) => runCommand(cmd, args)}
           onOpenModelPicker={() => setPickerOpen(true)}

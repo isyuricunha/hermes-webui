@@ -103,7 +103,7 @@ export function FieldDetailPage({ path }: { path: string }) {
 
   return (
     <SettingsPage title={path}>
-      <div className="rounded-lg border border-border-subtle bg-surface-elevated p-4">
+      <div className="yu-card rounded-2xl p-4">
         <p className="text-sm font-medium">{field.description ?? path}</p>
         <p className="mt-1 text-xs text-text-secondary">
           type: {type} · category: {field.category ?? '?'}
@@ -117,7 +117,7 @@ export function FieldDetailPage({ path }: { path: string }) {
           }}
           aria-label={`Value for ${path}`}
           spellCheck={false}
-          className="mt-3 h-10 w-full max-w-md rounded-lg border border-border-subtle bg-surface px-3 text-sm outline-none focus:border-accent"
+          className="mt-3 h-10 w-full max-w-md yu-input px-3 text-sm"
         />
         {invalid ? (
           <p className="mt-1 text-xs text-danger">Not a valid number.</p>

@@ -1,18 +1,7 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import {
-  Clock,
-  GitFork,
-  MessageSquare,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Pencil,
-  Send,
-  Settings,
-  SquarePen,
-  SquareTerminal,
-  Trash2,
-} from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, Search, Settings, SquarePen } from 'lucide-react';
 import {
   createSession,
   deleteSession,
@@ -20,10 +9,15 @@ import {
   fetchSessions,
   forkSession,
   patchSession,
+  type SessionRow,
 } from '../../lib/api';
 import { ThemeToggle } from './ThemeToggle';
 import { AccountMenu } from '../auth/AccountMenu';
 import { derivedTitle } from '../../lib/sessionTitles';
+import { confirmDialog } from '../../lib/dialog';
+import { toast, toastError } from '../../lib/toast';
+import { SessionItem } from './SessionItem';
+import { SessionSearch } from './SessionSearch';
 
 function HermesStatusPill() {
   const { data, isPending, isError } = useQuery({
@@ -56,33 +50,6 @@ function HermesStatusPill() {
   );
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  telegram: 'Telegram',
-  cron: 'Cron',
-  cli: 'CLI',
-  tui: 'Terminal',
-};
-
-function SourceIcon({ source }: { source: string }) {
-  const key = source.toLowerCase();
-  const label = SOURCE_LABELS[key] ?? 'WebUI';
-  const className = 'size-3.5';
-  return (
-    <span title={label} className="flex shrink-0 text-text-tertiary">
-      {key === 'telegram' ? (
-        <Send className={className} aria-hidden />
-      ) : key === 'cron' ? (
-        <Clock className={className} aria-hidden />
-      ) : key === 'cli' || key === 'tui' ? (
-        <SquareTerminal className={className} aria-hidden />
-      ) : (
-        <MessageSquare className={className} aria-hidden />
-      )}
-      <span className="sr-only">{`(${label})`}</span>
-    </span>
-  );
-}
-
 /**
  * Display title hierarchy (Chat UX goal): Hermes-provided title, then the
  * WebUI-derived title from the first user message, then a friendly fallback.
@@ -96,15 +63,16 @@ function sessionLabel(id: string, title: string | null): string {
   return derivedTitle(id) ?? 'New chat';
 }
 
-const GROUPS = ['Today', 'Yesterday', 'Previous 7 days', 'Older'] as const;
+const GROUPS = ['Pinned', 'Today', 'Yesterday', 'Previous 7 days', 'Older'] as const;
 type GroupLabel = (typeof GROUPS)[number];
 
-function groupLabel(startedAt: number, now = new Date()): GroupLabel {
+function groupLabel(session: SessionRow, now = new Date()): GroupLabel {
+  if (session.pinned === true) return 'Pinned';
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const started = startedAt * 1000;
-  if (started >= startOfToday) return 'Today';
-  if (started >= startOfToday - 86_400_000) return 'Yesterday';
-  if (started >= startOfToday - 7 * 86_400_000) return 'Previous 7 days';
+  const at = (session.last_active ?? session.started_at) * 1000;
+  if (at >= startOfToday) return 'Today';
+  if (at >= startOfToday - 86_400_000) return 'Yesterday';
+  if (at >= startOfToday - 7 * 86_400_000) return 'Previous 7 days';
   return 'Older';
 }
 
@@ -115,11 +83,10 @@ interface SessionSidebarProps {
 }
 
 /**
- * Sidebar structure follows PRD 9.1: new chat, grouped conversations,
- * connection status and Settings at the bottom. Sessions are real Hermes
- * sessions; pins/archive and sidebar width are WebUI-owned (PRD 11.3, 51).
- * Collapsed mode keeps only the primary actions (PRD 6.6 progressive
- * disclosure).
+ * Sidebar (PRD 9.1): new chat, full-text search, pinned + date-grouped
+ * conversations from every source, and status/settings/account at the
+ * bottom. Pin/archive/title live in Hermes (the same flags Hermes Desktop
+ * uses), so they follow the conversation everywhere.
  */
 export function SessionSidebar({
   collapsed = false,
@@ -128,9 +95,10 @@ export function SessionSidebar({
 }: SessionSidebarProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [query, setQuery] = useState('');
   const sessionsQuery = useQuery({
     queryKey: ['sessions'],
-    queryFn: () => fetchSessions(50),
+    queryFn: () => fetchSessions(80),
   });
 
   const invalidate = () => {
@@ -144,39 +112,76 @@ export function SessionSidebar({
       void navigate({ to: '/chat/$sessionId', params: { sessionId: created.session.id } });
       onNavigate?.();
     },
+    onError: (error) => toastError(error),
   });
 
-  const rename = useMutation({
-    mutationFn: ({ id, title }: { id: string; title: string }) => patchSession(id, { title }),
-    onSuccess: invalidate,
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: string) => deleteSession(id),
-    onSuccess: invalidate,
-  });
-
-  const fork = useMutation({
-    mutationFn: (id: string) => forkSession(id),
-    onSuccess: (created) => {
+  const patch = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { title?: string; pinned?: boolean; archived?: boolean } }) =>
+      patchSession(id, body),
+    onSuccess: (_data, variables) => {
       invalidate();
-      if (created?.session?.id) {
-        void navigate({ to: '/chat/$sessionId', params: { sessionId: created.session.id } });
-      }
-      onNavigate?.();
+      void queryClient.invalidateQueries({ queryKey: ['session-detail', variables.id] });
     },
+    onError: (error) => toastError(error),
   });
 
-  const sessions = [...(sessionsQuery.data?.data ?? [])].sort((a, b) => b.started_at - a.started_at);
-  const groups = new Map<GroupLabel, typeof sessions>();
+  const fork = async (id: string) => {
+    try {
+      const created = await forkSession(id);
+      invalidate();
+      toast('Forked into a new conversation.', 'success');
+      void navigate({ to: '/chat/$sessionId', params: { sessionId: created.session.id } });
+      onNavigate?.();
+    } catch (error) {
+      toastError(error);
+    }
+  };
+
+  const archive = (id: string, name: string) => {
+    patch.mutate(
+      { id, body: { archived: true } },
+      {
+        onSuccess: () =>
+          toast(`Archived "${name}".`, 'success', {
+            action: { label: 'Undo', onClick: () => patch.mutate({ id, body: { archived: false } }) },
+          }),
+      },
+    );
+  };
+
+  const remove = async (id: string, name: string) => {
+    const ok = await confirmDialog({
+      title: 'Delete this conversation?',
+      description: `"${name}" and its messages are removed from Hermes. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await deleteSession(id);
+      invalidate();
+      toast('Conversation deleted.', 'success');
+      if (window.location.pathname === `/chat/${encodeURIComponent(id)}`) {
+        void navigate({ to: '/' });
+      }
+    } catch (error) {
+      toastError(error);
+    }
+  };
+
+  const sessions = [...(sessionsQuery.data?.data ?? [])]
+    .filter((session) => session.archived !== true)
+    .sort((a, b) => (b.last_active ?? b.started_at) - (a.last_active ?? a.started_at));
+  const groups = new Map<GroupLabel, SessionRow[]>();
   for (const session of sessions) {
-    const label = groupLabel(session.started_at);
+    const label = groupLabel(session);
     const list = groups.get(label) ?? [];
     list.push(session);
     groups.set(label, list);
   }
 
   const iconButton = 'yu-btn yu-btn-ghost size-8 rounded-lg';
+  const searching = query.trim().length >= 2;
 
   return (
     <div className="flex h-full flex-col">
@@ -202,13 +207,13 @@ export function SessionSidebar({
         </button>
       </div>
 
-      <div className={collapsed ? 'flex justify-center px-3 pb-2' : 'px-3 pb-3'}>
+      <div className={collapsed ? 'flex flex-col items-center gap-1 px-3 pb-2' : 'px-3 pb-2'}>
         <button
           type="button"
           onClick={() => newChat.mutate()}
           disabled={newChat.isPending}
           aria-label="New chat"
-          title="New chat"
+          title="New chat (Ctrl+Shift+O)"
           className={
             collapsed
               ? iconButton
@@ -218,90 +223,75 @@ export function SessionSidebar({
           <SquarePen className="size-4" aria-hidden />
           {collapsed ? null : <span>New chat</span>}
         </button>
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={onCollapseToggle}
+            aria-label="Search conversations"
+            title="Search conversations"
+            className={iconButton}
+          >
+            <Search className="size-4" aria-hidden />
+          </button>
+        ) : null}
       </div>
 
       {collapsed ? (
         <div className="flex-1" />
       ) : (
-        <nav className="flex-1 overflow-y-auto px-2 pb-3" aria-label="Conversations">
-          {sessionsQuery.isPending ? (
-            <div className="space-y-2.5 px-2 pt-2" aria-label="Loading sessions">
-              {[72, 54, 64, 40].map((width) => (
-                <div key={width} className="yu-skel h-3" style={{ width: `${width}%` }} />
-              ))}
-            </div>
-          ) : sessions.length === 0 ? (
-            <p className="px-2 py-2 text-[13px] text-text-tertiary">No conversations yet.</p>
+        <>
+          <SessionSearch query={query} onQueryChange={setQuery} onNavigate={onNavigate} />
+          {searching ? (
+            <div className="flex-1" />
           ) : (
-            GROUPS.map((label) => {
-              const list = groups.get(label) ?? [];
-              if (list.length === 0) return null;
-              return (
-                <div key={label} className="mb-2">
-                  <p className="yu-eyebrow px-2.5 pt-2 pb-1">{label}</p>
-                  <ul>
-                    {list.map((session) => {
-                      const name = sessionLabel(session.id, session.title);
-                      return (
-                        <li key={session.id} className="group relative">
-                          <Link
-                            to="/chat/$sessionId"
-                            params={{ sessionId: session.id }}
-                            onClick={onNavigate}
-                            className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] text-text-secondary transition-colors hover:bg-surface-input hover:text-text-primary"
-                            activeProps={{ className: 'bg-chip !text-text-primary' }}
-                            title={`${name} (${session.id})`}
-                          >
-                            <SourceIcon source={session.source} />
-                            <span className="min-w-0 flex-1 truncate group-hover:pr-20 group-focus-within:pr-20">{name}</span>
-                          </Link>
-                          <span className="absolute top-1/2 right-1.5 hidden -translate-y-1/2 gap-0.5 group-hover:flex group-focus-within:flex">
-                            <button
-                              type="button"
-                              aria-label={`Rename ${name}`}
-                              title="Rename"
-                              className="yu-btn yu-btn-ghost size-7 rounded-md"
-                              onClick={() => {
-                                const title = window.prompt('New title:', session.title ?? '');
-                                if (title !== null && title.trim() !== '') {
-                                  rename.mutate({ id: session.id, title: title.trim() });
-                                }
-                              }}
-                            >
-                              <Pencil className="size-3.5" aria-hidden />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label={`Fork ${name}`}
-                              title="Fork this conversation"
-                              className="yu-btn yu-btn-ghost size-7 rounded-md"
-                              onClick={() => fork.mutate(session.id)}
-                            >
-                              <GitFork className="size-3.5" aria-hidden />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label={`Delete ${name}`}
-                              title="Delete"
-                              className="yu-btn yu-btn-ghost size-7 rounded-md hover:!text-danger"
-                              onClick={() => {
-                                if (window.confirm(`Delete "${name}"?`)) {
-                                  remove.mutate(session.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="size-3.5" aria-hidden />
-                            </button>
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
+            <nav className="flex-1 overflow-y-auto px-2 pb-3" aria-label="Conversations">
+              {sessionsQuery.isPending ? (
+                <div className="space-y-2.5 px-2 pt-2" aria-label="Loading sessions">
+                  {[72, 54, 64, 40].map((width) => (
+                    <div key={width} className="yu-skel h-3" style={{ width: `${width}%` }} />
+                  ))}
                 </div>
-              );
-            })
+              ) : sessionsQuery.isError ? (
+                <p className="px-2 py-2 text-[13px] text-danger">Could not load conversations.</p>
+              ) : sessions.length === 0 ? (
+                <p className="px-2 py-2 text-[13px] text-text-tertiary">No conversations yet.</p>
+              ) : (
+                GROUPS.map((label) => {
+                  const list = groups.get(label) ?? [];
+                  if (list.length === 0) return null;
+                  return (
+                    <div key={label} className="mb-2">
+                      <p className="yu-eyebrow px-2.5 pt-2 pb-1">{label}</p>
+                      <ul>
+                        {list.map((session) => {
+                          const name = sessionLabel(session.id, session.title);
+                          return (
+                            <SessionItem
+                              key={session.id}
+                              id={session.id}
+                              name={name}
+                              source={session.source}
+                              pinned={session.pinned === true}
+                              onNavigate={onNavigate}
+                              actions={{
+                                onRename: (title) => patch.mutate({ id: session.id, body: { title } }),
+                                onTogglePin: () =>
+                                  patch.mutate({ id: session.id, body: { pinned: session.pinned !== true } }),
+                                onFork: () => void fork(session.id),
+                                onArchive: () => archive(session.id, name),
+                                onDelete: () => void remove(session.id, name),
+                              }}
+                            />
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })
+              )}
+            </nav>
           )}
-        </nav>
+        </>
       )}
 
       <div

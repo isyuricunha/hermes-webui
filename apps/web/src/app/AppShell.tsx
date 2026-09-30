@@ -1,9 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, useMatchRoute } from '@tanstack/react-router';
 import { Menu, RotateCw, X } from 'lucide-react';
 import { CommandPalette } from '../features/palette/CommandPalette';
 import { SessionSidebar } from '../features/sessions/SessionSidebar';
 import { useTheme } from '../lib/theme';
+import { HeaderSlotContext } from './headerSlot';
+import { Toaster } from '../components/Toaster';
+import { DialogHost } from '../components/DialogHost';
+import { ShortcutsHost } from '../components/ShortcutsHost';
+import { TOGGLE_SIDEBAR_EVENT } from '../lib/events';
 
 /**
  * Primary layout (PRD 10.2): Conversations | Chat. Desktop keeps the sidebar
@@ -13,13 +18,29 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [restartRequired, setRestartRequired] = useState(false);
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
   const { cycle } = useTheme();
+  const matchRoute = useMatchRoute();
+  const inConversation = matchRoute({ to: '/chat/$sessionId' }) !== false;
 
   // PRD 30: settings saves signal that a gateway restart may be required.
   useEffect(() => {
     const handler = () => setRestartRequired(true);
     window.addEventListener('hermes-webui:restart-required', handler);
     return () => window.removeEventListener('hermes-webui:restart-required', handler);
+  }, []);
+
+  // Ctrl/Cmd+Shift+S: collapse/expand on desktop, open/close the drawer on phones.
+  useEffect(() => {
+    const handler = () => {
+      if (window.matchMedia('(min-width: 768px)').matches) {
+        setCollapsed((value) => !value);
+      } else {
+        setDrawerOpen((value) => !value);
+      }
+    };
+    window.addEventListener(TOGGLE_SIDEBAR_EVENT, handler);
+    return () => window.removeEventListener(TOGGLE_SIDEBAR_EVENT, handler);
   }, []);
 
   // /sessions command (and other surfaces) can open the conversations drawer.
@@ -44,9 +65,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <Menu className="size-[18px]" aria-hidden />
         </button>
-        <Link to="/" className="text-[15px] font-medium tracking-[-0.01em]" aria-label="Hermes WebUI home">
-          Hermes
-        </Link>
+        {inConversation ? (
+          <div ref={setHeaderSlot} className="flex min-w-0 flex-1 items-center" />
+        ) : (
+          <Link to="/" className="text-[15px] font-medium tracking-[-0.01em]" aria-label="Hermes WebUI home">
+            Hermes
+          </Link>
+        )}
       </header>
 
       {/* Backdrop for the mobile drawer */}
@@ -74,7 +99,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col pt-12 md:pt-0">{children}</main>
+      <main className="flex min-w-0 flex-1 flex-col pt-12 md:pt-0">
+        <HeaderSlotContext.Provider value={inConversation ? headerSlot : null}>{children}</HeaderSlotContext.Provider>
+      </main>
 
       {/* Restart-required banner (PRD 30) */}
       {restartRequired ? (
@@ -105,6 +132,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       ) : null}
 
       <CommandPalette onCycleTheme={cycle} />
+      <Toaster />
+      <DialogHost />
+      <ShortcutsHost />
     </div>
   );
 }

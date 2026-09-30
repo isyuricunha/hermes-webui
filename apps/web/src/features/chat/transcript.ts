@@ -5,12 +5,22 @@ import type { NormalizedRunEvent } from '@hermes-webui/shared';
  * streaming pipeline is unit-testable without a browser (PRD 60.1).
  */
 
+export interface MessageAttachment {
+  kind: 'image' | 'file';
+  name: string;
+  /** Image data URL (images only). */
+  url?: string;
+}
+
 export interface TranscriptMessage {
   kind: 'message';
   id: string;
   role: 'user' | 'assistant';
   content: string;
   streaming?: boolean;
+  /** Unix seconds, when known. */
+  timestamp?: number;
+  attachments?: MessageAttachment[];
 }
 
 export interface TranscriptCommentary {
@@ -123,7 +133,14 @@ export function applyEvent(
       if (last?.kind === 'message' && last.role === 'assistant' && last.streaming) {
         items[items.length - 1] = { ...last, content: last.content + delta };
       } else {
-        items.push({ kind: 'message', id: nextId('msg'), role: 'assistant', content: delta, streaming: true });
+        items.push({
+          kind: 'message',
+          id: nextId('msg'),
+          role: 'assistant',
+          content: delta,
+          streaming: true,
+          timestamp: Date.now() / 1000,
+        });
       }
       return { ...state, items };
     }

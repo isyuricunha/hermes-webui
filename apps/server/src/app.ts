@@ -10,6 +10,7 @@ import { sessionRoutes } from './routes/sessions';
 import { runRoutes } from './routes/runs';
 import { cronRoutes } from './routes/cron';
 import { settingsRoutes } from './routes/settings';
+import { hermesProxyRoutes } from './routes/hermesProxy';
 import { cliRoutes } from './routes/cli';
 import { commandRoutes } from './routes/commands';
 import { openDatabase } from './db/database';
@@ -208,6 +209,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   await app.register(runRoutes, { client: hermes });
   await app.register(cronRoutes, { client: hermes });
   await app.register(settingsRoutes, { dashboard });
+  await app.register(hermesProxyRoutes, { dashboard });
   await app.register(cliRoutes, { hermesBin: config.hermesBin });
   await app.register(commandRoutes);
 

@@ -7,7 +7,7 @@ import { getCsrfToken, notifyAuthRequired } from './auth';
  * all live behind this boundary.
  */
 
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+export async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? 'GET').toUpperCase();
   const headers: Record<string, string> = {
     accept: 'application/json',
@@ -82,6 +82,20 @@ export interface SessionRow {
   started_at: number;
   message_count: number;
   preview?: string | null;
+  last_active?: number | null;
+  ended_at?: number | null;
+  pinned?: boolean;
+  archived?: boolean;
+  tool_call_count?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  reasoning_tokens?: number;
+  estimated_cost_usd?: number | null;
+  parent_session_id?: string | null;
+}
+
+export function fetchSessionDetail(sessionId: string): Promise<{ session: SessionRow }> {
+  return requestJson<{ session: SessionRow }>(`/api/sessions/${encodeURIComponent(sessionId)}`);
 }
 
 export interface SessionListResponse {
@@ -119,12 +133,14 @@ export function deleteSession(sessionId: string): Promise<unknown> {
 export interface MessageRow {
   id: number;
   role: 'user' | 'assistant' | 'tool' | 'system' | 'commentary';
-  content: string;
+  /** Text, or multimodal parts (text + image_url) for vision turns. */
+  content: string | unknown[];
   timestamp: number;
   reasoning: string | null;
   tool_calls: unknown;
   /** Present on role "tool" rows: the assistant call this result answers. */
   tool_call_id?: string | null;
+  tool_name?: string | null;
 }
 
 export interface MessageListResponse {
@@ -154,7 +170,11 @@ export interface RunStatus {
   completed?: boolean;
 }
 
-export function createRun(input: string, sessionId?: string): Promise<RunCreated> {
+export type RunInput =
+  | string
+  | ({ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } })[];
+
+export function createRun(input: RunInput, sessionId?: string): Promise<RunCreated> {
   return requestJson<RunCreated>('/api/runs', {
     method: 'POST',
     body: JSON.stringify({ input, ...(sessionId ? { session_id: sessionId } : {}) }),
@@ -197,6 +217,15 @@ export interface CronJob {
   schedule?: { kind?: string; expr?: string; display?: string };
   schedule_display?: string;
   paused?: boolean;
+  enabled?: boolean;
+  state?: string | null;
+  deliver?: string | null;
+  model?: string | null;
+  skills?: string[] | null;
+  last_run_at?: string | null;
+  next_run_at?: string | null;
+  last_status?: string | null;
+  last_error?: string | null;
 }
 
 export interface CronJobList {

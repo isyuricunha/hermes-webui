@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { deleteEnv, fetchEnv, putEnv } from '../../lib/api';
+import { confirmDialog } from '../../lib/dialog';
 import { SettingsError, SettingsPage } from './SettingsLayout';
 
 /**
@@ -74,7 +75,7 @@ export function EnvPage() {
           onChange={(event) => setFilter(event.target.value)}
           placeholder="Filter variables…"
           aria-label="Filter environment variables"
-          className="h-9 flex-1 rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
+          className="h-9 flex-1 yu-card rounded-2xl px-3 text-sm outline-none focus:border-accent"
         />
         <label className="flex items-center gap-1.5 text-xs text-text-secondary">
           <input type="checkbox" checked={onlySet} onChange={(event) => setOnlySet(event.target.checked)} />
@@ -83,7 +84,7 @@ export function EnvPage() {
       </div>
 
       <form
-        className="mb-4 flex flex-col gap-2 rounded-lg border border-border-subtle bg-surface-elevated p-3 sm:flex-row sm:items-end"
+        className="mb-4 flex flex-col gap-2 yu-card rounded-2xl p-3 sm:flex-row sm:items-end"
         onSubmit={(event) => {
           event.preventDefault();
           if (newKey.trim() !== '' && newValue !== '') {
@@ -104,7 +105,7 @@ export function EnvPage() {
           placeholder="value"
           aria-label="Variable value"
           type="password"
-          className="h-9 min-w-0 flex-1 rounded-lg border border-border-subtle bg-surface px-3 text-sm outline-none focus:border-accent"
+          className="h-9 min-w-0 flex-1 yu-input px-3 text-sm"
         />
         <button
           type="submit"
@@ -121,7 +122,7 @@ export function EnvPage() {
         {filtered.map(([name, info]) => (
           <li
             key={name}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2"
+            className="flex flex-wrap items-center justify-between gap-2 yu-card rounded-2xl px-3 py-2"
           >
             <div className="min-w-0">
               <p className="truncate font-mono text-xs font-medium">{name}</p>
@@ -134,11 +135,16 @@ export function EnvPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (window.confirm(`Remove ${name} from Hermes .env?`)) {
-                    removeVar.mutate(name);
-                  }
+                  void confirmDialog({
+                    title: `Remove ${name}?`,
+                    description: 'The variable is deleted from the Hermes .env. Anything that needs it stops working until it is set again.',
+                    confirmLabel: 'Remove',
+                    tone: 'danger',
+                  }).then((ok) => {
+                    if (ok) removeVar.mutate(name);
+                  });
                 }}
-                className="shrink-0 rounded-lg border border-danger px-2 py-1 text-[11px] text-danger"
+                className="yu-btn yu-btn-danger h-7 shrink-0 rounded-lg px-2 text-[11px]"
               >
                 Remove
               </button>

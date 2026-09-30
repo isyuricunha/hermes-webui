@@ -1,13 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUp, ChevronDown, Sparkles, Square } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ArrowUp, ChevronDown, FileText, Mic, Paperclip, Sparkles, Square, X } from 'lucide-react';
 import type { NormalizedCommand } from '@hermes-webui/shared';
 import { fetchCommands } from '../../lib/api';
+import { toast } from '../../lib/toast';
+import { bytes } from '../../lib/format';
+import { MAX_ATTACHMENTS, readAttachment, type PendingAttachment } from './attachments';
+import { useVoiceInput } from './useVoiceInput';
+import { COMPOSER_INSERT_EVENT } from './composerBus';
+import { FOCUS_COMPOSER_EVENT } from '../../lib/events';
 
 export interface ComposerProps {
   running: boolean;
-  /** When set, the composer submits a steer instead of a new message. */
-  onSend: (text: string) => void;
+  /** Sends a new message (text plus any attachments). */
+  onSend: (text: string, attachments: PendingAttachment[]) => void;
   /** Invoked for any recognized Hermes command (never sent to the LLM). */
   onCommand?: (command: NormalizedCommand, argsText: string) => void;
   /** Opens the native model picker (also reachable via /model). */
@@ -106,6 +112,58 @@ export function Composer({
   const [menuOpen, setMenuOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  const [dragging, setDragging] = useState(false);
+
+  const addFiles = useCallback(async (files: File[]) => {
+    for (const file of files) {
+      try {
+        const attachment = await readAttachment(file);
+        setAttachments((current) => {
+          if (current.length >= MAX_ATTACHMENTS) {
+            toast(`Up to ${MAX_ATTACHMENTS} attachments per message.`, 'error');
+            return current;
+          }
+          return [...current, attachment];
+        });
+      } catch (error) {
+        toast(error instanceof Error ? error.message : 'Could not attach that file.', 'error');
+      }
+    }
+  }, []);
+
+  const appendText = useCallback((text: string) => {
+    setValue((current) => {
+      const next = current.trim() === '' ? text : `${current.replace(/\s+$/, '')} ${text}`;
+      persistDraft(draftKey, next);
+      return next;
+    });
+    inputRef.current?.focus();
+  }, [draftKey]);
+
+  const voice = useVoiceInput(appendText, (message) => toast(message, 'error'));
+
+  useEffect(() => {
+    const onInsert = (event: Event) => {
+      const text = (event as CustomEvent<{ text?: unknown }>).detail?.text;
+      if (typeof text !== 'string') return;
+      setValue(text);
+      persistDraft(draftKey, text);
+      requestAnimationFrame(() => {
+        const node = inputRef.current;
+        node?.focus();
+        node?.setSelectionRange(text.length, text.length);
+      });
+    };
+    const onFocus = () => inputRef.current?.focus();
+    window.addEventListener(COMPOSER_INSERT_EVENT, onInsert);
+    window.addEventListener(FOCUS_COMPOSER_EVENT, onFocus);
+    return () => {
+      window.removeEventListener(COMPOSER_INSERT_EVENT, onInsert);
+      window.removeEventListener(FOCUS_COMPOSER_EVENT, onFocus);
+    };
+  }, [draftKey]);
 
   const commandsQuery = useQuery({
     queryKey: ['commands'],
@@ -140,15 +198,15 @@ export function Composer({
 
   const submit = () => {
     const text = value.trim();
-    if (text === '') {
-      return;
-    }
     if (steering) {
+      if (text === '') return;
       onSteer(text);
     } else if (running) {
       return;
     } else {
-      onSend(text);
+      if (text === '' && attachments.length === 0) return;
+      onSend(text, attachments);
+      setAttachments([]);
     }
     update('');
     setMenuOpen(false);
@@ -163,7 +221,7 @@ export function Composer({
       return;
     }
     // No handler wired: keep the legacy behavior rather than dropping input.
-    onSend(`${cmd.name}${argsText !== '' ? ` ${argsText}` : ''}`);
+    onSend(`${cmd.name}${argsText !== '' ? ` ${argsText}` : ''}`, []);
   };
 
   return (
@@ -204,50 +262,145 @@ export function Composer({
         </div>
       ) : null}
 
-      <div className="yu-input rounded-[20px] px-2 pt-2 pb-2 transition-shadow">
-        <textarea
-          ref={inputRef}
-          value={value}
-          onChange={(event) => update(event.target.value)}
-          onKeyDown={(event) => {
-            if (menuVisible) {
-              if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                setHighlight((index) => (index + 1) % hits.length);
-                return;
-              }
-              if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                setHighlight((index) => (index - 1 + hits.length) % hits.length);
-                return;
-              }
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                setMenuOpen(false);
-                return;
-              }
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                const selected = hits[activeIndex];
-                if (selected !== undefined) {
-                  selectCommand(selected);
-                }
-                return;
-              }
-            }
-            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-              event.preventDefault();
-              submit();
-            }
-          }}
-          rows={1}
-          placeholder={
-            steering ? 'Steer the running task…' : (placeholder ?? 'Message Hermes… ("/" for commands)')
+      <div
+        className={[
+          'yu-input relative rounded-[20px] px-2 pt-2 pb-2 transition-shadow',
+          dragging ? '!border-accent' : '',
+        ].join(' ')}
+        onDragOver={(event) => {
+          if (Array.from(event.dataTransfer.types).includes('Files')) {
+            event.preventDefault();
+            setDragging(true);
           }
-          aria-label="Message input"
-          className="block max-h-60 min-h-[2.75rem] w-full resize-none bg-transparent px-2.5 py-2 text-[15px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary"
-        />
-        <div className="flex items-center gap-2 pt-1">
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(event) => {
+          if (event.dataTransfer.files.length === 0) return;
+          event.preventDefault();
+          setDragging(false);
+          void addFiles(Array.from(event.dataTransfer.files));
+        }}
+      >
+        {dragging ? (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[20px] bg-surface-input/90 text-sm text-accent">
+            Drop to attach
+          </div>
+        ) : null}
+        {attachments.length > 0 ? (
+          <div className="flex flex-wrap gap-2 px-1.5 pt-1 pb-1.5">
+            {attachments.map((attachment) => (
+              <div key={attachment.id} className="group/att relative">
+                {attachment.kind === 'image' ? (
+                  <img
+                    src={attachment.dataUrl}
+                    alt={attachment.name}
+                    className="size-16 rounded-xl border border-border-subtle object-cover"
+                  />
+                ) : (
+                  <div className="flex h-16 w-40 items-center gap-2 rounded-xl border border-border-subtle bg-chip px-2.5">
+                    <FileText className="size-4 shrink-0 text-text-tertiary" aria-hidden />
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs text-text-primary">{attachment.name}</span>
+                      <span className="block font-mono text-[10px] text-text-tertiary">{bytes(attachment.size)}</span>
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  aria-label={`Remove ${attachment.name}`}
+                  onClick={() => setAttachments((current) => current.filter((item) => item.id !== attachment.id))}
+                  className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-text-primary text-background shadow"
+                >
+                  <X className="size-3" aria-hidden />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {voice.state === 'recording' ? (
+          <div className="flex min-h-[2.75rem] items-center gap-3 px-2.5 py-2">
+            <span className="yu-pulse size-2 rounded-full bg-danger text-danger" aria-hidden />
+            <span className="yu-shimmer text-[15px]">Listening…</span>
+            <span className="font-mono text-xs text-text-tertiary">
+              {Math.floor(voice.elapsed / 60)}:{String(voice.elapsed % 60).padStart(2, '0')}
+            </span>
+          </div>
+        ) : voice.state === 'transcribing' ? (
+          <div className="flex min-h-[2.75rem] items-center px-2.5 py-2">
+            <span className="yu-shimmer-agent text-[15px]">Transcribing…</span>
+          </div>
+        ) : (
+          <textarea
+            ref={inputRef}
+            value={value}
+            onChange={(event) => update(event.target.value)}
+            onPaste={(event) => {
+              const files = Array.from(event.clipboardData.files);
+              if (files.length > 0) {
+                event.preventDefault();
+                void addFiles(files);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (menuVisible) {
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  setHighlight((index) => (index + 1) % hits.length);
+                  return;
+                }
+                if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  setHighlight((index) => (index - 1 + hits.length) % hits.length);
+                  return;
+                }
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  setMenuOpen(false);
+                  return;
+                }
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  const selected = hits[activeIndex];
+                  if (selected !== undefined) {
+                    selectCommand(selected);
+                  }
+                  return;
+                }
+              }
+              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                event.preventDefault();
+                submit();
+              }
+            }}
+            rows={1}
+            placeholder={
+              steering ? 'Steer the running task…' : (placeholder ?? 'Message Hermes… ("/" for commands)')
+            }
+            aria-label="Message input"
+            className="block max-h-60 min-h-[2.75rem] w-full resize-none bg-transparent px-2.5 py-2 text-[15px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary"
+          />
+        )}
+        <div className="flex items-center gap-1 pt-1">
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            hidden
+            onChange={(event) => {
+              void addFiles(Array.from(event.target.files ?? []));
+              event.target.value = '';
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            aria-label="Attach files"
+            title="Attach images or text files"
+            disabled={steering}
+            className="yu-btn yu-btn-ghost size-8 rounded-lg"
+          >
+            <Paperclip className="size-4" aria-hidden />
+          </button>
           {onOpenModelPicker !== undefined ? (
             <button
               type="button"
@@ -262,6 +415,39 @@ export function Composer({
             </button>
           ) : null}
           <span className="flex-1" />
+          {voice.supported && !running ? (
+            voice.state === 'recording' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={voice.cancel}
+                  aria-label="Cancel recording"
+                  className="yu-btn yu-btn-ghost h-8 rounded-lg px-2.5 text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={voice.stop}
+                  aria-label="Stop recording and transcribe"
+                  className="yu-btn yu-btn-danger size-9 rounded-full"
+                >
+                  <Square className="size-3.5 fill-current" aria-hidden />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void voice.start()}
+                disabled={voice.state === 'transcribing'}
+                aria-label="Dictate"
+                title="Dictate (transcribed by Hermes)"
+                className="yu-btn yu-btn-ghost size-9 rounded-full"
+              >
+                <Mic className="size-4" aria-hidden />
+              </button>
+            )
+          ) : null}
           {steering && value.trim() !== '' ? (
             <button
               type="button"
@@ -282,11 +468,11 @@ export function Composer({
             >
               <Square className="size-3.5 fill-current" aria-hidden />
             </button>
-          ) : (
+          ) : voice.state === 'recording' ? null : (
             <button
               type="button"
               onClick={submit}
-              disabled={value.trim() === ''}
+              disabled={value.trim() === '' && attachments.length === 0}
               aria-label="Send message"
               title="Send (Enter)"
               className="yu-btn yu-btn-primary size-9 rounded-full"

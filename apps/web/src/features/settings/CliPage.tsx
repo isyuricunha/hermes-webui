@@ -6,23 +6,24 @@ import {
   runCliFreeForm,
   type BridgeResult,
 } from '../../lib/api';
+import { confirmDialog } from '../../lib/dialog';
 import { SettingsError, SettingsPage } from './SettingsLayout';
 
 function ResultView({ result }: { result: BridgeResult }) {
   return (
-    <div className="mt-3 rounded-lg border border-border-subtle bg-surface-elevated p-3 text-xs">
+    <div className="mt-3 yu-card rounded-2xl p-3 text-xs">
       <p className="mb-1 text-text-secondary">
         exit {result.exitCode ?? '?'} · {result.durationMs} ms
         {result.truncated ? ' · output truncated' : ''}
         {result.redacted ? ' · credentials redacted' : ''}
       </p>
       {result.stdout !== '' ? (
-        <pre className="max-h-72 overflow-auto rounded bg-surface p-2 font-mono whitespace-pre-wrap">
+        <pre className="max-h-72 overflow-auto rounded-xl bg-surface-editor p-3 font-mono text-text-secondary whitespace-pre-wrap">
           {result.stdout}
         </pre>
       ) : null}
       {result.stderr !== '' ? (
-        <pre className="mt-2 max-h-40 overflow-auto rounded bg-surface p-2 font-mono whitespace-pre-wrap text-danger">
+        <pre className="mt-2 max-h-40 overflow-auto rounded-xl bg-surface-editor p-3 font-mono text-text-secondary whitespace-pre-wrap text-danger">
           {result.stderr}
         </pre>
       ) : null}
@@ -79,14 +80,14 @@ export function CliPage() {
         <SettingsError message={catalogQuery.error.message} />
       ) : (
         <>
-          <p className="mb-2 text-xs font-semibold tracking-wide text-text-secondary uppercase">
+          <p className="mb-2 text-[13px] font-medium text-text-secondary">
             Commands
           </p>
           <ul className="mb-6 space-y-1.5">
             {catalogQuery.data.commands.map((command) => (
               <li
                 key={command.id}
-                className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2"
+                className="flex items-center justify-between yu-card rounded-2xl px-3 py-2"
               >
                 <div>
                   <p className="text-sm font-medium">{command.displayName}</p>
@@ -95,16 +96,20 @@ export function CliPage() {
                 <button
                   type="button"
                   disabled={runRegistry.isPending}
-                  onClick={() => {
+                  onClick={async () => {
                     if (
                       command.requiresConfirmation &&
-                      !window.confirm(`Run "${command.displayName}"? This changes Hermes state.`)
+                      !(await confirmDialog({
+                        title: `Run “${command.displayName}”?`,
+                        description: 'This command changes Hermes state.',
+                        confirmLabel: 'Run',
+                      }))
                     ) {
                       return;
                     }
                     runRegistry.mutate({ id: command.id, confirm: command.requiresConfirmation });
                   }}
-                  className="rounded-lg border border-border-subtle px-2.5 py-1 text-xs hover:bg-surface disabled:opacity-40"
+                  className="yu-btn yu-btn-secondary h-8 rounded-lg px-2.5 text-xs"
                 >
                   Run
                 </button>
@@ -112,7 +117,7 @@ export function CliPage() {
             ))}
           </ul>
 
-          <p className="mb-2 text-xs font-semibold tracking-wide text-text-secondary uppercase">
+          <p className="mb-2 text-[13px] font-medium text-text-secondary">
             Advanced
           </p>
           <form
@@ -127,7 +132,7 @@ export function CliPage() {
               onChange={(event) => setCommandLine(event.target.value)}
               aria-label="Hermes command"
               spellCheck={false}
-              className="h-9 flex-1 rounded-lg border border-border-subtle bg-surface-elevated px-3 font-mono text-xs outline-none focus:border-accent"
+              className="h-9 flex-1 yu-card rounded-2xl px-3 font-mono text-xs outline-none focus:border-accent"
             />
             <button
               type="submit"

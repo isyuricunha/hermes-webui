@@ -127,7 +127,7 @@ export class HermesClient {
    * Idempotency-Key so client retries never double-submit.
    */
   createRun(
-    body: { input: string; session_id?: string; model?: string },
+    body: { input: string | { role: 'user'; content: unknown[] }[]; session_id?: string; model?: string },
     idempotencyKey: string,
   ): Promise<unknown> {
     return this.request(
