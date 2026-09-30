@@ -35,6 +35,14 @@ export interface ServerConfig {
    */
   dataDir: string;
   /**
+   * Where files attached in the chat are saved (default: <dataDir>/uploads).
+   * Hermes reads them from this path, so it must be visible to the Hermes
+   * process (same machine, or a shared volume).
+   */
+  uploadDir?: string;
+  /** Largest file one attachment may be, in MB (default 100). */
+  uploadMaxMb: number;
+  /**
    * Trusted reverse proxy addresses (spec 2.14). Default: none — client IP,
    * HTTPS detection and rate limiting never trust forwarded headers unless
    * an explicit IP/CIDR list is configured.
@@ -112,6 +120,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     webDistDir: env.WEB_DIST_DIR ?? path.resolve(process.cwd(), '../web/dist'),
     appVersion: env.npm_package_version ?? '0.0.0-dev',
     dataDir: defaultDataDir(env),
+    uploadDir: env.HERMES_WEBUI_UPLOAD_DIR,
+    uploadMaxMb: intFromEnv(env.HERMES_WEBUI_UPLOAD_MAX_MB, 100),
     trustProxy: trustProxyFromEnv(env),
     session: {
       idleMs: intFromEnv(env.HERMES_WEBUI_SESSION_IDLE_HOURS, 24 * 7) * 60 * 60 * 1000,

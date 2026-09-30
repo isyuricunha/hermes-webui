@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { createPortal } from 'react-dom';
+import { useEffect } from 'react';
+import { CHAT_ACTION_EVENT, type ChatAction } from '../../lib/events';
 import {
   Archive,
   Braces,
@@ -122,6 +124,30 @@ export function ChatHeader({ sessionId, items }: { sessionId: string; items: Tra
       toastError(error);
     }
   };
+
+  // /title, /fork and /export in the composer land here.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const { action, arg = '' } = (event as CustomEvent<{ action: ChatAction; arg?: string }>).detail;
+      if (action === 'rename') {
+        if (arg.trim() !== '') patch.mutate({ title: arg.trim().slice(0, 120) });
+        else void rename();
+      } else if (action === 'fork') {
+        void fork();
+      } else if (action === 'export') {
+        if (arg.trim().toLowerCase() === 'json') {
+          const link = document.createElement('a');
+          link.href = sessionExportUrl(sessionId);
+          link.download = `${slug(title)}.json`;
+          link.click();
+        } else {
+          download(`${slug(title)}.md`, transcriptToMarkdown(title, items), 'text/markdown');
+        }
+      }
+    };
+    window.addEventListener(CHAT_ACTION_EVENT, handler);
+    return () => window.removeEventListener(CHAT_ACTION_EVENT, handler);
+  });
 
   const tokens = (session?.input_tokens ?? 0) + (session?.output_tokens ?? 0);
   const pinned = session?.pinned === true;

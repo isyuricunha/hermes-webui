@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUp, ChevronDown, FileText, Mic, Paperclip, Sparkles, Square, X } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArrowUp, ChevronDown, FileText, Film, LoaderCircle, Mic, Music, Paperclip, Sparkles, Square, X } from 'lucide-react';
 import type { NormalizedCommand } from '@hermes-webui/shared';
 import { fetchCommands } from '../../lib/api';
 import { toast } from '../../lib/toast';
@@ -20,6 +20,10 @@ export interface ComposerProps {
   onOpenModelPicker?: () => void;
   /** Short real model id shown on the picker chip (UI-side metadata). */
   modelLabel?: string;
+  /** Explains the model chip on hover (where the model comes from). */
+  modelHint?: string;
+  /** More controls in the toolbar, after the model chip (reasoning, context). */
+  extras?: ReactNode;
   onStop: () => void;
   /**
    * While a run is active, Enter steers it instead (gateway
@@ -92,7 +96,15 @@ function matchCommands(commands: NormalizedCommand[], value: string): SlashMatch
 }
 
 function categoryLabel(cmd: NormalizedCommand): string {
-  return cmd.availability === 'native' ? 'WebUI' : cmd.category;
+  if (cmd.availability === 'native') return 'WebUI';
+  if (cmd.availability === 'unsupported') return 'Terminal only';
+  return cmd.category;
+}
+
+function categoryTip(cmd: NormalizedCommand): string {
+  if (cmd.availability === 'native') return 'Runs right here in the WebUI.';
+  if (cmd.availability === 'unsupported') return cmd.disabledReason ?? 'Only makes sense in the terminal app.';
+  return 'Runs inside Hermes; you see the same output as in the terminal.';
 }
 
 /**
@@ -108,6 +120,8 @@ export function Composer({
   onCommand,
   onOpenModelPicker,
   modelLabel,
+  modelHint,
+  extras,
   onStop,
   onSteer,
   draftKey,
@@ -120,9 +134,11 @@ export function Composer({
   const fileRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(0);
 
   const addFiles = useCallback(async (files: File[]) => {
     for (const file of files) {
+      setUploading((count) => count + 1);
       try {
         const attachment = await readAttachment(file);
         setAttachments((current) => {
@@ -133,7 +149,9 @@ export function Composer({
           return [...current, attachment];
         });
       } catch (error) {
-        toast(error instanceof Error ? error.message : 'Could not attach that file.', 'error');
+        toast(error instanceof Error ? `${file.name}: ${error.message}` : 'Could not attach that file.', 'error');
+      } finally {
+        setUploading((count) => count - 1);
       }
     }
   }, []);
@@ -162,11 +180,14 @@ export function Composer({
       });
     };
     const onFocus = () => inputRef.current?.focus();
+    const onAttach = () => fileRef.current?.click();
     window.addEventListener(COMPOSER_INSERT_EVENT, onInsert);
     window.addEventListener(FOCUS_COMPOSER_EVENT, onFocus);
+    window.addEventListener('hermes-webui:composer-attach', onAttach);
     return () => {
       window.removeEventListener(COMPOSER_INSERT_EVENT, onInsert);
       window.removeEventListener(FOCUS_COMPOSER_EVENT, onFocus);
+      window.removeEventListener('hermes-webui:composer-attach', onAttach);
     };
   }, [draftKey]);
 
@@ -210,6 +231,10 @@ export function Composer({
       return;
     } else {
       if (text === '' && attachments.length === 0) return;
+      if (uploading > 0) {
+        toast('Still uploading an attachment…', 'info');
+        return;
+      }
       onSend(text, attachments);
       setAttachments([]);
     }
@@ -253,15 +278,23 @@ export function Composer({
               <span className="flex w-full items-center gap-2">
                 <span className="font-mono text-xs font-medium text-text-primary">{cmd.name}</span>
                 <span
+                  data-tip={categoryTip(cmd)}
                   className={[
                     'yu-chip shrink-0 px-1.5 py-0 text-[10px]',
-                    cmd.availability === 'native' ? 'yu-chip-accent' : 'yu-chip-neutral',
+                    cmd.availability === 'native'
+                      ? 'yu-chip-accent'
+                      : cmd.availability === 'unsupported'
+                        ? 'yu-chip-neutral opacity-60'
+                        : 'yu-chip-agent',
                   ].join(' ')}
                 >
                   {categoryLabel(cmd)}
                 </span>
               </span>
-              <span className="line-clamp-1 text-[11px] text-text-tertiary">{cmd.description}</span>
+              <span className="line-clamp-1 text-[11px] text-text-tertiary">
+                {cmd.argsHint !== null && cmd.argsHint !== undefined ? <span className="font-mono">{cmd.argsHint} · </span> : null}
+                {cmd.description}
+              </span>
             </button>
           ))}
         </div>
@@ -302,8 +335,17 @@ export function Composer({
                     className="size-16 rounded-xl border border-border-subtle object-cover"
                   />
                 ) : (
-                  <div className="flex h-16 w-40 items-center gap-2 rounded-xl border border-border-subtle bg-chip px-2.5">
-                    <FileText className="size-4 shrink-0 text-text-tertiary" aria-hidden />
+                  <div
+                    className="flex h-16 w-40 items-center gap-2 rounded-xl border border-border-subtle bg-chip px-2.5"
+                    title={attachment.kind === 'file' ? `${attachment.name}: saved for Hermes, which reads it from the server` : `${attachment.name}: inlined into the message`}
+                  >
+                    {attachment.upload?.kind === 'audio' ? (
+                      <Music className="size-4 shrink-0 text-text-tertiary" aria-hidden />
+                    ) : attachment.upload?.kind === 'video' ? (
+                      <Film className="size-4 shrink-0 text-text-tertiary" aria-hidden />
+                    ) : (
+                      <FileText className="size-4 shrink-0 text-text-tertiary" aria-hidden />
+                    )}
                     <span className="min-w-0">
                       <span className="block truncate text-xs text-text-primary">{attachment.name}</span>
                       <span className="block font-mono text-[10px] text-text-tertiary">{bytes(attachment.size)}</span>
@@ -320,6 +362,17 @@ export function Composer({
                 </button>
               </div>
             ))}
+            {uploading > 0 ? (
+              <div className="flex h-16 items-center gap-2 rounded-xl border border-dashed border-border-strong px-3 text-xs text-text-secondary">
+                <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
+                Uploading…
+              </div>
+            ) : null}
+          </div>
+        ) : uploading > 0 ? (
+          <div className="flex items-center gap-2 px-2.5 pt-1 pb-1.5 text-xs text-text-secondary">
+            <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
+            Uploading…
           </div>
         ) : null}
         {voice.state === 'recording' ? (
@@ -400,7 +453,7 @@ export function Composer({
             type="button"
             onClick={() => fileRef.current?.click()}
             aria-label="Attach files"
-            title="Attach images or text files"
+            title="Attach files: images, audio, video, PDFs, documents, code (also drag and drop or paste)"
             disabled={steering}
             className="yu-btn yu-btn-ghost size-8 rounded-lg"
           >
@@ -411,7 +464,8 @@ export function Composer({
               type="button"
               onClick={onOpenModelPicker}
               aria-label="Change model"
-              title={`Change model${modelLabel !== undefined ? ` (current: ${modelLabel})` : ''}`}
+              data-tip={modelHint ?? `Change model${modelLabel !== undefined ? ` (current: ${modelLabel})` : ''}`}
+              data-tip-wide
               className="yu-btn yu-btn-ghost h-8 max-w-[14rem] gap-1.5 rounded-lg px-2.5 text-xs"
             >
               <Sparkles className="size-3.5 shrink-0 text-accent" aria-hidden />
@@ -419,6 +473,7 @@ export function Composer({
               <ChevronDown className="size-3 shrink-0" aria-hidden />
             </button>
           ) : null}
+          {extras}
           <span className="flex-1" />
           {voice.supported && !running ? (
             voice.state === 'recording' ? (

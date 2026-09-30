@@ -57,6 +57,20 @@ export function fetchCommands(): Promise<{ commands: NormalizedCommand[] }> {
   return requestJson<{ commands: NormalizedCommand[] }>('/api/commands');
 }
 
+export type SlashResult =
+  | { kind: 'output'; output: string; warning?: string }
+  | { kind: 'send'; message: string; notice?: string }
+  | { kind: 'prefill'; message: string; notice?: string }
+  | { kind: 'error'; message: string };
+
+/** Runs a slash command in Hermes (dashboard websocket, server-side). */
+export function execHermesCommand(command: string, sessionId?: string): Promise<SlashResult> {
+  return requestJson<SlashResult>('/api/commands/exec', {
+    method: 'POST',
+    body: JSON.stringify(sessionId === undefined ? { command } : { command, sessionId }),
+  });
+}
+
 export function fetchSessionModel(
   sessionId: string,
 ): Promise<{ model: string | null; provider: string | null }> {
@@ -102,6 +116,25 @@ export function fetchSessionDetail(sessionId: string): Promise<{ session: Sessio
 export interface SessionListResponse {
   object: 'list';
   data: SessionRow[];
+}
+
+export interface SessionContextInfo {
+  model: string | null;
+  used: number | null;
+  contextLength: number | null;
+  messages: number | null;
+  apiCalls: number | null;
+  input: number | null;
+  output: number | null;
+  cacheRead: number | null;
+  cacheWrite: number | null;
+  reasoning: number | null;
+  cost: number | null;
+}
+
+/** Context window use and token totals of a conversation (dashboard numbers). */
+export function fetchSessionContext(sessionId: string): Promise<SessionContextInfo> {
+  return requestJson(`/api/sessions/${encodeURIComponent(sessionId)}/context`);
 }
 
 export function fetchSessionImages(sessionId: string): Promise<{ images: StoredImage[] }> {

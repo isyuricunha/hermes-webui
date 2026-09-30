@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { copyText } from '../../lib/clipboard';
-import { Check, Copy, FileText, ImageIcon, LoaderCircle, Pencil, RotateCcw, Square, Volume2 } from 'lucide-react';
+import { Check, Copy, CornerDownRight, Download, FileText, Film, ImageIcon, Music, LoaderCircle, Pencil, RotateCcw, Square, Volume2 } from 'lucide-react';
 import { Lightbox } from './MediaEmbed';
 import { speakText } from '../../lib/hx';
-import { clockTime } from '../../lib/format';
+import { clockTime, compactNumber } from '../../lib/format';
 import { toast, toastError } from '../../lib/toast';
 import { Markdown } from './Markdown';
 import { speakable } from './speakable';
-import type { TranscriptMessage } from './transcript';
+import type { ReplyStats, TranscriptMessage } from './transcript';
 
 function ActionButton({
   label,
@@ -110,26 +110,62 @@ function ReadAloudAction({ text }: { text: string }) {
 function Attachments({ items }: { items: NonNullable<TranscriptMessage['attachments']> }) {
   const [open, setOpen] = useState<{ url: string; name: string } | null>(null);
   return (
-    <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
-      {items.map((attachment, index) =>
-        attachment.kind === 'image' && attachment.url !== undefined ? (
-          <button
+    <div className="mb-1.5 flex max-w-[85%] flex-wrap justify-end gap-1.5">
+      {items.map((attachment, index) => {
+        if (attachment.kind === 'image' && attachment.url !== undefined) {
+          return (
+            <button
+              key={index}
+              type="button"
+              title={attachment.name}
+              aria-label={`Open ${attachment.name}`}
+              onClick={() => setOpen({ url: attachment.url as string, name: attachment.name })}
+              className="overflow-hidden rounded-xl border border-border-subtle transition-opacity hover:opacity-90"
+            >
+              <img src={attachment.url} alt={attachment.name} className="size-24 object-cover sm:size-32" />
+            </button>
+          );
+        }
+        if (attachment.kind === 'file' && attachment.url !== undefined && attachment.media === 'audio') {
+          return (
+            <figure key={index} className="w-72 max-w-full rounded-xl border border-border-subtle bg-surface-input p-2">
+              <figcaption className="mb-1 flex items-center gap-1.5 truncate px-1 text-xs text-text-secondary">
+                <Music className="size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{attachment.name}</span>
+              </figcaption>
+              <audio controls preload="metadata" src={attachment.url} className="h-9 w-full" />
+            </figure>
+          );
+        }
+        if (attachment.kind === 'file' && attachment.url !== undefined && attachment.media === 'video') {
+          return (
+            <video key={index} controls preload="metadata" src={attachment.url} className="max-h-64 w-72 max-w-full rounded-xl border border-border-subtle bg-black" />
+          );
+        }
+        const Icon = attachment.kind === 'image' ? ImageIcon : attachment.media === 'audio' ? Music : attachment.media === 'video' ? Film : FileText;
+        const chip = (
+          <>
+            <Icon className="size-3.5 shrink-0" aria-hidden />
+            <span className="truncate">{attachment.name}</span>
+            {attachment.url !== undefined ? <Download className="size-3 shrink-0 text-text-tertiary" aria-hidden /> : null}
+          </>
+        );
+        return attachment.url !== undefined && attachment.kind === 'file' ? (
+          <a
             key={index}
-            type="button"
-            title={attachment.name}
-            aria-label={`Open ${attachment.name}`}
-            onClick={() => setOpen({ url: attachment.url as string, name: attachment.name })}
-            className="overflow-hidden rounded-xl border border-border-subtle transition-opacity hover:opacity-90"
+            href={attachment.url}
+            download={attachment.name}
+            title={`Download ${attachment.name} (saved where Hermes can read it)`}
+            className="yu-chip yu-chip-neutral h-8 max-w-64 rounded-xl px-2.5 hover:text-text-primary"
           >
-            <img src={attachment.url} alt={attachment.name} className="size-24 object-cover sm:size-32" />
-          </button>
+            {chip}
+          </a>
         ) : (
-          <span key={index} className="yu-chip yu-chip-neutral h-8 rounded-xl px-2.5">
-            {attachment.kind === 'image' ? <ImageIcon className="size-3.5" aria-hidden /> : <FileText className="size-3.5" aria-hidden />}
-            {attachment.name}
+          <span key={index} className="yu-chip yu-chip-neutral h-8 max-w-64 rounded-xl px-2.5">
+            {chip}
           </span>
-        ),
-      )}
+        );
+      })}
       {open !== null ? <Lightbox src={open.url} name={open.name} onClose={() => setOpen(null)} /> : null}
     </div>
   );
@@ -142,8 +178,22 @@ export function UserMessage({ item, onEdit }: { item: TranscriptMessage; onEdit:
   return (
     <article className="group mx-auto flex w-full max-w-3xl flex-col items-end px-4 py-2">
       {item.attachments !== undefined && item.attachments.length > 0 ? <Attachments items={item.attachments} /> : null}
+      {item.steer === true ? (
+        <span
+          className="mb-1 inline-flex items-center gap-1 text-[11px] text-agent-soft"
+          data-tip="Sent while Hermes was working. Hermes reads it at the next step of the same run (a steer), without stopping it."
+        >
+          <CornerDownRight className="size-3" aria-hidden />
+          Sent while working
+        </span>
+      ) : null}
       {item.content !== '' ? (
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-chip px-4 py-2.5 text-[15px] leading-relaxed text-text-primary shadow-[var(--yu-highlight)]">
+        <div
+          className={[
+            'max-w-[85%] rounded-2xl rounded-br-md bg-chip px-4 py-2.5 text-[15px] leading-relaxed text-text-primary shadow-[var(--yu-highlight)]',
+            item.steer === true ? 'ring-1 ring-agent/35' : '',
+          ].join(' ')}
+        >
           <p className="whitespace-pre-wrap break-words">{item.content}</p>
         </div>
       ) : null}
@@ -199,8 +249,57 @@ export function AssistantMessage({
           {item.timestamp !== undefined ? (
             <span className="ml-1 font-mono text-[10.5px] text-text-tertiary">{clockTime(item.timestamp)}</span>
           ) : null}
+          {item.stats !== undefined ? <StatsLine stats={item.stats} /> : null}
         </div>
       )}
     </article>
+  );
+}
+
+/** Tokens per second while text streamed; only when the stream was long enough to mean something. */
+export function tokensPerSecond(stats: ReplyStats): number | null {
+  if (stats.output === undefined || stats.streamMs === undefined || stats.streamMs < 400 || stats.output <= 0) return null;
+  return stats.output / (stats.streamMs / 1000);
+}
+
+function StatsLine({ stats }: { stats: ReplyStats }) {
+  const tps = tokensPerSecond(stats);
+  const cache = (stats.cacheRead ?? 0) + (stats.cacheWrite ?? 0);
+  const tokenTip = [
+    `Input: ${(stats.input ?? 0).toLocaleString()} tokens (everything the model read for this reply, all steps)`,
+    `Output: ${(stats.output ?? 0).toLocaleString()} tokens`,
+    `Cache read: ${(stats.cacheRead ?? 0).toLocaleString()} · cache write: ${(stats.cacheWrite ?? 0).toLocaleString()}`,
+    stats.model !== undefined ? `Model: ${stats.model}` : '',
+  ]
+    .filter((line) => line !== '')
+    .join('\n');
+  return (
+    <span className="ml-2 flex items-center gap-2 font-mono text-[10.5px] text-text-tertiary">
+      {stats.input !== undefined || stats.output !== undefined ? (
+        <span data-tip={tokenTip} data-tip-wide tabIndex={0} className="rounded outline-none focus-visible:text-text-secondary">
+          {compactNumber(stats.input ?? 0)} in · {compactNumber(stats.output ?? 0)} out
+        </span>
+      ) : null}
+      {cache > 0 ? (
+        <span
+          data-tip={`Prompt cache: ${(stats.cacheRead ?? 0).toLocaleString()} tokens read from cache (cheaper, faster), ${(stats.cacheWrite ?? 0).toLocaleString()} written.`}
+          data-tip-wide
+          tabIndex={0}
+          className="rounded outline-none focus-visible:text-text-secondary"
+        >
+          {compactNumber(stats.cacheRead ?? 0)} cached
+        </span>
+      ) : null}
+      {tps !== null ? (
+        <span
+          data-tip={`About ${tps.toFixed(1)} tokens per second. An estimate: measured in your browser from the first to the last streamed word, so network delay and ping are included${stats.firstTokenMs !== undefined ? `. First text after ${(stats.firstTokenMs / 1000).toFixed(1)}s` : ''}.`}
+          data-tip-wide
+          tabIndex={0}
+          className="rounded outline-none focus-visible:text-text-secondary"
+        >
+          ~{tps < 10 ? tps.toFixed(1) : Math.round(tps)} tok/s
+        </span>
+      ) : null}
+    </span>
   );
 }

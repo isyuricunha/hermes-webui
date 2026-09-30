@@ -1,10 +1,15 @@
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 import type { AppStatus, HermesConnectivity } from '@hermes-webui/shared';
 import type { ServerConfig } from './config';
 import { HermesClient, HermesHttpError } from './hermes/client';
 import { HermesDashboardClient } from './hermes/dashboard';
+import { HermesSlashBridge } from './hermes/slashBridge';
+import { sessionContextRoutes } from './routes/sessionContext';
+import { uploadRoutes } from './routes/uploads';
+import { UploadStore } from './uploads';
 import { HermesDashboardSession, HermesIdentity } from './hermes/identity';
 import { sessionRoutes } from './routes/sessions';
 import { runRoutes } from './routes/runs';
@@ -26,6 +31,8 @@ export interface BuildAppOptions {
   config: ServerConfig;
   hermesClient?: HermesClient;
   dashboardClient?: HermesDashboardClient;
+  /** Test seam: slash command bridge. */
+  slashBridge?: HermesSlashBridge;
   /** Test seam: in-memory or temp-dir database. */
   dataDir?: string;
   /** Test seam: disable the auth policy entirely (never used in production). */
@@ -216,6 +223,11 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   await app.register(cronRoutes, { client: hermes });
   await app.register(settingsRoutes, { dashboard });
   await app.register(hermesProxyRoutes, { dashboard });
+  await app.register(sessionContextRoutes, { dashboard });
+  await app.register(uploadRoutes, {
+    store: new UploadStore(config.uploadDir ?? path.join(dataDir, 'uploads')),
+    maxBytes: config.uploadMaxMb * 1024 * 1024,
+  });
   await app.register(cliRoutes, { hermesBin: config.hermesBin });
   await app.register(writeApprovalRoutes, {
     bridge:
@@ -226,7 +238,9 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
         sourceDir: config.hermesSourceDir,
       }),
   });
-  await app.register(commandRoutes);
+  const slash = options.slashBridge ?? new HermesSlashBridge(dashboard);
+  app.addHook('onClose', async () => slash.close());
+  await app.register(commandRoutes, { slash });
 
   return app;
 }

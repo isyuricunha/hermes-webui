@@ -103,6 +103,43 @@ function restoreImages(
   };
 }
 
+/** Hermes wraps a steer (message sent mid-run) in this marker pair. */
+const STEER_BLOCK = /\[OUT-OF-BAND USER MESSAGE[^\]\n]*\]\s*([\s\S]*?)\s*\[\/OUT-OF-BAND USER MESSAGE\]/g;
+
+/** Pulls steer messages out of persisted text (user rows, or appended to a tool result). */
+export function extractSteers(text: string): { text: string; steers: string[] } {
+  const steers: string[] = [];
+  const rest = text.replace(STEER_BLOCK, (_match, body: string) => {
+    if (body.trim() !== '') steers.push(body.trim());
+    return '';
+  });
+  return steers.length === 0 ? { text, steers } : { text: rest.trim(), steers };
+}
+
+const FILE_NOTE =
+  /\[The user sent (an audio file attachment|a video attachment|a text document|a document|an image|a voice message): '([^'\n]*)'\. It is saved at: (.+?)\.(?= |\])[^\]]*\]\s*/g;
+const UPLOAD_PATH = /[\\/]([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})[\\/][^\\/]+$/;
+
+/** Turns gateway-style file notes (see attachments.ts fileNote) back into attachments. */
+export function extractFileNotes(text: string): { text: string; attachments: MessageAttachment[] } {
+  const attachments: MessageAttachment[] = [];
+  const rest = text.replace(FILE_NOTE, (_match, what: string, name: string, filePath: string) => {
+    const media = what.includes('audio') || what.includes('voice')
+      ? 'audio'
+      : what.includes('video')
+        ? 'video'
+        : what.includes('image')
+          ? 'image'
+          : what.includes('text')
+            ? 'text'
+            : 'document';
+    const id = UPLOAD_PATH.exec(filePath)?.[1];
+    attachments.push({ kind: 'file', name, media, ...(id !== undefined ? { url: `/api/uploads/${id}` } : {}) });
+    return '';
+  });
+  return attachments.length === 0 ? { text, attachments } : { text: rest.trim(), attachments };
+}
+
 /** Splits plugin-injected context off the user's own words. */
 export function splitInjected(text: string): { text: string; injected?: string } {
   const match = INJECTED_MARKER.exec(text);
@@ -129,27 +166,39 @@ export function historyToItems(rows: MessageRow[], storedImages: StoredImage[] =
     if (row.role === 'user') {
       const split = splitContent(row.content);
       const restored = restoreImages(split.text, timestamp, groups);
-      const { text, injected } = splitInjected(restored.text);
-      const attachments = [...split.attachments, ...restored.attachments];
-      items.push({
-        kind: 'message',
-        id: `history-${row.id}`,
-        role: 'user',
-        content: text,
-        timestamp,
-        ...(attachments.length > 0 ? { attachments } : {}),
-        ...(injected !== undefined ? { injected } : {}),
-      });
+      const steered = extractSteers(restored.text);
+      const files = extractFileNotes(steered.text);
+      const { text, injected } = splitInjected(files.text);
+      const attachments = [...split.attachments, ...restored.attachments, ...files.attachments];
+      if (text !== '' || attachments.length > 0 || steered.steers.length === 0) {
+        items.push({
+          kind: 'message',
+          id: `history-${row.id}`,
+          role: 'user',
+          content: text,
+          timestamp,
+          ...(attachments.length > 0 ? { attachments } : {}),
+          ...(injected !== undefined ? { injected } : {}),
+        });
+      }
+      steered.steers.forEach((steer, index) =>
+        items.push({ kind: 'message', id: `history-steer-${row.id}-${index}`, role: 'user', content: steer, timestamp, steer: true }),
+      );
     } else if (row.role === 'tool') {
       const byId = pendingCalls.findIndex((call) => call.id !== null && call.id === row.tool_call_id);
       const [call] = pendingCalls.splice(byId === -1 ? 0 : byId, 1);
+      const raw = typeof row.content === 'string' ? row.content : JSON.stringify(row.content);
+      const steered = extractSteers(raw);
       items.push({
         kind: 'tool',
         id: `history-tool-${row.id}`,
         name: row.tool_name ?? call?.name ?? 'tool',
         state: 'completed',
-        preview: typeof row.content === 'string' ? row.content : JSON.stringify(row.content),
+        preview: steered.text,
       });
+      steered.steers.forEach((steer, index) =>
+        items.push({ kind: 'message', id: `history-steer-${row.id}-${index}`, role: 'user', content: steer, timestamp, steer: true }),
+      );
     } else if (row.role === 'system') {
       items.push({
         kind: 'system',

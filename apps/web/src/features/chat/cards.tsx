@@ -4,6 +4,8 @@ import {
   Check,
   ChevronRight,
   Code2,
+  Copy,
+  LoaderCircle,
   FileText,
   Globe,
   Info,
@@ -16,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { TranscriptReasoning, TranscriptSystem, TranscriptTool } from './transcript';
 import { stagedWriteOf } from '../../lib/writeApprovals';
+import { copyText } from '../../lib/clipboard';
 import { StagedWriteActions } from '../settings/PendingWrites';
 
 /**
@@ -181,16 +184,48 @@ const TONE: Record<TranscriptSystem['tone'], { icon: ReactNode; className: strin
 
 export function SystemCommandCard({ card }: { card: TranscriptSystem }) {
   const tone = TONE[card.tone];
+  const [copied, setCopied] = useState(false);
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-1" data-system-card>
       <div className="yu-card flex w-full items-start gap-3 rounded-xl px-3.5 py-3 text-[13px]">
         <span aria-hidden className={['mt-px flex size-6 shrink-0 items-center justify-center rounded-md', tone.className].join(' ')}>
-          {tone.icon}
+          {card.pending === true ? <LoaderCircle className="size-3.5 animate-spin" /> : tone.icon}
         </span>
-        <div className="min-w-0">
-          <p className="font-medium text-text-primary">{card.title}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className={['min-w-0 flex-1 font-medium text-text-primary', card.mono === true ? 'font-mono text-[12.5px]' : ''].join(' ')}>
+              {card.title}
+            </p>
+            {card.mono === true && card.pending !== true && card.detail ? (
+              <button
+                type="button"
+                title={copied ? 'Copied' : 'Copy output'}
+                aria-label="Copy output"
+                onClick={() => {
+                  void copyText(card.detail ?? '').then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                  });
+                }}
+                className="yu-btn yu-btn-ghost size-7 shrink-0 rounded-lg"
+              >
+                {copied ? <Check className="size-3.5 text-success" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
+              </button>
+            ) : null}
+          </div>
           {card.detail !== undefined && card.detail !== '' ? (
-            <p className="mt-0.5 whitespace-pre-wrap break-words text-text-secondary">{card.detail}</p>
+            card.mono === true ? (
+              <pre
+                className={[
+                  'mt-1.5 max-h-96 overflow-auto rounded-lg bg-surface-editor px-3 py-2 font-mono text-[12px] leading-relaxed whitespace-pre text-text-secondary',
+                  card.pending === true ? 'yu-shimmer' : '',
+                ].join(' ')}
+              >
+                {card.detail}
+              </pre>
+            ) : (
+              <p className="mt-0.5 whitespace-pre-wrap break-words text-text-secondary">{card.detail}</p>
+            )
           ) : null}
         </div>
       </div>

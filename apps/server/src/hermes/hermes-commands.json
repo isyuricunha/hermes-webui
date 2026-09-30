@@ -1,8 +1,8 @@
 {
  "$provenance": {
-  "source": "hermes_cli/commands.py COMMANDS_BY_CATEGORY (installed Hermes v0.21.3, upstream 30de041b)",
-  "generated": "2026-09-21",
-  "note": "Derived from the installed Hermes command registry; regenerate after Hermes updates."
+  "source": "hermes_cli/commands.py COMMANDS_BY_CATEGORY (installed Hermes v0.21.5)",
+  "generated": "2026-09-30",
+  "note": "Derived from the installed Hermes command registry; regenerate after Hermes updates. availability: native (WebUI), hermes (runs in Hermes through the dashboard websocket), unsupported (terminal-only)."
  },
  "commands": [
   {
@@ -32,9 +32,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "new-chat"
   },
   {
    "name": "/clear",
@@ -42,9 +42,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "new-chat"
   },
   {
    "name": "/redraw",
@@ -54,7 +54,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Redraws the terminal screen; the WebUI repaints itself."
   },
   {
    "name": "/history",
@@ -62,9 +62,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/save",
@@ -72,9 +71,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/retry",
@@ -82,9 +80,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "retry-last"
   },
   {
    "name": "/prompt",
@@ -92,9 +90,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/compose",
@@ -104,7 +101,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Opens your terminal editor; type in the composer instead (Shift+Enter for new lines)."
   },
   {
    "name": "/undo",
@@ -112,9 +109,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/title",
@@ -122,9 +118,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "rename-session"
   },
   {
    "name": "/handoff",
@@ -132,9 +128,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/branch",
@@ -142,9 +137,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "fork-session"
   },
   {
    "name": "/fork",
@@ -152,9 +147,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "fork-session"
   },
   {
    "name": "/worktree",
@@ -162,9 +157,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/compress",
@@ -172,9 +166,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/compact",
@@ -182,9 +175,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/rollback",
@@ -192,9 +184,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/snapshot",
@@ -202,9 +193,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/snap",
@@ -212,9 +202,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/stop",
@@ -232,9 +221,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/btw",
@@ -242,9 +230,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/agents",
@@ -252,9 +239,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/tasks",
@@ -262,9 +248,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/journey",
@@ -272,9 +257,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/learning",
@@ -282,9 +266,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/memory-graph",
@@ -292,9 +275,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/queue",
@@ -302,9 +284,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "queue"
   },
   {
    "name": "/q",
@@ -312,9 +294,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "queue"
   },
   {
    "name": "/steer",
@@ -322,9 +304,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "steer"
   },
   {
    "name": "/goal",
@@ -332,9 +314,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/heartbeat",
@@ -342,9 +323,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/hb",
@@ -352,9 +332,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/refine",
@@ -362,9 +341,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/review",
@@ -372,9 +350,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/loop",
@@ -382,9 +359,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/proactive",
@@ -392,9 +368,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/plan",
@@ -402,9 +377,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/moa",
@@ -412,9 +386,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/subgoal",
@@ -422,9 +395,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/status",
@@ -442,9 +414,8 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/context",
@@ -452,9 +423,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "context-card"
   },
   {
    "name": "/ctx",
@@ -462,9 +433,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "context-card"
   },
   {
    "name": "/resume",
@@ -472,9 +443,9 @@
    "category": "Session",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "open-sessions"
   },
   {
    "name": "/sessions",
@@ -492,9 +463,9 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "export-session"
   },
   {
    "name": "/import",
@@ -502,9 +473,8 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/config",
@@ -512,9 +482,8 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/model",
@@ -532,9 +501,8 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/codex_runtime",
@@ -542,9 +510,8 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/personality",
@@ -552,9 +519,8 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/statusbar",
@@ -564,7 +530,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Terminal status bar; the WebUI shows model, reasoning and context under the composer."
   },
   {
    "name": "/sb",
@@ -574,7 +540,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Terminal status bar; the WebUI shows model, reasoning and context under the composer."
   },
   {
    "name": "/battery",
@@ -584,7 +550,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Reports the battery of the machine running the terminal app."
   },
   {
    "name": "/timestamps",
@@ -594,7 +560,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Terminal timestamps; the WebUI shows the time on hover under each message."
   },
   {
    "name": "/ts",
@@ -604,7 +570,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Terminal timestamps; the WebUI shows the time on hover under each message."
   },
   {
    "name": "/verbose",
@@ -612,9 +578,8 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/focus",
@@ -622,9 +587,8 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/footer",
@@ -634,7 +598,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Terminal footer layout; not used by the WebUI."
   },
   {
    "name": "/yolo",
@@ -642,9 +606,8 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/approvals",
@@ -652,9 +615,8 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/reasoning",
@@ -662,9 +624,9 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "reasoning"
   },
   {
    "name": "/fast",
@@ -672,9 +634,8 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/skin",
@@ -682,9 +643,9 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "navigate-appearance"
   },
   {
    "name": "/indicator",
@@ -694,7 +655,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Terminal busy indicator style; the WebUI has its own."
   },
   {
    "name": "/voice",
@@ -702,9 +663,9 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "voice"
   },
   {
    "name": "/wake",
@@ -714,7 +675,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Wake word needs the desktop app microphone loop."
   },
   {
    "name": "/busy",
@@ -722,9 +683,8 @@
    "category": "Configuration",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/whoami",
@@ -732,9 +692,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/profile",
@@ -742,9 +701,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/diff",
@@ -752,9 +710,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/help",
@@ -772,9 +729,9 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "open-palette"
   },
   {
    "name": "/usage",
@@ -782,9 +739,9 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "usage-card"
   },
   {
    "name": "/subscription",
@@ -792,9 +749,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/upgrade",
@@ -802,9 +758,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/login",
@@ -812,9 +767,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/topup",
@@ -822,9 +776,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/insights",
@@ -832,9 +785,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/platforms",
@@ -842,9 +794,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/gateway",
@@ -852,9 +803,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/copy",
@@ -862,9 +812,9 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "copy-last"
   },
   {
    "name": "/paste",
@@ -872,9 +822,9 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "attach"
   },
   {
    "name": "/image",
@@ -882,9 +832,9 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "native",
+   "executionMode": "webui-native",
+   "handler": "attach"
   },
   {
    "name": "/update",
@@ -892,9 +842,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/version",
@@ -902,9 +851,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/v",
@@ -912,9 +860,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/debug",
@@ -922,9 +869,8 @@
    "category": "Info",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/tools",
@@ -932,9 +878,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/toolsets",
@@ -942,9 +887,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/skills",
@@ -972,9 +916,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/pet",
@@ -982,9 +925,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/hatch",
@@ -992,9 +934,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/generate-pet",
@@ -1002,9 +943,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/learn",
@@ -1012,9 +952,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/init",
@@ -1022,9 +961,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/cron",
@@ -1032,9 +970,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/suggestions",
@@ -1042,9 +979,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/suggest",
@@ -1052,9 +988,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/blueprint",
@@ -1062,9 +997,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/bp",
@@ -1072,9 +1006,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/curator",
@@ -1082,9 +1015,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/kanban",
@@ -1092,9 +1024,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/reload",
@@ -1102,9 +1033,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/reload-mcp",
@@ -1112,9 +1042,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/reload_mcp",
@@ -1122,9 +1051,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/reload-skills",
@@ -1132,9 +1060,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/reload_skills",
@@ -1142,9 +1069,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/browser",
@@ -1152,9 +1078,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/plugins",
@@ -1162,9 +1087,8 @@
    "category": "Tools & Skills",
    "aliases": [],
    "argsHint": null,
-   "availability": "unsupported",
-   "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "availability": "hermes",
+   "executionMode": "hermes"
   },
   {
    "name": "/quit",
@@ -1174,7 +1098,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Closes the terminal app. Here, just close the tab."
   },
   {
    "name": "/exit",
@@ -1184,7 +1108,7 @@
    "argsHint": null,
    "availability": "unsupported",
    "executionMode": "disabled",
-   "disabledReason": "CLI/TUI command — not available in the WebUI (Hermes runs it in the terminal)"
+   "disabledReason": "Closes the terminal app. Here, just close the tab."
   }
  ]
 }

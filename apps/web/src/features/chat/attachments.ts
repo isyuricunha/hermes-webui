@@ -1,19 +1,36 @@
+import { requestJson } from '../../lib/api';
+
 /**
- * Composer attachments. /v1/runs accepts text plus image parts only, so:
+ * Composer attachments, handled like Hermes' messaging gateway does:
  * - images are downscaled client-side and sent as image_url data URLs;
- * - text-like files are inlined into the message as fenced blocks;
- * - anything else is refused with a clear reason.
+ * - small text files are inlined into the message as fenced blocks;
+ * - anything else (audio, video, PDF, documents, archives...) is uploaded to
+ *   the WebUI server, which saves it where Hermes can read it, and the
+ *   message carries the same note the gateway writes ("The user sent ...
+ *   It is saved at: <path>"), so the agent transcribes or reads it itself.
  */
+
+export interface UploadedFile {
+  id: string;
+  name: string;
+  size: number;
+  mime: string;
+  kind: 'audio' | 'video' | 'image' | 'text' | 'document';
+  path: string;
+  url: string;
+}
 
 export interface PendingAttachment {
   id: string;
-  kind: 'image' | 'text';
+  kind: 'image' | 'text' | 'file';
   name: string;
   size: number;
   /** Image data URL (kind "image"). */
   dataUrl?: string;
   /** File contents (kind "text"). */
   text?: string;
+  /** Saved copy Hermes reads (kind "file"). */
+  upload?: UploadedFile;
 }
 
 export type RunInputPart =
@@ -75,18 +92,44 @@ async function prepareImage(file: File): Promise<string> {
   }
 }
 
+/** Uploads a file to the WebUI server (saved where Hermes can read it). */
+export function uploadFile(file: File): Promise<UploadedFile> {
+  return requestJson<UploadedFile>(`/api/uploads?name=${encodeURIComponent(file.name || 'file')}`, {
+    method: 'POST',
+    body: file,
+    headers: { 'content-type': file.type || 'application/octet-stream' },
+  });
+}
+
 export async function readAttachment(file: File): Promise<PendingAttachment> {
   const kind = classifyFile(file);
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  if (kind === 'image') {
-    if (file.size > MAX_IMAGE_BYTES) throw new Error(`${file.name} is larger than 20 MB.`);
+  if (kind === 'image' && file.size <= MAX_IMAGE_BYTES) {
     return { id, kind, name: file.name || 'pasted image', size: file.size, dataUrl: await prepareImage(file) };
   }
-  if (kind === 'text') {
-    if (file.size > MAX_TEXT_BYTES) throw new Error(`${file.name} is larger than 256 KB; ask Hermes to read it from disk instead.`);
+  if (kind === 'text' && file.size <= MAX_TEXT_BYTES) {
     return { id, kind, name: file.name, size: file.size, text: await file.text() };
   }
-  throw new Error(`${file.name}: only images and text files can be attached here.`);
+  // Everything else, and text or images too big to inline: save it for Hermes.
+  const upload = await uploadFile(file);
+  return { id, kind: 'file', name: upload.name, size: upload.size, upload };
+}
+
+/** The note Hermes' gateway writes for an inbound file (gateway/run.py, run_inbound.py). */
+export function fileNote(upload: UploadedFile): string {
+  const where = `It is saved at: ${upload.path}.`;
+  switch (upload.kind) {
+    case 'audio':
+      return `[The user sent an audio file attachment: '${upload.name}'. ${where} Its content is not inlined here. If the user's request involves what the audio contains, transcribe or process it yourself — for example by passing the path to a transcription or media tool — instead of asking the user to describe it. Only ask what to do with it if their intent is genuinely unclear.]`;
+    case 'video':
+      return `[The user sent a video attachment: '${upload.name}'. ${where} Its content is not inlined here. If the user's request involves what the video contains, inspect or process it yourself — for example by passing the path to a video analysis or media tool — instead of asking the user to describe it. Only ask what to do with it if their intent is genuinely unclear.]`;
+    case 'text':
+      return `[The user sent a text document: '${upload.name}'. ${where} Its content is not inlined here. Read the cached file yourself before answering when the user's request involves its contents.]`;
+    case 'image':
+      return `[The user sent an image: '${upload.name}'. ${where} It is too large to attach inline; open it from that path with a vision or image tool when the request involves it.]`;
+    default:
+      return `[The user sent a document: '${upload.name}'. ${where} Its text is not inlined here (it's a binary format such as PDF or DOCX). To read it, extract the document's text yourself — for example with the terminal tool or the ocr-and-documents skill — before answering, instead of asking the user to paste the contents.]`;
+  }
 }
 
 function fenceFor(text: string): string {
@@ -99,7 +142,9 @@ function fenceFor(text: string): string {
 export function buildRunInput(text: string, attachments: PendingAttachment[]): string | RunInputPart[] {
   const files = attachments.filter((item) => item.kind === 'text' && item.text !== undefined);
   const images = attachments.filter((item) => item.kind === 'image' && item.dataUrl !== undefined);
-  let body = text;
+  const uploads = attachments.flatMap((item) => (item.kind === 'file' && item.upload !== undefined ? [item.upload] : []));
+  // Notes go first, as the gateway prepends them.
+  let body = uploads.length === 0 ? text : [...uploads.map(fileNote), text].filter((part) => part !== '').join('\n\n');
   for (const file of files) {
     const content = file.text ?? '';
     const fence = fenceFor(content);

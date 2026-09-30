@@ -6,7 +6,8 @@
  * the LLM as user text.
  */
 
-export type CommandAvailability = 'native' | 'unsupported';
+/** native: runs in the WebUI; hermes: runs in Hermes (slash bridge); unsupported: terminal-only. */
+export type CommandAvailability = 'native' | 'hermes' | 'unsupported';
 
 export interface NormalizedCommand {
   name: string;
@@ -15,7 +16,7 @@ export interface NormalizedCommand {
   aliases: string[];
   argsHint: string | null;
   availability: CommandAvailability;
-  executionMode: 'webui-native' | 'disabled';
+  executionMode: 'webui-native' | 'hermes' | 'disabled';
   handler?: string;
   disabledReason?: string;
   webuiOnly?: boolean;

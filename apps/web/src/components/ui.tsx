@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { TriangleAlert } from 'lucide-react';
+import { Check, TriangleAlert } from 'lucide-react';
 
 /**
  * YuTheme page primitives shared by every management screen: page header,
@@ -232,6 +232,10 @@ export interface MenuItem {
   onSelect: () => void;
   danger?: boolean;
   disabled?: boolean;
+  /** Shows a check (current choice in a picker menu). */
+  checked?: boolean;
+  /** Second line under the label. */
+  hint?: string;
 }
 
 /**
@@ -244,13 +248,21 @@ export function Menu({
   items,
   label,
   align = 'end',
+  triggerClassName = 'yu-btn yu-btn-ghost size-8 rounded-lg',
+  tip,
+  above = false,
 }: {
   trigger: ReactNode;
   items: MenuItem[];
   label: string;
   align?: 'start' | 'end';
+  triggerClassName?: string;
+  /** Hover help on the trigger. */
+  tip?: string;
+  /** Open upwards (triggers near the bottom of the screen). */
+  above?: boolean;
 }) {
-  const [position, setPosition] = useState<{ top: number; left?: number; right?: number } | null>(null);
+  const [position, setPosition] = useState<{ top?: number; bottom?: number; left?: number; right?: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const open = position !== null;
@@ -261,9 +273,11 @@ export function Menu({
     }
     const rect = buttonRef.current?.getBoundingClientRect();
     if (rect === undefined) return;
-    const top = rect.bottom + 6;
+    const vertical = above ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 };
     setPosition(
-      align === 'end' ? { top, right: Math.max(8, window.innerWidth - rect.right) } : { top, left: Math.max(8, rect.left) },
+      align === 'end'
+        ? { ...vertical, right: Math.max(8, window.innerWidth - rect.right) }
+        : { ...vertical, left: Math.max(8, rect.left) },
     );
   };
   useEffect(() => {
@@ -296,7 +310,8 @@ export function Menu({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={toggle}
-        className="yu-btn yu-btn-ghost size-8 rounded-lg"
+        className={triggerClassName}
+        {...(tip !== undefined ? { 'data-tip': tip, 'data-tip-wide': '' } : {})}
       >
         {trigger}
       </button>
@@ -306,7 +321,7 @@ export function Menu({
               ref={menuRef}
               role="menu"
               aria-label={label}
-              className="yu-pop yu-pop-in fixed z-[70] min-w-48 rounded-2xl p-1.5"
+              className="yu-pop yu-pop-in fixed z-[70] max-h-[70vh] min-w-48 overflow-y-auto rounded-2xl p-1.5"
               style={position}
             >
               {items.map((item) => (
@@ -325,7 +340,11 @@ export function Menu({
                   ].join(' ')}
                 >
                   {item.icon !== undefined ? <span className="flex text-text-tertiary [&>svg]:size-4">{item.icon}</span> : null}
-                  {item.label}
+                  <span className="min-w-0 flex-1 py-1.5">
+                    <span className="block">{item.label}</span>
+                    {item.hint !== undefined ? <span className="block text-[11px] text-text-tertiary">{item.hint}</span> : null}
+                  </span>
+                  {item.checked === true ? <Check className="size-4 shrink-0 text-accent" aria-hidden /> : null}
                 </button>
               ))}
             </div>,

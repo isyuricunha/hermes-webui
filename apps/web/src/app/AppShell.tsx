@@ -6,6 +6,7 @@ import { SessionSidebar } from '../features/sessions/SessionSidebar';
 import { useTheme } from '../lib/theme';
 import { HeaderSlotContext } from './headerSlot';
 import { Toaster } from '../components/Toaster';
+import { TooltipHost } from '../components/TooltipHost';
 import { DialogHost } from '../components/DialogHost';
 import { ShortcutsHost } from '../components/ShortcutsHost';
 import { TOGGLE_SIDEBAR_EVENT } from '../lib/events';
@@ -133,6 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <CommandPalette onCycleTheme={cycle} />
       <Toaster />
+      <TooltipHost />
       <DialogHost />
       <ShortcutsHost />
     </div>

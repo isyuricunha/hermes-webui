@@ -7,9 +7,12 @@ import { commandArgs, findCommandIn } from '@hermes-webui/shared';
 import {
   createRun,
   createSession,
+  execHermesCommand,
   fetchAppStatus,
   fetchCommands,
+  fetchModelInfo,
   fetchRun,
+  fetchSessionContext,
   fetchSessionImages,
   fetchSessionMessages,
   fetchSessionModel,
@@ -18,8 +21,10 @@ import {
 } from '../../lib/api';
 import { rememberDerivedTitle } from '../../lib/sessionTitles';
 import {
+  appendSteer,
   applyEvent,
   emptyTranscript,
+  type ReplyStats,
   type MessageAttachment,
   type TranscriptApproval,
   type TranscriptItem,
@@ -41,8 +46,19 @@ import { buildRunInput, type PendingAttachment } from './attachments';
 import { notifyRunFinished } from '../../lib/notify';
 import { pendingWritesKey, resolvePendingWrite, setWriteApproval } from '../../lib/writeApprovals';
 import { PendingWrites } from '../settings/PendingWrites';
+import { attachReplyStats, loadReplyStats, saveReplyStats, statsFromUsage } from './replyStats';
+import { ContextMeter, ReasoningChip, useReasoningEffort, REASONING_LEVELS } from './ChatStatus';
+import { copyText } from '../../lib/clipboard';
+import { compactNumber } from '../../lib/format';
+import { CHAT_ACTION_EVENT, OPEN_PALETTE_EVENT, type ChatAction as HeaderAction } from '../../lib/events';
 
 // --- Subcomponents -----------------------------------------------------------
+
+/** Terminal colour codes in Hermes' command output. */
+function stripAnsi(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, '');
+}
 
 function ThinkingRow() {
   return (
@@ -125,12 +141,18 @@ type ChatAction =
   | { type: 'appendUser'; text: string; attachments: MessageAttachment[]; sessionId: string }
   | {
       type: 'systemCard';
+      id?: string;
       title: string;
       detail?: string;
       tone: 'info' | 'success' | 'warning';
       widget?: 'memory-approvals';
+      mono?: boolean;
+      pending?: boolean;
     }
-  | { type: 'approvalResolved'; approvalId: string; choice: string };
+  | { type: 'approvalResolved'; approvalId: string; choice: string }
+  | { type: 'steer'; text: string }
+  | { type: 'stats'; stats: ReplyStats }
+  | { type: 'systemPatch'; id: string; title?: string; detail?: string; tone?: 'info' | 'success' | 'warning'; pending?: boolean };
 
 function transcriptReducer(state: TranscriptState, action: ChatAction): TranscriptState {
   switch (action.type) {
@@ -185,14 +207,38 @@ function transcriptReducer(state: TranscriptState, action: ChatAction): Transcri
           ...state.items,
           {
             kind: 'system' as const,
-            id: `sys-${Date.now()}-${state.items.length}`,
+            id: action.id ?? `sys-${Date.now()}-${state.items.length}`,
             title: action.title,
             detail: action.detail,
             tone: action.tone,
             ...(action.widget !== undefined ? { widget: action.widget } : {}),
+            ...(action.mono === true ? { mono: true } : {}),
+            ...(action.pending === true ? { pending: true } : {}),
           },
         ],
       };
+    }
+    case 'systemPatch': {
+      const patch = {
+        ...(action.title !== undefined ? { title: action.title } : {}),
+        ...(action.detail !== undefined ? { detail: action.detail } : {}),
+        ...(action.tone !== undefined ? { tone: action.tone } : {}),
+        ...(action.pending !== undefined ? { pending: action.pending } : {}),
+      };
+      return {
+        ...state,
+        items: state.items.map((item) => (item.kind === 'system' && item.id === action.id ? { ...item, ...patch } : item)),
+      };
+    }
+    case 'steer':
+      return appendSteer(state, action.text);
+    case 'stats': {
+      const index = state.items.map((item) => item.kind === 'message' && item.role === 'assistant').lastIndexOf(true);
+      if (index === -1) return state;
+      const items = [...state.items];
+      const item = items[index];
+      if (item?.kind === 'message') items[index] = { ...item, stats: action.stats };
+      return { ...state, items };
     }
   }
 }
@@ -244,7 +290,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     if (sessionId === undefined || !messagesQuery.data || imagesQuery.isPending) {
       return;
     }
-    const items = historyToItems(messagesQuery.data.data, storedImages ?? []);
+    const items = attachReplyStats(historyToItems(messagesQuery.data.data, storedImages ?? []), loadReplyStats(sessionId));
     dispatch({ type: 'reset', items, sessionId, force: true });
   }, [sessionId, messagesQuery.data, storedImages, imagesQuery.isPending]);
 
@@ -318,10 +364,36 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     return () => clearInterval(interval);
   }, [sessionId, activeRunId, transcript.runDone, queryClient]);
 
+  // Browser-side timings of the active run, for tokens per second.
+  const timing = useRef<{ sentAt: number; firstDelta?: number; lastDelta?: number }>({ sentAt: 0 });
+  const modelRef = useRef<string | undefined>(undefined);
+
   const handleEvent = useCallback(
     (frame: Parameters<typeof applyEvent>[1]) => {
       dispatch({ type: 'event', frame, sessionId: sessionId ?? '' });
+      if (frame.type === 'message.delta') {
+        const now = Date.now();
+        timing.current.firstDelta ??= now;
+        timing.current.lastDelta = now;
+      }
+      if (frame.type === 'run.completed' && sessionId !== undefined) {
+        const { sentAt, firstDelta, lastDelta } = timing.current;
+        const runtime = (frame as { runtime?: { model?: unknown } }).runtime;
+        const stats = statsFromUsage(
+          (frame as { usage?: unknown }).usage,
+          {
+            ...(firstDelta !== undefined ? { firstTokenMs: firstDelta - sentAt } : {}),
+            ...(firstDelta !== undefined && lastDelta !== undefined ? { streamMs: lastDelta - firstDelta } : {}),
+          },
+          typeof runtime?.model === 'string' ? runtime.model : modelRef.current,
+        );
+        if (stats !== undefined) {
+          dispatch({ type: 'stats', stats });
+          saveReplyStats(sessionId, { ...stats, at: Date.now() });
+        }
+      }
       if (['run.completed', 'run.failed', 'run.cancelled', 'run.interrupted'].includes(frame.type)) {
+        void queryClient.invalidateQueries({ queryKey: ['session-context', sessionId] });
         if (sessionId !== undefined) {
           saveActiveRunId(sessionId, null);
         }
@@ -353,6 +425,11 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
 
   const [sending, setSending] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const retryRef = useRef<() => void>(() => undefined);
+  const running = activeRunId !== null && !transcript.runDone;
+  const sendRef = useRef<(text: string, attachments?: PendingAttachment[], options?: { display?: string }) => Promise<void>>(
+    async () => undefined,
+  );
 
   // Recognized Hermes commands never reach the LLM as user text (Chat UX
   // goal): they execute natively here or surface an explanatory card.
@@ -367,9 +444,30 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     enabled: sessionId !== undefined,
     staleTime: 30_000,
   });
+  const modelInfoQuery = useQuery({ queryKey: ['model-info'], queryFn: fetchModelInfo, staleTime: 60_000 });
+  const contextQuery = useQuery({
+    queryKey: ['session-context', sessionId],
+    queryFn: () => fetchSessionContext(sessionId as string),
+    enabled: sessionId !== undefined,
+    staleTime: 15_000,
+    retry: false,
+  });
   const currentModel = sessionModelQuery.data?.model ?? null;
   const currentProvider = sessionModelQuery.data?.provider ?? '';
-  const modelLabel = currentModel ?? 'global default';
+  const defaultModel = modelInfoQuery.data?.model ?? null;
+  const defaultProvider = modelInfoQuery.data?.provider ?? '';
+  const effectiveModel = currentModel ?? defaultModel;
+  useEffect(() => {
+    modelRef.current = effectiveModel ?? undefined;
+  }, [effectiveModel]);
+  const modelLabel = effectiveModel ?? 'Model';
+  const modelHint =
+    currentModel !== null
+      ? `${currentModel}${currentProvider !== '' ? ` (${currentProvider})` : ''}: picked for this chat only. Click to change.`
+      : defaultModel !== null
+        ? `${defaultModel}${defaultProvider !== '' ? ` (${defaultProvider})` : ''}: Hermes' default model (Settings > Models). Click to pick another one for this chat only.`
+        : 'Change the model for this chat';
+  const reasoning = useReasoningEffort();
   const stop = async () => {
     if (activeRunId === null) return;
     try {
@@ -379,14 +477,61 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     }
   };
 
+  // A message sent while the agent works is a steer: shown at once as your
+  // message (Hermes reads it at its next step, in the same run).
   const steer = async (text: string) => {
     if (activeRunId === null) return;
+    dispatch({ type: 'steer', text });
     try {
       await steerRun(activeRunId, text);
     } catch (steerError) {
-      setError(steerError instanceof Error ? steerError.message : 'Steer failed.');
+      setError(steerError instanceof Error ? `Hermes did not take that message: ${steerError.message}` : 'Steer failed.');
     }
   };
+
+  // Messages queued with /queue while a run is active go out when it ends.
+  const [queued, setQueued] = useState<string[]>([]);
+
+  const runInHermes = useCallback(
+    (commandText: string) => {
+      const id = `cmd-${Date.now()}`;
+      const head = commandText.split(/\s+/)[0] ?? commandText;
+      dispatch({ type: 'systemCard', id, title: commandText.length > 60 ? head : commandText, detail: 'Running in Hermes…', tone: 'info', mono: true, pending: true });
+      void execHermesCommand(commandText, sessionId)
+        .then((result) => {
+          if (result.kind === 'output') {
+            dispatch({
+              type: 'systemPatch',
+              id,
+              pending: false,
+              detail: stripAnsi(result.output) + (result.warning ? `\n\n⚠ ${result.warning}` : ''),
+              tone: result.warning ? 'warning' : 'info',
+            });
+            // Commands can change config (model, personality, reasoning...).
+            void queryClient.invalidateQueries({ queryKey: ['settings-config'] });
+            void queryClient.invalidateQueries({ queryKey: ['model-info'] });
+          } else if (result.kind === 'send') {
+            dispatch({ type: 'systemPatch', id, pending: false, detail: result.notice ?? 'Hermes turned this into a message; sending it now.' });
+            void sendRef.current(result.message, [], { display: commandText });
+          } else if (result.kind === 'prefill') {
+            dispatch({ type: 'systemPatch', id, pending: false, detail: result.notice ?? 'Put into the composer: edit and send.' });
+            insertIntoComposer(result.message);
+          } else {
+            dispatch({ type: 'systemPatch', id, pending: false, tone: 'warning', detail: result.message });
+          }
+        })
+        .catch((error: unknown) =>
+          dispatch({
+            type: 'systemPatch',
+            id,
+            pending: false,
+            tone: 'warning',
+            detail: error instanceof Error ? error.message : 'Hermes did not answer.',
+          }),
+        );
+    },
+    [sessionId, queryClient],
+  );
 
   const runCommand = useCallback(
     (cmd: NormalizedCommand, argsText: string) => {
@@ -409,22 +554,153 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           setPickerOpen(true);
           return;
         case 'status-card': {
-          void fetchAppStatus()
-            .then((status) => {
+          void Promise.all([fetchAppStatus(), sessionId !== undefined ? fetchSessionContext(sessionId).catch(() => null) : null])
+            .then(([status, context]) => {
               const version = 'version' in status.hermes ? ` (v${status.hermes.version})` : '';
-              notice(
-                'Hermes status',
-                [
-                  `Gateway: ${status.hermes.state}${version}`,
-                  currentModel !== null
-                    ? `Session model: ${currentProvider !== '' ? `${currentProvider}/` : ''}${currentModel}`
-                    : 'Model: global default (Settings > Models)',
-                ].join('\n'),
-              );
+              const model =
+                currentModel !== null
+                  ? `${currentProvider !== '' ? `${currentProvider}/` : ''}${currentModel} (this chat)`
+                  : defaultModel !== null
+                    ? `${defaultProvider !== '' ? `${defaultProvider}/` : ''}${defaultModel} (Hermes default)`
+                    : 'unknown';
+              const lines = [
+                `Gateway:    ${status.hermes.state}${version}`,
+                `WebUI:      v${status.version}`,
+                `Model:      ${model}`,
+                `Reasoning:  ${reasoning.level ?? 'default'}`,
+              ];
+              if (context !== null && context !== undefined) {
+                if (context.used !== null) {
+                  lines.push(
+                    `Context:    ${context.used.toLocaleString()}${context.contextLength ? ` / ${context.contextLength.toLocaleString()} (${((context.used / context.contextLength) * 100).toFixed(1)}%)` : ' tokens'}`,
+                  );
+                }
+                lines.push(
+                  `Tokens:     ${compactNumber(context.input ?? 0)} in · ${compactNumber(context.output ?? 0)} out · ${compactNumber(context.cacheRead ?? 0)} cached`,
+                  `Messages:   ${context.messages ?? 0} · API calls ${context.apiCalls ?? 0}`,
+                );
+              }
+              lines.push(`Session:    ${sessionId ?? '(new chat, not created yet)'}`, `Run:        ${activeRunId !== null && !transcript.runDone ? 'working' : 'idle'}`);
+              dispatch({ type: 'systemCard', title: 'Hermes status', detail: lines.join('\n'), tone: 'info', mono: true });
             })
             .catch(() => notice('Hermes status', 'Status unavailable.', 'warning'));
           return;
         }
+        case 'context-card':
+        case 'usage-card': {
+          if (sessionId === undefined) {
+            notice(cmd.handler === 'usage-card' ? 'Token usage' : 'Context', 'Nothing yet: send a message first.');
+            return;
+          }
+          void fetchSessionContext(sessionId)
+            .then((context) => {
+              const pct = context.used !== null && context.contextLength ? (context.used / context.contextLength) * 100 : null;
+              const lines =
+                cmd.handler === 'usage-card'
+                  ? [
+                      `Model:            ${context.model ?? 'unknown'}`,
+                      `Input tokens:     ${(context.input ?? 0).toLocaleString()}`,
+                      `Output tokens:    ${(context.output ?? 0).toLocaleString()}`,
+                      `Cache read:       ${(context.cacheRead ?? 0).toLocaleString()}`,
+                      `Cache write:      ${(context.cacheWrite ?? 0).toLocaleString()}`,
+                      ...(context.reasoning ? [`Reasoning tokens: ${context.reasoning.toLocaleString()}`] : []),
+                      `API calls:        ${(context.apiCalls ?? 0).toLocaleString()}`,
+                      ...(context.cost !== null && context.cost > 0 ? [`Cost (approx.):   $${context.cost.toFixed(4)}`] : []),
+                    ]
+                  : [
+                      `Conversation: ${context.messages ?? 0} messages`,
+                      `Model: ${context.model ?? 'unknown'}`,
+                      context.used !== null
+                        ? `Context usage: ${context.used.toLocaleString()}${context.contextLength ? ` / ${context.contextLength.toLocaleString()} tokens (${pct?.toFixed(1)}%)` : ' tokens'}`
+                        : 'Context usage: not measured yet (after the first reply)',
+                      'Hermes compresses older turns when the window gets close to full; /compress does it now.',
+                    ];
+              dispatch({
+                type: 'systemCard',
+                title: cmd.handler === 'usage-card' ? 'Session token usage' : 'Context',
+                detail: lines.join('\n'),
+                tone: 'info',
+                mono: true,
+              });
+            })
+            .catch((error: unknown) => notice('Context unavailable', error instanceof Error ? error.message : 'Unknown error.', 'warning'));
+          return;
+        }
+        case 'reasoning': {
+          const level = argsText.trim().toLowerCase().replace(/\s*--global$/, '');
+          if (level === '') {
+            notice('Reasoning effort', `Current: ${reasoning.level ?? 'default'}.\nUse /reasoning <${REASONING_LEVELS.join('|')}>, or the brain chip under the composer.`);
+            return;
+          }
+          if ((REASONING_LEVELS as readonly string[]).includes(level)) {
+            reasoning.set(level);
+            return;
+          }
+          // show/hide/full/clamp are about Hermes' own display: let Hermes answer.
+          runInHermes(`/reasoning ${argsText.trim()}`);
+          return;
+        }
+        case 'retry-last':
+          if (running) notice('Still working', 'Wait for the current reply, or /stop it first.', 'warning');
+          else retryRef.current();
+          return;
+        case 'rename-session':
+        case 'fork-session':
+        case 'export-session': {
+          if (sessionId === undefined) {
+            notice('No conversation yet', 'Send a message first.', 'warning');
+            return;
+          }
+          const action: HeaderAction = cmd.handler === 'rename-session' ? 'rename' : cmd.handler === 'fork-session' ? 'fork' : 'export';
+          window.dispatchEvent(new CustomEvent(CHAT_ACTION_EVENT, { detail: { action, arg: argsText } }));
+          return;
+        }
+        case 'copy-last': {
+          const last = [...transcript.items].reverse().find((item) => item.kind === 'message' && item.role === 'assistant');
+          if (last?.kind !== 'message') {
+            notice('Nothing to copy', 'There is no reply yet.', 'warning');
+            return;
+          }
+          void copyText(last.content)
+            .then(() => notice('Copied', 'The last reply is on your clipboard.', 'success'))
+            .catch(() => notice('Copy failed', 'The clipboard is not available.', 'warning'));
+          return;
+        }
+        case 'steer': {
+          const text = argsText.trim();
+          if (text === '') {
+            notice('Steer', 'Usage: /steer <message>. Or just type while Hermes is working.', 'warning');
+          } else if (running) {
+            void steer(text);
+          } else {
+            void sendRef.current(text);
+          }
+          return;
+        }
+        case 'queue': {
+          const text = argsText.trim();
+          if (text === '') {
+            notice('Queue', 'Usage: /queue <message>: sent when the current reply finishes.', 'warning');
+          } else if (running) {
+            setQueued((list) => [...list, text]);
+            notice('Queued', `Sent when Hermes finishes: ${text.length > 80 ? `${text.slice(0, 80)}…` : text}`, 'success');
+          } else {
+            void sendRef.current(text);
+          }
+          return;
+        }
+        case 'attach':
+          window.dispatchEvent(new CustomEvent('hermes-webui:composer-attach'));
+          return;
+        case 'open-palette':
+          window.dispatchEvent(new CustomEvent(OPEN_PALETTE_EVENT));
+          return;
+        case 'navigate-appearance':
+          void navigate({ to: '/settings/appearance' });
+          return;
+        case 'voice':
+          notice('Voice', 'Use the microphone button in the composer: Hermes transcribes what you say. Read aloud is under each reply.');
+          return;
         case 'open-sessions':
           window.dispatchEvent(new CustomEvent('hermes-webui:open-sessions'));
           return;
@@ -432,7 +708,8 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           void navigate({ to: '/settings' });
           return;
         case 'navigate-skills':
-          void navigate({ to: '/settings/skills' });
+          if (argsText.trim() !== '') runInHermes(`/skills ${argsText.trim()}`);
+          else void navigate({ to: '/settings/skills' });
           return;
         case 'memory-approvals': {
           // Same grammar as Hermes: /memory [pending|approve|reject|approval] [id|all|on|off]
@@ -491,42 +768,43 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           }
           return;
         case 'help-card': {
-          const total = commandsQuery.data?.commands.length ?? 0;
+          const all = commandsQuery.data?.commands ?? [];
+          const count = (kind: string) => all.filter((item) => item.availability === kind).length;
           notice(
             'Hermes commands',
-            `Native here: /new /model /status /sessions /settings /skills /memory /stop /help.\nType "/" to browse all ${total} registry commands (CLI/TUI-only ones are labeled).`,
+            `Type "/" to browse them all. ${count('native')} run right here in the WebUI, ${count('hermes')} run inside Hermes (same output as the terminal), ${count('unsupported')} only make sense in a terminal.\nSkill commands (like /<skill-name>) work too.`,
           );
           return;
         }
         default:
+          if (cmd.availability === 'hermes') {
+            runInHermes(`${cmd.name}${argsText.trim() !== '' ? ` ${argsText.trim()}` : ''}`);
+            return;
+          }
           notice(
-            `${cmd.name} is unavailable in the WebUI`,
-            cmd.disabledReason ?? 'This Hermes command runs in the terminal only.',
+            `${cmd.name} is for the terminal`,
+            cmd.disabledReason ?? 'This Hermes command only makes sense in the terminal app.',
             'warning',
           );
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeRunId, transcript.runDone, commandsQuery.data, currentModel, currentProvider, queryClient],
+    [activeRunId, transcript.runDone, transcript.items, commandsQuery.data, currentModel, currentProvider, defaultModel, defaultProvider, reasoning, runInHermes, sessionId, queryClient],
   );
 
-  const send = async (text: string, attachments: PendingAttachment[] = []) => {
+  const send = async (text: string, attachments: PendingAttachment[] = [], options: { display?: string } = {}) => {
     if (sending) return;
-    // Command interception: recognized -> native execution; unrecognized
-    // slash input -> explanatory card. Neither becomes a user message.
-    if (attachments.length === 0) {
+    // Command interception: catalog commands run natively or in Hermes; any
+    // other "/word" goes to Hermes too (skill and plugin commands). None of
+    // them becomes a user message as typed.
+    if (attachments.length === 0 && options.display === undefined) {
       const command = findCommandIn(commandsQuery.data?.commands ?? [], text);
       if (command !== undefined) {
         runCommand(command, commandArgs(text));
         return;
       }
-      if (text.startsWith('/')) {
-        dispatch({
-          type: 'systemCard',
-          title: `Unknown command ${text.split(/\s+/)[0]}`,
-          detail: 'Type "/" to browse the Hermes command catalog.',
-          tone: 'warning',
-        });
+      if (/^\/[a-z0-9][\w:.-]*(\s|$)/i.test(text)) {
+        runInHermes(text.trim());
         return;
       }
     }
@@ -548,14 +826,17 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       rememberDerivedTitle(targetSession, titleSeed);
       dispatch({
         type: 'appendUser',
-        text,
+        text: options.display ?? text,
         attachments: attachments.map((item) =>
           item.kind === 'image'
             ? { kind: 'image' as const, name: item.name, url: item.dataUrl }
-            : { kind: 'file' as const, name: item.name },
+            : item.upload !== undefined
+              ? { kind: 'file' as const, name: item.name, url: item.upload.url, media: item.upload.kind }
+              : { kind: 'file' as const, name: item.name },
         ),
         sessionId: targetSession,
       });
+      timing.current = { sentAt: Date.now() };
       const run = await createRun(buildRunInput(text, attachments), targetSession);
       saveActiveRunId(targetSession, run.run_id);
       setActiveRunId(run.run_id);
@@ -565,6 +846,10 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       setSending(false);
     }
   };
+
+  useEffect(() => {
+    sendRef.current = send;
+  });
 
   // The first message of a conversation started on "/" is sent from here,
   // once the (empty) history has loaded so the reset cannot drop it.
@@ -597,8 +882,20 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       .map((item, index) => ({ id: `retry-${index}`, kind: 'image', name: item.name, size: 0, dataUrl: item.url }));
     void send(lastUser.content, images);
   };
+  useEffect(() => {
+    retryRef.current = retry;
+  });
 
-  const running = activeRunId !== null && !transcript.runDone;
+  // /queue: the next queued message goes out once the reply is done.
+  useEffect(() => {
+    if (running || sending || queued.length === 0) return;
+    const timer = window.setTimeout(() => {
+      const [next, ...rest] = queued;
+      setQueued(rest);
+      if (next !== undefined) void sendRef.current(next);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [running, sending, queued]);
   const pendingApprovals = transcript.items.filter(
     (item): item is TranscriptApproval => item.kind === 'approval' && item.resolvedChoice === undefined,
   );
@@ -675,6 +972,11 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
             {error}
           </p>
         ) : null}
+        {queued.length > 0 ? (
+          <p className="mb-2 px-1 text-xs text-text-tertiary" data-tip={queued.join('\n\n')} data-tip-wide>
+            {queued.length} message{queued.length > 1 ? 's' : ''} queued for when Hermes finishes.
+          </p>
+        ) : null}
         {running && pendingApprovals.length > 0 ? (
           <p className="mb-2 px-1 text-xs text-accent">
             {pendingApprovals.length} approval{pendingApprovals.length > 1 ? 's' : ''} waiting above.
@@ -688,6 +990,13 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           onCommand={(cmd, args) => runCommand(cmd, args)}
           onOpenModelPicker={() => setPickerOpen(true)}
           modelLabel={modelLabel}
+          modelHint={modelHint}
+          extras={
+            <>
+              <ReasoningChip />
+              <ContextMeter info={contextQuery.data} />
+            </>
+          }
           onStop={() => void stop()}
           draftKey={sessionId ?? 'new'}
         />
