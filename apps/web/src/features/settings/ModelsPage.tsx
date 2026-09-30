@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Brain, Eye, KeyRound, Sparkles, Wrench } from 'lucide-react';
 import { fetchModelInfo, fetchModelOptions, setModelAssignment } from '../../lib/api';
 import { fetchModelsAnalytics } from '../../lib/hx';
@@ -7,7 +7,7 @@ import { normalizeCatalog, pickableProviders } from '../../lib/modelCatalog';
 import { compactNumber, money, relativeTime } from '../../lib/format';
 import { confirmDialog } from '../../lib/dialog';
 import { toast, toastError } from '../../lib/toast';
-import { Badge, Card, ErrorNote, Section, SkeletonRows, Stat } from '../../components/ui';
+import { Badge, Card, ErrorNote, Section, Segmented, SkeletonRows, Stat } from '../../components/ui';
 import { ModelBrowser } from '../../components/ModelBrowser';
 import { SettingsPage } from './SettingsLayout';
 
@@ -59,6 +59,7 @@ export function ModelsPage() {
     }
   };
 
+  const [providerFilter, setProviderFilter] = useState<'all' | 'ready' | 'nokey'>('all');
   const caps = info.data?.capabilities ?? {};
   const context = info.data?.effective_context_length ?? caps.context_window;
   const usedModels = (usage.data?.models ?? []).filter((row) => row.sessions > 0).slice(0, 6);
@@ -155,25 +156,45 @@ export function ModelsPage() {
         </Section>
       ) : null}
 
-      <Section title="Providers" description="Add or rotate keys in Settings > Environment.">
+      <Section
+        title="Providers"
+        description="Add or rotate keys in Settings > Environment."
+        actions={
+          catalog.length > 4 ? (
+            <Segmented
+              label="Show providers"
+              value={providerFilter}
+              onChange={setProviderFilter}
+              options={[
+                { value: 'all', label: `All ${catalog.length}` },
+                { value: 'ready', label: `Ready ${catalog.filter((provider) => provider.ready).length}` },
+                { value: 'nokey', label: `No key ${catalog.filter((provider) => !provider.ready).length}` },
+              ]}
+            />
+          ) : undefined
+        }
+      >
         <div className="flex flex-wrap gap-2">
-          {catalog.map((provider) => (
-            <span
-              key={provider.slug}
-              className="yu-card flex h-9 items-center gap-2 rounded-xl px-3 text-[13px]"
-              title={provider.slug}
-            >
-              {provider.ready ? (
-                <span aria-hidden className="size-1.5 rounded-full bg-success" />
-              ) : (
-                <KeyRound className="size-3.5 text-warning" aria-hidden />
-              )}
-              <span className="text-text-primary">{provider.name}</span>
-              <span className="font-mono text-[11px] text-text-tertiary">
-                {provider.ready ? `${provider.models.length} models` : 'no key'}
+          {[...catalog]
+            .filter((provider) => (providerFilter === 'ready' ? provider.ready : providerFilter === 'nokey' ? !provider.ready : true))
+            .sort((a, b) => Number(b.ready) - Number(a.ready) || a.name.localeCompare(b.name))
+            .map((provider) => (
+              <span
+                key={provider.slug}
+                className="yu-card flex h-9 items-center gap-2 rounded-xl px-3 text-[13px]"
+                title={provider.ready ? `${provider.slug}: ready` : `${provider.slug}: no credential yet (Settings > Environment)`}
+              >
+                {provider.ready ? (
+                  <span aria-hidden className="size-1.5 rounded-full bg-success" />
+                ) : (
+                  <KeyRound className="size-3.5 text-warning" aria-hidden />
+                )}
+                <span className="text-text-primary">{provider.name}</span>
+                <span className="font-mono text-[11px] text-text-tertiary">
+                  {provider.ready ? `${provider.models.length} models` : 'no key'}
+                </span>
               </span>
-            </span>
-          ))}
+            ))}
         </div>
       </Section>
     </SettingsPage>

@@ -239,7 +239,7 @@ export function AssistantMessage({
       {item.streaming === true ? (
         <span className="yu-pulse ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 rounded-sm bg-agent text-agent" aria-hidden />
       ) : (
-        <div className="mt-1.5 -ml-1.5 flex h-7 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+        <div className="mt-1.5 -ml-1.5 flex min-h-7 flex-wrap items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
           <CopyAction text={item.content} />
           <ReadAloudAction text={item.content} />
           {canRetry ? (
@@ -247,10 +247,7 @@ export function AssistantMessage({
               <RotateCcw className="size-3.5" aria-hidden />
             </ActionButton>
           ) : null}
-          {item.timestamp !== undefined ? (
-            <span className="ml-1 font-mono text-[10.5px] text-text-tertiary">{clockTime(item.timestamp)}</span>
-          ) : null}
-          {item.stats !== undefined ? <StatsLine stats={item.stats} /> : null}
+          <MetaLine timestamp={item.timestamp} stats={item.stats} />
         </div>
       )}
     </article>
@@ -263,44 +260,72 @@ export function tokensPerSecond(stats: ReplyStats): number | null {
   return stats.output / (stats.streamMs / 1000);
 }
 
-function StatsLine({ stats }: { stats: ReplyStats }) {
-  const tps = tokensPerSecond(stats);
-  const cache = (stats.cacheRead ?? 0) + (stats.cacheWrite ?? 0);
-  const tokenTip = [
-    `Input: ${(stats.input ?? 0).toLocaleString()} tokens (everything the model read for this reply, all steps)`,
-    `Output: ${(stats.output ?? 0).toLocaleString()} tokens`,
-    `Cache read: ${(stats.cacheRead ?? 0).toLocaleString()} · cache write: ${(stats.cacheWrite ?? 0).toLocaleString()}`,
-    stats.model !== undefined ? `Model: ${stats.model}` : '',
-  ]
-    .filter((line) => line !== '')
-    .join('\n');
+function Dot() {
   return (
-    <span className="ml-2 flex items-center gap-2 font-mono text-[10.5px] text-text-tertiary">
-      {stats.input !== undefined || stats.output !== undefined ? (
-        <span data-tip={tokenTip} data-tip-wide tabIndex={0} className="rounded outline-none focus-visible:text-text-secondary">
-          {compactNumber(stats.input ?? 0)} in · {compactNumber(stats.output ?? 0)} out
-        </span>
-      ) : null}
-      {cache > 0 ? (
+    <span aria-hidden className="text-text-tertiary/70 select-none">
+      ·
+    </span>
+  );
+}
+
+/**
+ * Time and the reply's numbers after the actions: a hairline divider, then
+ * each group separated by a dot so "12.4K in / 180 out · 9.8K cached ·
+ * ~189 tok/s" reads as distinct facts. Every group explains itself on hover.
+ */
+function MetaLine({ timestamp, stats }: { timestamp?: number; stats?: ReplyStats }) {
+  const pieces: ReactNode[] = [];
+  if (timestamp !== undefined) {
+    pieces.push(<span key="time">{clockTime(timestamp)}</span>);
+  }
+  if (stats !== undefined) {
+    const tps = tokensPerSecond(stats);
+    const cache = (stats.cacheRead ?? 0) + (stats.cacheWrite ?? 0);
+    if (stats.input !== undefined || stats.output !== undefined) {
+      const tokenTip = [
+        `Input: ${(stats.input ?? 0).toLocaleString()} tokens (everything the model read for this reply, all steps)`,
+        `Output: ${(stats.output ?? 0).toLocaleString()} tokens`,
+        stats.model !== undefined ? `Model: ${stats.model}` : '',
+      ]
+        .filter((line) => line !== '')
+        .join('\n');
+      pieces.push(
+        <span key="tokens" data-tip={tokenTip} data-tip-wide tabIndex={0} className="rounded outline-none focus-visible:text-text-secondary">
+          {compactNumber(stats.input ?? 0)} in <span className="text-text-tertiary/60">/</span> {compactNumber(stats.output ?? 0)} out
+        </span>,
+      );
+    }
+    if (cache > 0) {
+      pieces.push(
         <span
+          key="cache"
           data-tip={`Prompt cache: ${(stats.cacheRead ?? 0).toLocaleString()} tokens read from cache (cheaper, faster), ${(stats.cacheWrite ?? 0).toLocaleString()} written.`}
           data-tip-wide
           tabIndex={0}
           className="rounded outline-none focus-visible:text-text-secondary"
         >
           {compactNumber(stats.cacheRead ?? 0)} cached
-        </span>
-      ) : null}
-      {tps !== null ? (
+        </span>,
+      );
+    }
+    if (tps !== null) {
+      pieces.push(
         <span
+          key="tps"
           data-tip={`About ${tps.toFixed(1)} tokens per second. An estimate: measured in your browser from the first to the last streamed word, so network delay and ping are included${stats.firstTokenMs !== undefined ? `. First text after ${(stats.firstTokenMs / 1000).toFixed(1)}s` : ''}.`}
           data-tip-wide
           tabIndex={0}
           className="rounded outline-none focus-visible:text-text-secondary"
         >
           ~{tps < 10 ? tps.toFixed(1) : Math.round(tps)} tok/s
-        </span>
-      ) : null}
+        </span>,
+      );
+    }
+  }
+  if (pieces.length === 0) return null;
+  return (
+    <span className="ml-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 border-l border-border-subtle pl-2.5 font-mono text-[10.5px] text-text-tertiary">
+      {pieces.flatMap((piece, index) => (index === 0 ? [piece] : [<Dot key={`dot-${index}`} />, piece]))}
     </span>
   );
 }

@@ -4,7 +4,7 @@
 
 It runs next to the Hermes you already have. Hermes stays the brain and the single source of truth: your conversations, memory, skills, cron jobs and settings live in Hermes, and this app shows and drives them.
 
-> Version **0.2.0** · [Changelog](CHANGELOG.md) · Free software ([AGPL-3.0](LICENSE))
+> Version **0.2.1** · [Changelog](CHANGELOG.md) · Free software ([AGPL-3.0](LICENSE))
 
 <p align="center">
   <img src="docs/screenshots/chat.png" alt="A conversation: streaming reply with per-reply tokens, cache and speed, and the model, reasoning effort and context bar under the composer" width="100%">

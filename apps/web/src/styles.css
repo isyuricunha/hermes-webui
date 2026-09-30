@@ -383,6 +383,10 @@ body {
   color: var(--color-agent-soft);
   background: color-mix(in srgb, var(--color-agent) 14%, transparent);
 }
+.yu-chip-info {
+  color: var(--color-link);
+  background: color-mix(in srgb, var(--color-link) 14%, transparent);
+}
 .yu-chip-success {
   color: var(--color-success);
   background: color-mix(in srgb, var(--color-success) 14%, transparent);

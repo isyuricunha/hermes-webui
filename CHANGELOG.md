@@ -2,6 +2,14 @@
 
 All notable changes to Hermes WebUI are documented here.
 
+## 0.2.1
+
+- **Tool results** read as a compact property list: one row per field with hairlines, each value right next to its label, yes/no as chips, long text and nested values full width under their label.
+- **Reply numbers** are separated: time · tokens in / out · cached · tok/s, after a divider from the actions.
+- **Model picker**: provider chips to filter to one provider, provider groups that fold (only the default and the selected one start open when there are many), search opens every match.
+- **Models > Providers**: All / Ready / No key filter, ready ones first.
+- **Skills**: filter by where a skill came from (Yours, Community from the Skills Hub, Official shipped with Hermes; Hermes does not separate skills you wrote from ones the agent wrote), by On / Off, and fold categories (long lists start folded).
+
 ## 0.2.0
 
 ### Chat

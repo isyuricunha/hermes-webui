@@ -161,8 +161,11 @@ export const setCuratorPaused = (paused: boolean) =>
 export interface SkillInfo {
   name: string;
   description: string;
-  category: string;
+  category: string | null;
   enabled: boolean;
+  /** Where Hermes says the skill came from: bundled (ships with Hermes), hub (Skills Hub), agent (local). */
+  provenance?: 'bundled' | 'hub' | 'agent' | string;
+  usage?: number;
 }
 
 /** Lists come back bare or wrapped (`{skills: [...]}`) depending on the Hermes version. */

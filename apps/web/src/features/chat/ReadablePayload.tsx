@@ -42,15 +42,29 @@ export function readableText(raw: string): string {
   return raw.replace(/\\n/g, '\n').replace(/\\t/g, '  ').replace(/\\"/g, '"');
 }
 
+/** Values shown on their own full-width line under the label. */
+function isBlock(value: unknown): boolean {
+  if (typeof value === 'string') return value.includes('\n') || value.length > 90;
+  if (Array.isArray(value)) {
+    const primitives = value.every((item) => item === null || ['string', 'number', 'boolean'].includes(typeof item));
+    return !primitives || value.map(String).join(', ').length > 90;
+  }
+  return typeof value === 'object' && value !== null;
+}
+
 function Scalar({ value }: { value: unknown }): ReactNode {
   if (typeof value === 'boolean') {
-    return <span className={value ? 'text-success' : 'text-text-tertiary'}>{value ? 'yes' : 'no'}</span>;
-  }
-  if (typeof value === 'number') return <span className="font-mono text-text-primary">{value.toLocaleString()}</span>;
-  const text = String(value);
-  if (text.includes('\n') || text.length > 120) {
     return (
-      <pre className="mt-1 max-h-72 overflow-auto rounded-lg bg-surface-editor px-2.5 py-2 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap break-words text-text-secondary">
+      <span className={['yu-chip h-5 rounded-full px-2 text-[11px]', value ? 'yu-chip-success' : 'yu-chip-neutral'].join(' ')}>
+        {value ? 'yes' : 'no'}
+      </span>
+    );
+  }
+  if (typeof value === 'number') return <span className="font-mono text-text-primary tabular-nums">{value.toLocaleString()}</span>;
+  const text = String(value);
+  if (text.includes('\n') || text.length > 90) {
+    return (
+      <pre className="max-h-72 overflow-auto rounded-md bg-background/60 px-2.5 py-2 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap break-words text-text-secondary">
         {text}
       </pre>
     );
@@ -62,13 +76,13 @@ function Value({ value, depth }: { value: unknown; depth: number }): ReactNode {
   if (Array.isArray(value)) {
     if (value.every((item) => item === null || ['string', 'number', 'boolean'].includes(typeof item))) {
       const joined = value.map(String).join(', ');
-      return joined.length <= 160 ? <span className="break-words text-text-primary">{joined}</span> : <Scalar value={value.map(String).join('\n')} />;
+      return joined.length <= 90 ? <span className="break-words text-text-primary">{joined}</span> : <Scalar value={value.map(String).join('\n')} />;
     }
     if (depth >= MAX_DEPTH) return <Scalar value={JSON.stringify(value, null, 2)} />;
     return (
-      <ol className="mt-1 space-y-1.5">
+      <ol className="space-y-1.5">
         {value.map((item, index) => (
-          <li key={index} className="rounded-lg border border-border-subtle px-2.5 py-1.5">
+          <li key={index}>
             <Value value={item} depth={depth + 1} />
           </li>
         ))}
@@ -82,19 +96,37 @@ function Value({ value, depth }: { value: unknown; depth: number }): ReactNode {
   return <Scalar value={value} />;
 }
 
+/**
+ * A compact property list: one row per field with a hairline between rows.
+ * The label column is as wide as the longest short label (capped), so values
+ * sit right next to their label; long text and nested values take the full
+ * width under their label.
+ */
 function Rows({ record, depth }: { record: Record<string, unknown>; depth: number }) {
   const entries = Object.entries(record).filter(([, value]) => !isEmpty(value));
   if (entries.length === 0) return <span className="text-text-tertiary">(empty)</span>;
+  const labelChars = Math.min(16, Math.max(6, ...entries.filter(([, value]) => !isBlock(value)).map(([key]) => humanKey(key).length)));
   return (
-    <dl className={depth > 1 ? 'mt-1 space-y-1 border-l border-border-subtle pl-2.5' : 'space-y-1.5'}>
-      {entries.map(([key, value]) => (
-        <div key={key} className="grid grid-cols-[minmax(5rem,9rem)_1fr] gap-x-3 max-sm:grid-cols-1">
-          <dt className="text-[11.5px] text-text-tertiary">{humanKey(key)}</dt>
-          <dd className="min-w-0 text-[12.5px]">
-            <Value value={value} depth={depth} />
-          </dd>
-        </div>
-      ))}
+    <dl className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-surface/40">
+      {entries.map(([key, value]) =>
+        isBlock(value) ? (
+          <div key={key} className="px-3 py-2">
+            <dt className="mb-1.5 text-[11px] font-medium text-text-tertiary">{humanKey(key)}</dt>
+            <dd className="min-w-0 text-[12.5px]">
+              <Value value={value} depth={depth} />
+            </dd>
+          </div>
+        ) : (
+          <div key={key} className="flex items-baseline gap-3 px-3 py-1.5">
+            <dt className="shrink-0 text-[11px] font-medium text-text-tertiary" style={{ width: `${labelChars + 1}ch` }}>
+              {humanKey(key)}
+            </dt>
+            <dd className="min-w-0 flex-1 text-[12.5px]">
+              <Value value={value} depth={depth} />
+            </dd>
+          </div>
+        ),
+      )}
     </dl>
   );
 }

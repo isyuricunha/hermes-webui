@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { FileText, Plus, Search, Trash2, Wand2 } from 'lucide-react';
+import { ChevronRight, FileText, Plus, Search, Trash2, Wand2 } from 'lucide-react';
 import {
   createSkill,
   deleteSkill,
@@ -173,6 +173,35 @@ function SkillSheet({
   );
 }
 
+type SkillSource = 'all' | 'agent' | 'hub' | 'bundled';
+
+/** Hermes' own provenance: it does not tell skills you wrote from ones the agent wrote. */
+const SOURCES: readonly { id: SkillSource; label: string; tip: string }[] = [
+  { id: 'all', label: 'All', tip: 'Every installed skill.' },
+  { id: 'agent', label: 'Yours', tip: 'Made on this machine, by you or by Hermes itself (Hermes does not tell the two apart).' },
+  { id: 'hub', label: 'Community', tip: 'Installed from the Skills Hub.' },
+  { id: 'bundled', label: 'Official', tip: 'Ships with Hermes.' },
+];
+
+function sourceOf(skill: SkillInfo): SkillSource {
+  return skill.provenance === 'hub' || skill.provenance === 'bundled' ? skill.provenance : 'agent';
+}
+
+function SourceBadge({ skill }: { skill: SkillInfo }) {
+  const source = sourceOf(skill);
+  const label = source === 'hub' ? 'Community' : source === 'bundled' ? 'Official' : 'Yours';
+  return (
+    <span
+      className={[
+        'yu-chip h-5 rounded-full px-1.5 text-[10.5px] font-normal',
+        source === 'agent' ? 'yu-chip-agent' : source === 'bundled' ? 'yu-chip-info' : 'yu-chip-neutral',
+      ].join(' ')}
+    >
+      {label}
+    </span>
+  );
+}
+
 /** Skills: every installed skill, grouped by category, with on/off and the SKILL.md. */
 export function SkillsPage() {
   const queryClient = useQueryClient();
@@ -199,19 +228,40 @@ export function SkillsPage() {
       toast(`${name} ${enabled ? 'enabled' : 'disabled'}. Applies to new conversations (/new or /reset for a running one).`, 'success'),
   });
 
+  const [source, setSource] = useState<SkillSource>('all');
+  const [state, setState] = useState<'all' | 'on' | 'off'>('all');
+  const [toggledGroups, setToggledGroups] = useState<Record<string, boolean>>({});
+
+  const counts = useMemo(() => {
+    const result: Record<SkillSource, number> = { all: 0, agent: 0, hub: 0, bundled: 0 };
+    for (const skill of skills.data ?? []) {
+      result.all += 1;
+      const key = sourceOf(skill);
+      if (key !== 'all') result[key] += 1;
+    }
+    return result;
+  }, [skills.data]);
+
   const groups = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const map = new Map<string, SkillInfo[]>();
     for (const skill of skills.data ?? []) {
-      if (needle !== '' && !`${skill.name} ${skill.description} ${skill.category}`.toLowerCase().includes(needle)) continue;
+      if (source !== 'all' && sourceOf(skill) !== source) continue;
+      if (state === 'on' && !skill.enabled) continue;
+      if (state === 'off' && skill.enabled) continue;
+      if (needle !== '' && !`${skill.name} ${skill.description} ${skill.category ?? ''}`.toLowerCase().includes(needle)) continue;
       const key = skill.category || 'general';
       map.set(key, [...(map.get(key) ?? []), skill]);
     }
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [skills.data, query]);
+  }, [skills.data, query, source, state]);
 
   const total = skills.data?.length ?? 0;
   const enabled = skills.data?.filter((skill) => skill.enabled).length ?? 0;
+  const shown = groups.reduce((sum, [, list]) => sum + list.length, 0);
+  // Long lists start folded (open a category from its header); searching opens everything.
+  const foldByDefault = shown > 30 && query.trim() === '';
+  const groupOpen = (category: string) => (query.trim() !== '' ? true : (toggledGroups[category] ?? !foldByDefault));
 
   return (
     <SettingsPage
@@ -230,16 +280,70 @@ export function SkillsPage() {
       <Section title="Changes waiting for approval" description="Skill writes Hermes staged for review (skills.write_approval).">
         <PendingWrites subsystem="skills" />
       </Section>
-      <label className="yu-input mb-6 flex h-10 items-center gap-2 rounded-xl px-3">
-        <Search className="size-4 shrink-0 text-text-tertiary" aria-hidden />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Filter skills"
-          aria-label="Filter skills"
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-text-tertiary"
-        />
-      </label>
+      <div className="mb-6 space-y-3">
+        <label className="yu-input flex h-10 items-center gap-2 rounded-xl px-3">
+          <Search className="size-4 shrink-0 text-text-tertiary" aria-hidden />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search skills by name, description or category"
+            aria-label="Filter skills"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-text-tertiary"
+          />
+        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Where the skill came from">
+            {SOURCES.map((option) => {
+              const active = source === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  data-tip={option.tip}
+                  data-tip-wide
+                  onClick={() => setSource(option.id)}
+                  className={[
+                    'yu-chip h-8 rounded-full px-3 text-[12px] transition-colors',
+                    active ? 'bg-chip text-text-primary ring-1 ring-accent/50' : 'yu-chip-neutral hover:text-text-primary',
+                  ].join(' ')}
+                >
+                  {option.label}
+                  <span className="font-mono text-[10.5px] text-text-tertiary">{counts[option.id]}</span>
+                </button>
+              );
+            })}
+          </div>
+          <span className="flex-1" />
+          <Segmented
+            label="Skill state"
+            value={state}
+            onChange={setState}
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'on', label: 'On' },
+              { value: 'off', label: 'Off' },
+            ]}
+          />
+        </div>
+        {skills.data !== undefined && (source !== 'all' || state !== 'all' || query.trim() !== '') ? (
+          <p className="text-xs text-text-tertiary">
+            Showing {shown} of {total}.{' '}
+            <button
+              type="button"
+              className="text-link hover:underline"
+              onClick={() => {
+                setSource('all');
+                setState('all');
+                setQuery('');
+              }}
+            >
+              Clear filters
+            </button>
+          </p>
+        ) : null}
+      </div>
       {skills.isError ? (
         <ErrorNote message={skills.error.message} onRetry={() => void skills.refetch()} />
       ) : skills.isPending ? (
@@ -247,43 +351,60 @@ export function SkillsPage() {
       ) : groups.length === 0 ? (
         <EmptyNote icon={<Wand2 className="size-6" />} title={total === 0 ? 'No skills installed' : 'No skills match'} />
       ) : (
-        groups.map(([category, list]) => (
-          <Section key={category} title={category.charAt(0).toUpperCase() + category.slice(1)}>
-            <Card>
-              <ul className="divide-y divide-border-subtle">
-                {list.map((skill) => (
-                  <li key={skill.name} className="flex items-center gap-3 px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => setOpen(skill.name)}
-                      className="group min-w-0 flex-1 text-left"
-                    >
-                      <span className="flex items-center gap-2 text-sm font-medium text-text-primary">
-                        <span className="truncate group-hover:underline group-hover:underline-offset-4">{skill.name}</span>
-                        {!skill.enabled ? <Badge>Off</Badge> : null}
-                      </span>
-                      <span className="mt-0.5 line-clamp-2 block text-[13px] text-text-secondary">{skill.description}</span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Read ${skill.name}`}
-                      title="Read SKILL.md"
-                      onClick={() => setOpen(skill.name)}
-                      className="yu-btn yu-btn-ghost size-8 rounded-lg"
-                    >
-                      <FileText className="size-4" aria-hidden />
-                    </button>
-                    <Switch
-                      label={`${skill.name} enabled`}
-                      checked={skill.enabled}
-                      onChange={(next) => toggle.mutate({ name: skill.name, enabled: next })}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          </Section>
-        ))
+        <div className="space-y-2.5">
+          {groups.map(([category, list]) => {
+            const open = groupOpen(category);
+            const on = list.filter((skill) => skill.enabled).length;
+            return (
+              <Card key={category}>
+                <button
+                  type="button"
+                  onClick={() => setToggledGroups((current) => ({ ...current, [category]: !open }))}
+                  aria-expanded={open}
+                  className="flex w-full items-center gap-2.5 px-4 py-3 text-left transition-colors hover:bg-surface-input"
+                >
+                  <ChevronRight aria-hidden className={['size-4 shrink-0 text-text-tertiary transition-transform', open ? 'rotate-90' : ''].join(' ')} />
+                  <span className="flex-1 text-sm font-medium text-text-primary">
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </span>
+                  <span className="font-mono text-[11px] text-text-tertiary">
+                    {on} of {list.length} on
+                  </span>
+                </button>
+                {open ? (
+                  <ul className="divide-y divide-border-subtle border-t border-border-subtle">
+                    {list.map((skill) => (
+                      <li key={skill.name} className="flex items-center gap-3 px-4 py-3">
+                        <button type="button" onClick={() => setOpen(skill.name)} className="group min-w-0 flex-1 text-left">
+                          <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-text-primary">
+                            <span className="truncate group-hover:underline group-hover:underline-offset-4">{skill.name}</span>
+                            <SourceBadge skill={skill} />
+                            {!skill.enabled ? <Badge>Off</Badge> : null}
+                          </span>
+                          <span className="mt-0.5 line-clamp-2 block text-[13px] text-text-secondary">{skill.description}</span>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Read ${skill.name}`}
+                          title="Read SKILL.md"
+                          onClick={() => setOpen(skill.name)}
+                          className="yu-btn yu-btn-ghost size-8 rounded-lg"
+                        >
+                          <FileText className="size-4" aria-hidden />
+                        </button>
+                        <Switch
+                          label={`${skill.name} enabled`}
+                          checked={skill.enabled}
+                          onChange={(next) => toggle.mutate({ name: skill.name, enabled: next })}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </Card>
+            );
+          })}
+        </div>
       )}
       <SkillSheet
         key={creating ? 'new' : (open ?? 'none')}
