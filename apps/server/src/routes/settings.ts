@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { HermesClient } from '../hermes/client';
 import type { HermesDashboardClient } from '../hermes/dashboard';
 import { sendHermesError } from '../hermes/errors';
 
@@ -14,9 +15,9 @@ import { sendHermesError } from '../hermes/errors';
  */
 export async function settingsRoutes(
   app: FastifyInstance,
-  opts: { dashboard: HermesDashboardClient },
+  opts: { dashboard: HermesDashboardClient; gateway?: HermesClient },
 ): Promise<void> {
-  const dashboard = opts.dashboard;
+  const { dashboard, gateway } = opts;
 
   // -- Config -----------------------------------------------------------------
 
@@ -257,7 +258,11 @@ export async function settingsRoutes(
 
   app.get('/api/settings/messaging/platforms', async (request, reply) => {
     try {
-      return await reply.send(await dashboard.messagingPlatforms());
+      const [platforms, live] = await Promise.all([
+        dashboard.messagingPlatforms(),
+        gateway?.healthDetailed().catch(() => null) ?? Promise.resolve(null),
+      ]);
+      return await reply.send(withLiveStates(platforms, live));
     } catch (error) {
       return sendHermesError(reply, request.id, error);
     }
@@ -329,4 +334,41 @@ export async function settingsRoutes(
       return sendHermesError(reply, request.id, error);
     }
   });
+}
+
+/**
+ * The dashboard judges a channel from gateway_state.json and sometimes calls
+ * a connected one "pending_restart" (its liveness ladder misses the running
+ * gateway). The gateway's own /health/detailed is the live truth, so a
+ * channel the gateway reports connected or failing wins over that guess.
+ */
+export function withLiveStates(platforms: unknown, live: unknown): unknown {
+  if (platforms === null || typeof platforms !== 'object') return platforms;
+  const list = (platforms as { platforms?: unknown }).platforms;
+  if (!Array.isArray(list)) return platforms;
+  const liveRecord = (live ?? {}) as { gateway?: { platforms?: unknown }; platforms?: unknown };
+  const liveMap = (liveRecord.gateway?.platforms ?? liveRecord.platforms ?? {}) as Record<string, unknown>;
+  if (liveMap === null || typeof liveMap !== 'object') return platforms;
+  const guessed = new Set(['pending_restart', 'gateway_stopped']);
+  return {
+    ...platforms,
+    platforms: list.map((entry: unknown) => {
+      if (entry === null || typeof entry !== 'object') return entry;
+      const platform = entry as Record<string, unknown>;
+      const state = liveMap[String(platform.id)];
+      if (state === null || typeof state !== 'object') return platform;
+      const liveState = (state as { state?: unknown }).state;
+      if (typeof liveState !== 'string' || liveState === '') return platform;
+      if (platform.enabled !== true || platform.configured !== true) return platform;
+      if (!guessed.has(String(platform.state))) return platform;
+      const liveError = state as { error_code?: unknown; error_message?: unknown };
+      return {
+        ...platform,
+        state: liveState,
+        gateway_running: true,
+        error_code: typeof liveError.error_code === 'string' ? liveError.error_code : null,
+        error_message: typeof liveError.error_message === 'string' ? liveError.error_message : null,
+      };
+    }),
+  };
 }

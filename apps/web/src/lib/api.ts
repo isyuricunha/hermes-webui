@@ -428,14 +428,6 @@ export function fetchSkills(): Promise<SkillInfo[]> {
   return requestJson<SkillInfo[]>('/api/settings/skills');
 }
 
-export interface MessagingPlatforms {
-  platforms: { id: string; name: string; description?: string }[];
-}
-
-export function fetchMessagingPlatforms(): Promise<MessagingPlatforms> {
-  return requestJson<MessagingPlatforms>('/api/settings/messaging/platforms');
-}
-
 export function runDoctor(): Promise<unknown> {
   return requestJson<unknown>('/api/settings/ops/doctor', { method: 'POST' });
 }

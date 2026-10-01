@@ -64,6 +64,31 @@ describe('allowlisted dashboard proxy (/api/hx/*)', () => {
     expect(response.json().echo).toEqual({ name: 'recency-anchor', enabled: false });
   });
 
+  it('forwards messaging channel setup writes and guided pairings', async () => {
+    handler = (_url, init) => json({ ok: true, echo: init?.body === undefined ? null : JSON.parse(String(init.body)) });
+    const save = await app.inject({
+      method: 'PUT',
+      url: '/api/hx/messaging/platforms/discord',
+      payload: { enabled: true, env: { DISCORD_BOT_TOKEN: 'x' }, clear_env: [] },
+    });
+    expect(save.statusCode).toBe(200);
+    expect(calls[0]!.url.pathname).toBe('/api/messaging/platforms/discord');
+    expect(calls[0]!.init?.method).toBe('PUT');
+    expect(save.json().echo.enabled).toBe(true);
+
+    for (const [method, url] of [
+      ['POST', '/api/hx/messaging/platforms/discord/test'],
+      ['POST', '/api/hx/messaging/telegram/onboarding/start'],
+      ['GET', '/api/hx/messaging/telegram/onboarding/Ab_c-12'],
+      ['POST', '/api/hx/messaging/whatsapp/onboarding/Ab_c-12/apply'],
+      ['DELETE', '/api/hx/messaging/whatsapp/onboarding/Ab_c-12'],
+    ] as const) {
+      const response = await app.inject({ method, url, ...(method === 'POST' ? { payload: {} } : {}) });
+      expect(response.statusCode, url).toBe(200);
+    }
+    expect(calls.map((call) => call.url.pathname)).toContain('/api/messaging/whatsapp/onboarding/Ab_c-12/apply');
+  });
+
   it('never forwards routes that are not on the allowlist', async () => {
     for (const url of ['/api/hx/env/reveal', '/api/hx/audio/voice-config', '/api/hx/fs/write-text', '/api/hx/git/review/push']) {
       const response = await app.inject({ method: url.includes('write') || url.includes('push') || url.includes('reveal') ? 'POST' : 'GET', url });

@@ -56,6 +56,11 @@ export class HermesClient {
     return this.request<GatewayHealth>('/health', { method: 'GET' }, { auth: false });
   }
 
+  /** Authed readiness report, incl. the live per-platform connection map. */
+  async healthDetailed(): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>('/health/detailed', { method: 'GET' });
+  }
+
   /** Authed capability flags (machine-readable feature detection). */
   async capabilities(): Promise<Record<string, unknown>> {
     return this.request<Record<string, unknown>>('/v1/capabilities', { method: 'GET' });

@@ -399,3 +399,113 @@ export const editMemoryFile = (
   target: MemoryTarget,
   edit: { action: 'add'; content: string } | { action: 'replace'; entry: string; content: string } | { action: 'remove'; entry: string },
 ) => requestJson<{ ok: boolean; message: string }>(`/api/memory-files/${target}`, { method: 'POST', ...json(edit) });
+
+// --- Messaging channels ------------------------------------------------------------------
+
+export interface MessagingEnvVar {
+  key: string;
+  required: boolean;
+  is_set: boolean;
+  /** Short masked preview of a saved value ("abc…xyz"), never the value. */
+  redacted_value: string | null;
+  description: string;
+  prompt: string;
+  help: string;
+  url: string | null;
+  is_password: boolean;
+  advanced: boolean;
+}
+
+export interface MessagingPlatform {
+  id: string;
+  name: string;
+  description: string;
+  docs_url: string | null;
+  enabled: boolean;
+  configured: boolean;
+  gateway_running: boolean;
+  state: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  updated_at: string | null;
+  home_channel: { platform?: string; chat_id?: string; name?: string } | null;
+  env_vars: MessagingEnvVar[];
+  ingress_url: string | null;
+}
+
+export interface MessagingPlatformsResponse {
+  env_path?: string;
+  gateway_start_command?: string;
+  platforms: MessagingPlatform[];
+}
+
+export const fetchMessaging = () => requestJson<MessagingPlatformsResponse>('/api/settings/messaging/platforms');
+export const updateMessagingPlatform = (
+  id: string,
+  body: { enabled?: boolean; env?: Record<string, string>; clear_env?: string[] },
+) =>
+  requestJson<{ ok: boolean; platform: string }>(`/api/hx/messaging/platforms/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    ...json({ env: {}, clear_env: [], ...body }),
+  });
+export const testMessagingPlatform = (id: string) =>
+  requestJson<{ ok: boolean; state: string | null; message: string }>(
+    `/api/hx/messaging/platforms/${encodeURIComponent(id)}/test`,
+    { method: 'POST', ...json({}) },
+  );
+
+export interface RestartResult {
+  ok: boolean;
+  needs_restart?: boolean;
+  restart_started?: boolean;
+  restart_error?: string;
+}
+
+export const startTelegramSetup = (botName: string) =>
+  requestJson<{ pairing_id: string; suggested_username: string; deep_link: string; qr_payload: string; expires_at: string }>(
+    '/api/hx/messaging/telegram/onboarding/start',
+    { method: 'POST', ...json({ bot_name: botName }) },
+  );
+export const pollTelegramSetup = (pairingId: string) =>
+  requestJson<{ status: 'waiting' | 'ready'; bot_username?: string | null; owner_user_id?: string | null; expires_at: string }>(
+    `/api/hx/messaging/telegram/onboarding/${encodeURIComponent(pairingId)}`,
+  );
+export const applyTelegramSetup = (pairingId: string, allowedUserIds: string[]) =>
+  requestJson<RestartResult & { bot_username?: string | null }>(
+    `/api/hx/messaging/telegram/onboarding/${encodeURIComponent(pairingId)}/apply`,
+    { method: 'POST', ...json({ allowed_user_ids: allowedUserIds }) },
+  );
+export const cancelTelegramSetup = (pairingId: string) =>
+  requestJson<{ ok: boolean }>(`/api/hx/messaging/telegram/onboarding/${encodeURIComponent(pairingId)}`, {
+    method: 'DELETE',
+  });
+
+export interface WhatsAppSetup {
+  pairing_id: string;
+  status: 'installing' | 'starting' | 'waiting' | 'connected' | 'error' | 'expired' | 'cancelled';
+  qr_payload: string | null;
+  expires_at: string;
+  mode: 'bot' | 'self-chat';
+  allowed_users: string;
+  account_id: string | null;
+  account_name: string | null;
+  account_phone: string | null;
+  error: string | null;
+}
+
+export const startWhatsAppSetup = (mode: 'bot' | 'self-chat', allowedUsers: string) =>
+  requestJson<WhatsAppSetup>('/api/hx/messaging/whatsapp/onboarding/start', {
+    method: 'POST',
+    ...json({ mode, allowed_users: allowedUsers }),
+  });
+export const pollWhatsAppSetup = (pairingId: string) =>
+  requestJson<WhatsAppSetup>(`/api/hx/messaging/whatsapp/onboarding/${encodeURIComponent(pairingId)}`);
+export const applyWhatsAppSetup = (pairingId: string, body: { mode?: string; allowed_users?: string }) =>
+  requestJson<RestartResult>(`/api/hx/messaging/whatsapp/onboarding/${encodeURIComponent(pairingId)}/apply`, {
+    method: 'POST',
+    ...json(body),
+  });
+export const cancelWhatsAppSetup = (pairingId: string) =>
+  requestJson<{ ok: boolean }>(`/api/hx/messaging/whatsapp/onboarding/${encodeURIComponent(pairingId)}`, {
+    method: 'DELETE',
+  });

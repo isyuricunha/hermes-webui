@@ -69,6 +69,48 @@ describe('dashboard settings routes', () => {
     expect(response.json()).toEqual({ ok: true });
   });
 
+  it('lets the live gateway channel state win over the dashboard guess', async () => {
+    handler = (url) => {
+      if (url.pathname === '/api/messaging/platforms') {
+        return json({
+          platforms: [
+            { id: 'telegram', enabled: true, configured: true, state: 'pending_restart', gateway_running: true },
+            { id: 'discord', enabled: false, configured: false, state: 'disabled', gateway_running: true },
+            { id: 'slack', enabled: true, configured: true, state: 'pending_restart', gateway_running: true },
+          ],
+        });
+      }
+      if (url.pathname === '/health/detailed') {
+        return json({
+          gateway: {
+            platforms: {
+              telegram: { state: 'connected', error_code: null },
+              discord: { state: 'connected' },
+            },
+          },
+        });
+      }
+      return json({}, 404);
+    };
+
+    const response = await app.inject({ method: 'GET', url: '/api/settings/messaging/platforms' });
+    expect(response.statusCode).toBe(200);
+    const states = Object.fromEntries(
+      (response.json().platforms as { id: string; state: string }[]).map((p) => [p.id, p.state]),
+    );
+    expect(states).toEqual({ telegram: 'connected', discord: 'disabled', slack: 'pending_restart' });
+  });
+
+  it('still lists channels when the gateway health check fails', async () => {
+    handler = (url) =>
+      url.pathname === '/api/messaging/platforms'
+        ? json({ platforms: [{ id: 'telegram', enabled: true, configured: true, state: 'pending_restart' }] })
+        : json({ error: 'down' }, 500);
+    const response = await app.inject({ method: 'GET', url: '/api/settings/messaging/platforms' });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().platforms[0].state).toBe('pending_restart');
+  });
+
   it('rejects raw config writes without yaml_text before touching the dashboard', async () => {
     const response = await app.inject({
       method: 'PUT',

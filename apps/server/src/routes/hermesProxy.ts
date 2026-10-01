@@ -91,6 +91,17 @@ export const PROXY_RULES: readonly ProxyRule[] = [
   { method: 'POST', path: 'webhooks/enable', timeoutMs: 60_000 },
   { method: 'POST', path: 'webhooks' },
   { method: 'DELETE', path: 'webhooks/:name' },
+  // Messaging channels: credentials, on/off, connection test, guided setups
+  { method: 'PUT', path: 'messaging/platforms/:id' },
+  { method: 'POST', path: 'messaging/platforms/:id/test' },
+  { method: 'POST', path: 'messaging/telegram/onboarding/start', timeoutMs: 30_000 },
+  { method: 'GET', path: 'messaging/telegram/onboarding/:id', timeoutMs: 30_000 },
+  { method: 'POST', path: 'messaging/telegram/onboarding/:id/apply', timeoutMs: 60_000 },
+  { method: 'DELETE', path: 'messaging/telegram/onboarding/:id' },
+  { method: 'POST', path: 'messaging/whatsapp/onboarding/start', timeoutMs: 60_000 },
+  { method: 'GET', path: 'messaging/whatsapp/onboarding/:id' },
+  { method: 'POST', path: 'messaging/whatsapp/onboarding/:id/apply', timeoutMs: 60_000 },
+  { method: 'DELETE', path: 'messaging/whatsapp/onboarding/:id' },
   // Files the assistant delivered with MEDIA:/path (images, audio, documents)
   {
     method: 'GET',

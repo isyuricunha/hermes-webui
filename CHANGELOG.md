@@ -4,6 +4,7 @@ All notable changes to Hermes WebUI are documented here.
 
 ## Unreleased
 
+- **Messaging channels you can actually set up:** Settings > Messaging lists every platform Hermes can talk on with its live state (connected, needs restart, error with Hermes' message, home channel). Open one to paste its token and allowed users, turn it on or off, test the connection and restart the gateway, without the terminal. Discord gets a step-by-step bot guide; Telegram can create its bot from a QR code and WhatsApp links with a QR code like WhatsApp Web. Saved secrets only show a short masked preview. Channel states come from the running gateway, so a working channel no longer reads "pending restart".
 - **Hermes names new conversations again:** the WebUI created each conversation with a title (the first message, or a file name when you only sent a file), which Hermes treats as chosen by you and never replaces. Conversations are now created untitled and Hermes titles them after the first reply, as on Telegram; the sidebar shows a short placeholder until then.
 - **No more sign-outs when the app is closed:** the sign-in cookie had no expiry, so browsers treated it as a browser-session cookie and iOS dropped it whenever the installed app was closed or suspended. It now lasts until the session really ends.
 - Sessions now last 14 days without use by default (was 7); every visit restarts the count, up to the 30-day limit.
