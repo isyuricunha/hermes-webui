@@ -4,6 +4,13 @@ All notable changes to Hermes WebUI are documented here.
 
 ## Unreleased
 
+- **Everything that used to send you to the terminal now works here:**
+  - **Tools:** each toolset has a *Set up* / *Provider and keys* panel: pick the provider (web search, image generation, browser...), paste its API key, choose the model, and for web search pick separate backends for search and extraction.
+  - **Memory:** open any memory provider to fill in its settings, install its dependencies, switch to it, or go back to the built-in memory. The curator has a *Run now* button.
+  - **Messaging:** *Access requests* lists people who messaged a bot and wait for your OK: approve them, remove access, or type a pairing code. A stopped gateway can be started from the banner.
+  - **Webhooks:** *New webhook* creates one (prompt, events, skills, where the answer goes) and shows its URL and secret once.
+  - **Profiles:** create a profile (empty, a copy of the settings, or a full copy) and delete one (typing its name to confirm).
+  - **System:** *Start Hermes* when the gateway is down, and the update check lists the incoming changes instead of raw JSON.
 - **Messaging channels you can actually set up:** Settings > Messaging lists every platform Hermes can talk on with its live state (connected, needs restart, error with Hermes' message, home channel). Open one to paste its token and allowed users, turn it on or off, test the connection and restart the gateway, without the terminal. Discord gets a step-by-step bot guide; Telegram can create its bot from a QR code and WhatsApp links with a QR code like WhatsApp Web. Saved secrets only show a short masked preview. Channel states come from the running gateway, so a working channel no longer reads "pending restart".
 - **Hermes names new conversations again:** the WebUI created each conversation with a title (the first message, or a file name when you only sent a file), which Hermes treats as chosen by you and never replaces. Conversations are now created untitled and Hermes titles them after the first reply, as on Telegram; the sidebar shows a short placeholder until then.
 - **No more sign-outs when the app is closed:** the sign-in cookie had no expiry, so browsers treated it as a browser-session cookie and iOS dropped it whenever the installed app was closed or suspended. It now lasts until the session really ends.

@@ -11,10 +11,17 @@ import {
   RotateCw,
   Search,
   Undo2,
+  UserCheck,
+  UserX,
   X,
 } from 'lucide-react';
 import { restartGateway } from '../../lib/api';
 import {
+  approvePairing,
+  clearPendingPairing,
+  fetchPairing,
+  revokePairing,
+  startGateway,
   applyTelegramSetup,
   applyWhatsAppSetup,
   cancelTelegramSetup,
@@ -173,8 +180,23 @@ export function MessagingPage() {
       ) : (
         <>
           {!gatewayRunning ? (
-            <div role="status" className="yu-chip-warning mb-4 flex items-center gap-2.5 rounded-2xl px-3.5 py-3 text-[13px]">
+            <div role="status" className="yu-chip-warning mb-4 flex flex-wrap items-center gap-2.5 rounded-2xl px-3.5 py-3 text-[13px]">
               <span className="min-w-0 flex-1">The gateway is not running, so no channel is connected.</span>
+              <button
+                type="button"
+                onClick={() =>
+                  void startGateway().then(
+                    () => {
+                      toast('Starting the gateway…', 'success');
+                      gateway.watch();
+                    },
+                    (error: unknown) => toastError(error),
+                  )
+                }
+                className="yu-btn yu-btn-primary h-7 rounded-lg px-2.5 text-xs"
+              >
+                Start gateway
+              </button>
             </div>
           ) : pendingRestart.length > 0 ? (
             <div role="status" className="yu-chip-warning mb-4 flex flex-wrap items-center gap-2.5 rounded-2xl px-3.5 py-3 text-[13px]">
@@ -206,6 +228,8 @@ export function MessagingPage() {
             )}
           </Section>
 
+          <PairingSection platforms={platforms} />
+
           <Section
             title="Add a channel"
             description={`${available.length} more platforms Hermes can connect to.`}
@@ -235,6 +259,154 @@ export function MessagingPage() {
       )}
       {open !== null ? <PlatformSheet platform={open} gateway={gateway} onClose={() => setOpenId(null)} /> : null}
     </SettingsPage>
+  );
+}
+
+/**
+ * Pairing: someone messages a bot they are not allowed on yet, Hermes gives
+ * them a one-time code and lists the request here. Approving adds them to the
+ * channel's approved users (and its allowlist when one is set).
+ */
+function PairingSection({ platforms }: { platforms: MessagingPlatform[] }) {
+  const queryClient = useQueryClient();
+  const pairing = useQuery({ queryKey: ['pairing'], queryFn: fetchPairing, refetchInterval: 15_000 });
+  const [code, setCode] = useState('');
+  const [codePlatform, setCodePlatform] = useState('');
+  const nameOf = (id: string) => platforms.find((p) => p.id === id)?.name ?? id;
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: ['pairing'] });
+  const act = (work: Promise<unknown>, done: string) =>
+    void work.then(
+      () => {
+        toast(done, 'success');
+        refresh();
+      },
+      (error: unknown) => toastError(error),
+    );
+  const connected = platforms.filter((p) => p.enabled && p.configured && !['api_server', 'webhook'].includes(p.id));
+  const pending = pairing.data?.pending ?? [];
+  const approved = pairing.data?.approved ?? [];
+  if (pairing.isError) return null;
+
+  return (
+    <Section
+      title="Access requests"
+      description="People who messaged one of your bots and wait for your OK. Approved people can talk to Hermes there."
+      actions={
+        pending.length > 1 ? (
+          <button
+            type="button"
+            onClick={async () => {
+              const ok = await confirmDialog({ title: 'Dismiss every request?', description: 'They can ask again by messaging the bot.', confirmLabel: 'Dismiss all', tone: 'danger' });
+              if (ok) act(clearPendingPairing(), 'Requests dismissed.');
+            }}
+            className="yu-btn yu-btn-ghost h-7 rounded-lg px-2.5 text-xs text-text-secondary"
+          >
+            Dismiss all
+          </button>
+        ) : undefined
+      }
+    >
+      <Card>
+        {pending.length === 0 && approved.length === 0 ? (
+          <p className="px-4 py-3.5 text-[13px] text-text-secondary">No requests. When someone new messages a bot, they show up here.</p>
+        ) : (
+          <ul className="divide-y divide-border-subtle">
+            {pending.map((request) => (
+              <li key={`${request.platform}:${request.request_id || request.user_id}`} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2 text-[13px] font-medium text-text-primary">
+                    {request.user_name || request.user_id}
+                    <Badge tone="warning">waiting</Badge>
+                    <Badge>{nameOf(request.platform)}</Badge>
+                  </span>
+                  <span className="block font-mono text-[11px] text-text-tertiary">
+                    {request.user_id} · {request.age_minutes < 1 ? 'just now' : `${request.age_minutes} min ago`}
+                  </span>
+                </span>
+                {request.request_id ? (
+                  <button
+                    type="button"
+                    onClick={() => act(approvePairing(request.platform, { request_id: request.request_id }), `${request.user_name || request.user_id} approved.`)}
+                    className="yu-btn yu-btn-primary h-8 gap-1.5 rounded-lg px-3 text-xs"
+                  >
+                    <UserCheck className="size-3.5" aria-hidden /> Approve
+                  </button>
+                ) : (
+                  <span className="text-xs text-text-tertiary">Approve with the code they received</span>
+                )}
+              </li>
+            ))}
+            {approved.map((user) => (
+              <li key={`${user.platform}:${user.user_id}`} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2 text-[13px] text-text-primary">
+                    {user.user_name || user.user_id}
+                    <Badge tone="success">approved</Badge>
+                    <Badge>{nameOf(user.platform)}</Badge>
+                  </span>
+                  <span className="block font-mono text-[11px] text-text-tertiary">{user.user_id}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const ok = await confirmDialog({
+                      title: `Remove ${user.user_name || user.user_id}?`,
+                      description: `They lose access to Hermes on ${nameOf(user.platform)}.`,
+                      confirmLabel: 'Remove access',
+                      tone: 'danger',
+                    });
+                    if (ok) act(revokePairing(user.platform, user.user_id), 'Access removed.');
+                  }}
+                  className="yu-btn yu-btn-ghost h-8 gap-1.5 rounded-lg px-2.5 text-xs text-text-secondary"
+                >
+                  <UserX className="size-3.5" aria-hidden /> Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {connected.length > 0 ? (
+          <form
+            className="flex flex-wrap items-center gap-2 border-t border-border-subtle px-4 py-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const platform = codePlatform || connected[0]!.id;
+              if (code.trim() === '') return;
+              act(approvePairing(platform, { code: code.trim() }), 'Code accepted.');
+              setCode('');
+            }}
+          >
+            <span className="text-xs text-text-secondary">Got a pairing code?</span>
+            {connected.length > 1 ? (
+              <span className="flex flex-wrap gap-1" role="radiogroup" aria-label="Channel of the code">
+                {connected.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={(codePlatform || connected[0]!.id) === p.id}
+                    onClick={() => setCodePlatform(p.id)}
+                    className={['yu-chip', (codePlatform || connected[0]!.id) === p.id ? 'yu-chip-accent' : ''].join(' ')}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </span>
+            ) : null}
+            <input
+              value={code}
+              onChange={(event) => setCode(event.target.value.toUpperCase())}
+              placeholder="ABCD1234"
+              aria-label="Pairing code"
+              className="yu-input h-8 w-32 px-2.5 font-mono text-[13px] uppercase"
+            />
+            <button type="submit" disabled={code.trim() === ''} className="yu-btn yu-btn-tonal h-8 rounded-lg px-3 text-xs">
+              Approve
+            </button>
+          </form>
+        ) : null}
+      </Card>
+    </Section>
   );
 }
 

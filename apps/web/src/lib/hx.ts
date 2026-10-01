@@ -509,3 +509,153 @@ export const cancelWhatsAppSetup = (pairingId: string) =>
   requestJson<{ ok: boolean }>(`/api/hx/messaging/whatsapp/onboarding/${encodeURIComponent(pairingId)}`, {
     method: 'DELETE',
   });
+
+// --- Pairing (access requests from people who messaged a bot) ----------------------------
+
+export interface PairingPending {
+  platform: string;
+  request_id: string;
+  user_id: string;
+  user_name: string;
+  age_minutes: number;
+}
+export interface PairingApproved {
+  platform: string;
+  user_id: string;
+  user_name?: string;
+  approved_at?: number;
+}
+
+export const fetchPairing = () =>
+  requestJson<{ pending: PairingPending[]; approved: PairingApproved[] }>('/api/hx/pairing');
+export const approvePairing = (platform: string, target: { request_id?: string; code?: string }) =>
+  requestJson<{ ok: boolean }>('/api/hx/pairing/approve', { method: 'POST', ...json({ platform, ...target }) });
+export const revokePairing = (platform: string, userId: string) =>
+  requestJson<{ ok: boolean }>('/api/hx/pairing/revoke', { method: 'POST', ...json({ platform, user_id: userId }) });
+export const clearPendingPairing = () =>
+  requestJson<{ ok: boolean; cleared: number }>('/api/hx/pairing/clear-pending', { method: 'POST', ...json({}) });
+
+// --- Webhook create, profiles create/delete, gateway start, curator run ---------------------
+
+export interface WebhookInput {
+  name: string;
+  description?: string;
+  events: string[];
+  prompt?: string;
+  skills: string[];
+  deliver: string;
+  deliver_only: boolean;
+  deliver_chat_id?: string;
+}
+export const createWebhook = (input: WebhookInput) =>
+  requestJson<WebhookRoute & { secret: string }>('/api/hx/webhooks', { method: 'POST', ...json(input) });
+
+export const createProfile = (input: {
+  name: string;
+  description?: string;
+  clone_from?: string;
+  clone_all?: boolean;
+}) => requestJson<{ ok: boolean; name?: string; path?: string }>('/api/hx/profiles', { method: 'POST', ...json(input) });
+export const deleteProfile = (name: string) =>
+  requestJson<{ ok: boolean; settlement_pending?: boolean; retry_command?: string }>(
+    `/api/hx/profiles/${encodeURIComponent(name)}`,
+    { method: 'DELETE' },
+  );
+
+export const startGateway = () => requestJson<{ ok: boolean }>('/api/hx/gateway/start', { method: 'POST', ...json({}) });
+/** The curator rewrites skills, so Hermes wants the profile named when it serves several. */
+export const runCurator = (profile: string) =>
+  requestJson<{ ok: boolean; message?: string }>(`/api/hx/curator/run?profile=${encodeURIComponent(profile)}`, {
+    method: 'POST',
+    ...json({}),
+  });
+
+// --- Toolset setup (provider, keys, model) ------------------------------------------------
+
+export interface ToolsetProviderRow {
+  name: string;
+  badge: string;
+  tag: string;
+  env_vars: { key: string; prompt: string; url: string | null; default: string | null; is_set: boolean }[];
+  post_setup: string | null;
+  requires_nous_auth: boolean;
+  is_active: boolean;
+  status: string;
+  web_backend?: string;
+  capabilities?: string[];
+}
+export interface ToolsetConfig {
+  name: string;
+  has_category: boolean;
+  providers: ToolsetProviderRow[];
+  active_provider: string | null;
+  active_search_backend?: string | null;
+  active_extract_backend?: string | null;
+}
+export interface ToolsetModels {
+  name: string;
+  has_models: boolean;
+  provider?: string;
+  models: { id: string; display: string; speed: string; strengths: string; price: string }[];
+  current: string | null;
+  default: string | null;
+}
+
+const toolsetPath = (name: string) => `/api/hx/tools/toolsets/${encodeURIComponent(name)}`;
+export const fetchToolsetConfig = (name: string) => requestJson<ToolsetConfig>(`${toolsetPath(name)}/config`);
+export const selectToolsetProvider = (name: string, provider: string, capability?: 'search' | 'extract') =>
+  requestJson<{ ok: boolean }>(`${toolsetPath(name)}/provider`, {
+    method: 'PUT',
+    ...json(capability === undefined ? { provider } : { provider, capability }),
+  });
+export const saveToolsetEnv = (name: string, env: Record<string, string>) =>
+  requestJson<{ ok: boolean; saved: string[] }>(`${toolsetPath(name)}/env`, { method: 'PUT', ...json({ env }) });
+export const fetchToolsetModels = (name: string) => requestJson<ToolsetModels>(`${toolsetPath(name)}/models`);
+export const selectToolsetModel = (name: string, model: string) =>
+  requestJson<{ ok: boolean }>(`${toolsetPath(name)}/model`, { method: 'PUT', ...json({ model }) });
+
+// --- Memory providers (switch, configure, install) -------------------------------------------
+
+export interface SchemaField {
+  key: string;
+  label: string;
+  kind: string;
+  description?: string;
+  placeholder?: string;
+  required?: boolean;
+  value?: string | boolean | number | null;
+  is_set?: boolean;
+  options?: { value: string; label: string; description?: string }[];
+  url?: string;
+  when?: Record<string, unknown> | null;
+}
+export interface MemoryProviderConfig {
+  name: string;
+  label: string;
+  fields: SchemaField[];
+  setup?: {
+    pip_dependencies: string[];
+    external_dependencies: { name: string; install: string; check: string }[];
+    required_env: string[];
+    dependencies_installed: boolean;
+  };
+}
+export interface SetupResult {
+  ok: boolean;
+  results: { kind: string; name: string; status: string; command: string; stdout: string; stderr: string }[];
+}
+
+export const setMemoryProvider = (provider: string) =>
+  requestJson<{ ok: boolean; active: string }>('/api/hx/memory/provider', { method: 'PUT', ...json({ provider }) });
+export const fetchMemoryProviderConfig = (name: string) =>
+  requestJson<MemoryProviderConfig>(`/api/hx/memory/providers/${encodeURIComponent(name)}/config`);
+export const saveMemoryProviderConfig = (name: string, values: Record<string, unknown>) =>
+  requestJson<{ ok: boolean; active?: string }>(`/api/hx/memory/providers/${encodeURIComponent(name)}/config`, {
+    method: 'PUT',
+    ...json({ values }),
+  });
+export const setupMemoryProvider = (name: string, values: Record<string, unknown>) =>
+  requestJson<SetupResult>(`/api/hx/memory/providers/${encodeURIComponent(name)}/setup`, {
+    method: 'POST',
+    ...json({ values }),
+  });

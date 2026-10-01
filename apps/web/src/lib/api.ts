@@ -437,6 +437,8 @@ export function fetchUpdateCheck(): Promise<{
   update_available?: boolean;
   can_apply?: boolean;
   message?: string;
+  update_command?: string;
+  commits?: { sha: string; summary: string; author?: string; at?: string }[];
 }> {
   return requestJson('/api/settings/update/check');
 }

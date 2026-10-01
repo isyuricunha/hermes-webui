@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { CircleCheck, FileText, MoreHorizontal, Pencil, UserRound } from 'lucide-react';
+import { CircleCheck, FileText, MoreHorizontal, Pencil, Plus, Trash2, UserRound } from 'lucide-react';
 import {
+  createProfile,
+  deleteProfile,
   fetchActiveProfile,
   fetchProfiles,
   fetchSoul,
@@ -12,7 +14,7 @@ import {
 } from '../../lib/hx';
 import { confirmDialog, promptDialog } from '../../lib/dialog';
 import { toast, toastError } from '../../lib/toast';
-import { Badge, Card, ErrorNote, Menu, Section, Segmented, SkeletonRows, StatusDot } from '../../components/ui';
+import { Badge, Card, ErrorNote, Menu, Section, Segmented, Sheet, SkeletonRows, StatusDot } from '../../components/ui';
 import { Markdown } from '../chat/Markdown';
 import { SettingsPage } from './SettingsLayout';
 
@@ -120,7 +122,75 @@ function hasName(profile: ProfileInfo): boolean {
   return !profile.is_default || (profile.display_name?.trim() ?? '') !== '';
 }
 
-/** Profiles (rename, describe) and the selected profile's SOUL. */
+/** New profile: empty, or a copy of an existing one. */
+function NewProfileSheet({ source, onClose, onCreated }: { source: ProfileInfo; onClose: () => void; onCreated: (name: string) => void }) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [start, setStart] = useState<'fresh' | 'settings' | 'all'>('fresh');
+  const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
+  const valid = /^[a-z0-9][a-z0-9_-]{0,63}$/.test(slug);
+  const create = useMutation({
+    mutationFn: () =>
+      createProfile({
+        name: slug,
+        description: description.trim() || undefined,
+        ...(start === 'fresh' ? {} : { clone_from: source.name, clone_all: start === 'all' }),
+      }),
+    onSuccess: () => {
+      toast(`Profile ${slug} created. Give it a SOUL below; its bots and gateway are set up separately.`, 'success');
+      onCreated(slug);
+    },
+    onError: (error) => toastError(error),
+  });
+  return (
+    <Sheet open onClose={onClose} title="New profile" subtitle="A separate Hermes: its own SOUL, memory, skills and bots">
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (valid) create.mutate();
+        }}
+      >
+        <label className="block">
+          <span className="mb-1 block text-[13px] font-medium text-text-primary">Name</span>
+          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="work" className="yu-input h-10 w-full px-3 font-mono text-sm" />
+          <span className="mt-1 block text-xs text-text-tertiary">
+            {slug === '' || valid ? 'Lowercase letters, numbers, - and _. Used as `hermes -p <name>`.' : 'Use lowercase letters, numbers, - and _ only.'}
+          </span>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[13px] font-medium text-text-primary">What it is for (optional)</span>
+          <input value={description} onChange={(event) => setDescription(event.target.value)} className="yu-input h-10 w-full px-3 text-sm" />
+        </label>
+        <div>
+          <p className="mb-1.5 text-[13px] font-medium text-text-primary">Start from</p>
+          <Segmented
+            label="Start from"
+            value={start}
+            onChange={setStart}
+            options={[
+              { value: 'fresh', label: 'Empty' },
+              { value: 'settings', label: `Copy ${profileLabel(source)} settings` },
+              { value: 'all', label: 'Copy everything' },
+            ]}
+          />
+          <p className="mt-1.5 text-xs text-text-tertiary">
+            {start === 'fresh'
+              ? 'Default config with the bundled skills.'
+              : start === 'settings'
+                ? 'Config, skills and SOUL are copied; memory and conversations start empty.'
+                : 'Memory, skills and history are copied too. Bot tokens are never copied, so two profiles do not fight over one bot.'}
+          </p>
+        </div>
+        <button type="submit" disabled={!valid || create.isPending} className="yu-btn yu-btn-primary h-9 rounded-xl px-4 text-[13px]">
+          {create.isPending ? 'Creating…' : 'Create profile'}
+        </button>
+      </form>
+    </Sheet>
+  );
+}
+
+/** Profiles (create, rename, describe, delete) and the selected profile's SOUL. */
 export function ProfilePage() {
   const queryClient = useQueryClient();
   const profiles = useQuery({ queryKey: ['profiles'], queryFn: fetchProfiles });
@@ -129,6 +199,29 @@ export function ProfilePage() {
   const serving = active.data?.current ?? active.data?.active;
   const current = selected ?? serving ?? 'default';
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['profiles'] });
+  const [creating, setCreating] = useState(false);
+
+  const remove = async (profile: ProfileInfo) => {
+    const typed = await promptDialog({
+      title: `Delete ${profileLabel(profile)}?`,
+      description: `This deletes the whole profile folder: its SOUL, memory, skills, conversations and bot settings. Its gateway is stopped first. Type ${profile.name} to confirm.`,
+      placeholder: profile.name,
+      confirmLabel: 'Delete profile',
+    });
+    if (typed === null) return;
+    if (typed.trim() !== profile.name) {
+      toast('The name did not match; nothing was deleted.', 'error');
+      return;
+    }
+    try {
+      const result = await deleteProfile(profile.name);
+      toast(result.settlement_pending ? `Deleted. Finish the cleanup with: ${result.retry_command ?? ''}` : `${profileLabel(profile)} deleted.`, 'success');
+      if (selected === profile.name) setSelected(null);
+      refresh();
+    } catch (error) {
+      toastError(error);
+    }
+  };
 
   const rename = async (profile: ProfileInfo) => {
     const next = await promptDialog({
@@ -170,7 +263,16 @@ export function ProfilePage() {
 
   return (
     <SettingsPage title="Profile & SOUL" description="Who Hermes is: its profiles, models and personality.">
-      <Section title="Profiles" description="Each profile has its own SOUL, memory, skills and bots. Pick one to read or edit its SOUL.">
+      <Section
+        title="Profiles"
+        description="Each profile has its own SOUL, memory, skills and bots. Pick one to read or edit its SOUL."
+        actions={
+          <button type="button" onClick={() => setCreating(true)} className="yu-btn yu-btn-tonal h-8 gap-1.5 rounded-lg px-3 text-xs">
+            <Plus className="size-3.5" aria-hidden />
+            New profile
+          </button>
+        }
+      >
         {profiles.isError ? (
           <ErrorNote message={profiles.error.message} />
         ) : profiles.isPending ? (
@@ -258,6 +360,9 @@ export function ProfilePage() {
                     items={[
                       { label: 'Rename', icon: <Pencil />, onSelect: () => void rename(profile) },
                       { label: 'Edit description', icon: <FileText />, onSelect: () => void describe(profile) },
+                      ...(profile.is_default || isServing
+                        ? []
+                        : [{ label: 'Delete', icon: <Trash2 />, danger: true, onSelect: () => void remove(profile) }]),
                     ]}
                   />
                 </div>
@@ -267,6 +372,17 @@ export function ProfilePage() {
         )}
       </Section>
       <SoulEditor key={current} profile={current} />
+      {creating && profiles.data !== undefined ? (
+        <NewProfileSheet
+          source={profiles.data.profiles.find((p) => p.name === current) ?? profiles.data.profiles[0]!}
+          onClose={() => setCreating(false)}
+          onCreated={(name) => {
+            setCreating(false);
+            setSelected(name);
+            refresh();
+          }}
+        />
+      ) : null}
     </SettingsPage>
   );
 }

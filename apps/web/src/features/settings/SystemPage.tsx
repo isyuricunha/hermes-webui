@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, RotateCw, Stethoscope } from 'lucide-react';
 import { fetchAppStatus, fetchUpdateCheck, restartGateway, runDoctor } from '../../lib/api';
-import { fetchHermesStatus, fetchSystemStats } from '../../lib/hx';
+import { fetchHermesStatus, fetchSystemStats, startGateway } from '../../lib/hx';
 import { bytes, duration, relativeTime } from '../../lib/format';
 import { confirmDialog } from '../../lib/dialog';
 import { toast } from '../../lib/toast';
@@ -156,6 +156,23 @@ export function SystemPage() {
           <StatusDot tone={stateTone} />
           <span className="text-[15px] text-text-primary">{hermesStateLabel}</span>
         </span>
+        {hermes?.state === 'offline' && phase !== 'restarting' ? (
+          <button
+            type="button"
+            onClick={() =>
+              void startGateway().then(
+                () => {
+                  toast('Starting Hermes…', 'success');
+                  setTimeout(() => void queryClient.invalidateQueries(), 5_000);
+                },
+                (startError: unknown) => setError(startError instanceof Error ? startError.message : 'Could not start Hermes.'),
+              )
+            }
+            className="yu-btn yu-btn-primary h-8 rounded-lg px-3 text-xs"
+          >
+            Start Hermes
+          </button>
+        ) : null}
         <span className="font-mono text-[11px] text-text-tertiary">WebUI {statusQuery.data?.version ?? '…'}</span>
         {hermesStatus.data !== undefined ? (
           <>
@@ -282,12 +299,27 @@ export function SystemPage() {
                     <p className="mt-2 text-xs text-text-tertiary">
                       Applying updates from the WebUI is disabled: this Hermes install carries local patches and updates through its own flow.
                     </p>
-                    <details className="mt-3 text-xs">
-                      <summary className="cursor-pointer text-text-secondary select-none">What’s incoming</summary>
-                      <pre className="mt-2 max-h-72 overflow-auto rounded-xl bg-surface-editor p-3 font-mono whitespace-pre-wrap text-text-secondary">
-                        {JSON.stringify(updateQuery.data, null, 2).slice(0, 4000)}
-                      </pre>
-                    </details>
+                    {(updateQuery.data.commits?.length ?? 0) > 0 ? (
+                      <details className="mt-3 text-xs">
+                        <summary className="cursor-pointer text-text-secondary select-none">
+                          What’s incoming ({updateQuery.data.commits!.length} changes)
+                        </summary>
+                        <ul className="mt-2 max-h-72 divide-y divide-border-subtle overflow-auto rounded-xl bg-surface-editor">
+                          {updateQuery.data.commits!.map((commit) => (
+                            <li key={commit.sha} className="px-3 py-2">
+                              <p className="text-text-primary">{commit.summary}</p>
+                              <p className="font-mono text-[10.5px] text-text-tertiary">
+                                {commit.sha.slice(0, 8)}
+                                {commit.author ? ` · ${commit.author}` : ''}
+                                {commit.at ? ` · ${relativeTime(commit.at)}` : ''}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    ) : updateQuery.data.update_command ? (
+                      <p className="mt-2 font-mono text-[11px] text-text-tertiary">{updateQuery.data.update_command}</p>
+                    ) : null}
                   </>
                 ) : null}
               </>

@@ -53,8 +53,14 @@ export const PROXY_RULES: readonly ProxyRule[] = [
   { method: 'GET', path: 'sessions/:id/export', download: true },
   // Memory, curator
   { method: 'GET', path: 'memory' },
+  { method: 'PUT', path: 'memory/provider' },
+  { method: 'GET', path: 'memory/providers/:name/config' },
+  { method: 'PUT', path: 'memory/providers/:name/config' },
+  // Installs the provider's declared dependencies (pip / its own installer): slow.
+  { method: 'POST', path: 'memory/providers/:name/setup', timeoutMs: 600_000 },
   { method: 'GET', path: 'curator' },
   { method: 'PUT', path: 'curator/paused' },
+  { method: 'POST', path: 'curator/run', query: ['profile'], timeoutMs: 60_000 },
   // Skills and toolsets
   { method: 'GET', path: 'skills' },
   { method: 'GET', path: 'skills/content', query: ['name'] },
@@ -63,6 +69,11 @@ export const PROXY_RULES: readonly ProxyRule[] = [
   { method: 'PUT', path: 'skills/toggle' },
   { method: 'GET', path: 'tools/toolsets' },
   { method: 'PUT', path: 'tools/toolsets/:name' },
+  { method: 'GET', path: 'tools/toolsets/:name/config', timeoutMs: 30_000 },
+  { method: 'PUT', path: 'tools/toolsets/:name/provider' },
+  { method: 'PUT', path: 'tools/toolsets/:name/env' },
+  { method: 'GET', path: 'tools/toolsets/:name/models', query: ['provider'] },
+  { method: 'PUT', path: 'tools/toolsets/:name/model' },
   // Profiles and SOUL
   { method: 'GET', path: 'profiles' },
   { method: 'GET', path: 'profiles/active' },
@@ -70,6 +81,8 @@ export const PROXY_RULES: readonly ProxyRule[] = [
   { method: 'PUT', path: 'profiles/:name/soul' },
   { method: 'PATCH', path: 'profiles/:name' },
   { method: 'PUT', path: 'profiles/:name/description' },
+  { method: 'POST', path: 'profiles', timeoutMs: 60_000 },
+  { method: 'DELETE', path: 'profiles/:name', timeoutMs: 60_000 },
   // Cron: history, create, edit
   { method: 'GET', path: 'cron/jobs/:id/runs', query: ['limit'] },
   { method: 'GET', path: 'cron/delivery-targets' },
@@ -102,6 +115,13 @@ export const PROXY_RULES: readonly ProxyRule[] = [
   { method: 'GET', path: 'messaging/whatsapp/onboarding/:id' },
   { method: 'POST', path: 'messaging/whatsapp/onboarding/:id/apply', timeoutMs: 60_000 },
   { method: 'DELETE', path: 'messaging/whatsapp/onboarding/:id' },
+  // Pairing: people who messaged a bot and wait for access
+  { method: 'GET', path: 'pairing' },
+  { method: 'POST', path: 'pairing/approve' },
+  { method: 'POST', path: 'pairing/revoke' },
+  { method: 'POST', path: 'pairing/clear-pending' },
+  // Start a stopped gateway (stop is left out: it would cut this app off)
+  { method: 'POST', path: 'gateway/start', timeoutMs: 30_000 },
   // Files the assistant delivered with MEDIA:/path (images, audio, documents)
   {
     method: 'GET',

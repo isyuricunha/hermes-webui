@@ -1,14 +1,17 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Wrench } from 'lucide-react';
+import { Settings2, Wrench } from 'lucide-react';
 import { fetchToolsets, toggleToolset, type ToolsetInfo } from '../../lib/hx';
 import { toast, toastError } from '../../lib/toast';
 import { Badge, Card, EmptyNote, ErrorNote, SkeletonRows, Switch } from '../../components/ui';
 import { SettingsPage } from './SettingsLayout';
+import { ToolsetSheet } from './ToolsetSheet';
 
 /** Tools: the toolsets Hermes can use, each with its tools and an on/off switch. */
 export function ToolsPage() {
   const queryClient = useQueryClient();
   const toolsets = useQuery({ queryKey: ['toolsets'], queryFn: fetchToolsets });
+  const [setup, setSetup] = useState<ToolsetInfo | null>(null);
 
   const toggle = useMutation({
     mutationFn: ({ name, enabled }: { name: string; enabled: boolean }) => toggleToolset(name, enabled),
@@ -65,6 +68,17 @@ export function ToolsPage() {
                   onChange={(next) => toggle.mutate({ name: toolset.name, enabled: next })}
                 />
               </div>
+              <button
+                type="button"
+                onClick={() => setSetup(toolset)}
+                className={[
+                  'yu-btn mt-3 h-7 self-start rounded-lg px-2.5 text-xs',
+                  toolset.configured ? 'yu-btn-ghost text-text-secondary' : 'yu-btn-tonal',
+                ].join(' ')}
+              >
+                <Settings2 className="size-3.5" aria-hidden />
+                {toolset.configured ? 'Provider and keys' : 'Set up'}
+              </button>
               {toolset.tools.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {toolset.tools.slice(0, 8).map((tool) => (
@@ -81,6 +95,7 @@ export function ToolsPage() {
           ))}
         </div>
       )}
+      {setup !== null ? <ToolsetSheet toolset={setup} onClose={() => setSetup(null)} /> : null}
     </SettingsPage>
   );
 }

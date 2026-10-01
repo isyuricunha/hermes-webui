@@ -1,19 +1,186 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, MoreHorizontal, Power, Trash2, Webhook } from 'lucide-react';
-import { deleteWebhook, enableWebhooks, fetchWebhooks, setWebhookEnabled, type WebhookRoute } from '../../lib/hx';
+import { Copy, MoreHorizontal, Plus, Power, Trash2, Webhook } from 'lucide-react';
+import {
+  createWebhook,
+  deleteWebhook,
+  enableWebhooks,
+  fetchCronTargets,
+  fetchWebhooks,
+  setWebhookEnabled,
+  type WebhookRoute,
+} from '../../lib/hx';
 import { confirmDialog } from '../../lib/dialog';
 import { copyText } from '../../lib/clipboard';
 import { relativeTime } from '../../lib/format';
 import { toast, toastError } from '../../lib/toast';
-import { Badge, Card, EmptyNote, ErrorNote, Menu, SkeletonRows, Switch } from '../../components/ui';
+import { Badge, Card, EmptyNote, ErrorNote, Menu, Sheet, SkeletonRows, Switch } from '../../components/ui';
 import { SettingsPage } from './SettingsLayout';
 
 type WebhooksData = Awaited<ReturnType<typeof fetchWebhooks>>;
+
+function copy(text: string, what: string) {
+  void copyText(text).then(
+    () => toast(`${what} copied.`, 'success'),
+    () => toast('Copy failed.', 'error'),
+  );
+}
+
+const splitList = (text: string) =>
+  text
+    .split(/[,\n]/)
+    .map((part) => part.trim())
+    .filter((part) => part !== '');
+
+/** New webhook: a URL other services call, which wakes Hermes with a prompt. */
+function NewWebhookSheet({ onClose }: { onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const targets = useQuery({ queryKey: ['cron-targets'], queryFn: fetchCronTargets });
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [events, setEvents] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [skills, setSkills] = useState('');
+  const [deliver, setDeliver] = useState('log');
+  const [chatId, setChatId] = useState('');
+  const [created, setCreated] = useState<(WebhookRoute & { secret: string }) | null>(null);
+  const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
+  const validName = /^[a-z0-9][a-z0-9_-]*$/.test(slug);
+  const destinations = [
+    { id: 'log', name: 'Nowhere (log only)' },
+    ...(targets.data?.targets ?? []).filter((target) => target.id !== 'local' && !target.id.includes(':')),
+  ];
+
+  const create = useMutation({
+    mutationFn: () =>
+      createWebhook({
+        name: slug,
+        description: description.trim() || undefined,
+        events: splitList(events),
+        prompt: prompt.trim() || undefined,
+        skills: splitList(skills),
+        deliver,
+        deliver_only: false,
+        deliver_chat_id: deliver !== 'log' && chatId.trim() !== '' ? chatId.trim() : undefined,
+      }),
+    onSuccess: (result) => {
+      setCreated(result);
+      void queryClient.invalidateQueries({ queryKey: ['webhooks'] });
+    },
+    onError: (error) => toastError(error),
+  });
+
+  if (created !== null) {
+    return (
+      <Sheet open onClose={onClose} title={`Webhook ${created.name} created`}>
+        <div className="space-y-4 text-[13px]">
+          <p className="text-text-secondary">Give the calling service this URL and secret. The secret is shown only now.</p>
+          {(
+            [
+              ['URL', created.url],
+              ['Secret (HMAC)', created.secret],
+            ] as const
+          ).map(([label, value]) => (
+            <div key={label}>
+              <p className="mb-1 font-medium text-text-primary">{label}</p>
+              <div className="flex items-center gap-2 rounded-xl bg-surface-input px-3 py-2">
+                <code className="min-w-0 flex-1 break-all font-mono text-[12px] text-text-secondary">{value}</code>
+                <button type="button" aria-label={`Copy ${label}`} onClick={() => copy(value, label)} className="yu-btn yu-btn-ghost size-7 shrink-0 rounded-lg">
+                  <Copy className="size-3.5" aria-hidden />
+                </button>
+              </div>
+            </div>
+          ))}
+          <p className="text-xs text-text-tertiary">
+            The URL is on the gateway's own address. For services outside this machine, expose that port through your tunnel or
+            reverse proxy.
+          </p>
+          <button type="button" onClick={onClose} className="yu-btn yu-btn-primary h-9 rounded-xl px-4">
+            Done
+          </button>
+        </div>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Sheet open onClose={onClose} title="New webhook" subtitle="Saved in Hermes; the gateway picks it up without a restart">
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (validName) create.mutate();
+        }}
+      >
+        <label className="block">
+          <span className="mb-1 block text-[13px] font-medium text-text-primary">Name</span>
+          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="github-push" className="yu-input h-10 w-full px-3 font-mono text-sm" />
+          <span className="mt-1 block text-xs text-text-tertiary">
+            {slug === '' ? 'Lowercase letters, numbers, - and _. It becomes part of the URL.' : validName ? `URL ends in /webhooks/${slug}` : 'Use lowercase letters, numbers, - and _ only.'}
+          </span>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[13px] font-medium text-text-primary">Description</span>
+          <input value={description} onChange={(event) => setDescription(event.target.value)} className="yu-input h-10 w-full px-3 text-sm" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[13px] font-medium text-text-primary">Prompt</span>
+          <textarea
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            placeholder="Summarize this event and tell me if I need to act."
+            className="yu-input min-h-28 w-full px-3 py-2 text-[13px]"
+          />
+          <span className="mt-1 block text-xs text-text-tertiary">What Hermes is asked when the URL is called. The request body is passed along with it.</span>
+        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-[13px] font-medium text-text-primary">Events (optional)</span>
+            <input value={events} onChange={(event) => setEvents(event.target.value)} placeholder="push, pull_request" className="yu-input h-10 w-full px-3 font-mono text-[13px]" />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[13px] font-medium text-text-primary">Skills (optional)</span>
+            <input value={skills} onChange={(event) => setSkills(event.target.value)} placeholder="github" className="yu-input h-10 w-full px-3 font-mono text-[13px]" />
+          </label>
+        </div>
+        <div>
+          <p className="mb-1.5 text-[13px] font-medium text-text-primary">Send Hermes' answer to</p>
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Delivery">
+            {destinations.map((target) => (
+              <button
+                key={target.id}
+                type="button"
+                role="radio"
+                aria-checked={deliver === target.id}
+                onClick={() => setDeliver(target.id)}
+                className={['yu-chip', deliver === target.id ? 'yu-chip-accent' : ''].join(' ')}
+              >
+                {target.name}
+              </button>
+            ))}
+          </div>
+          {deliver !== 'log' ? (
+            <input
+              value={chatId}
+              onChange={(event) => setChatId(event.target.value)}
+              placeholder="Chat or channel ID (blank: its home channel)"
+              className="yu-input mt-2 h-10 w-full px-3 font-mono text-[13px]"
+            />
+          ) : null}
+        </div>
+        <button type="submit" disabled={!validName || create.isPending} className="yu-btn yu-btn-primary h-9 rounded-xl px-4 text-[13px]">
+          {create.isPending ? 'Creating…' : 'Create webhook'}
+        </button>
+      </form>
+    </Sheet>
+  );
+}
 
 /** Webhooks: inbound events that wake Hermes with a prompt. */
 export function WebhooksPage() {
   const queryClient = useQueryClient();
   const hooks = useQuery({ queryKey: ['webhooks'], queryFn: fetchWebhooks });
+  const [creating, setCreating] = useState(false);
   const toggle = useMutation({
     mutationFn: ({ name, enabled }: { name: string; enabled: boolean }) => setWebhookEnabled(name, enabled),
     onMutate: async ({ name, enabled }) => {
@@ -64,7 +231,18 @@ export function WebhooksPage() {
   };
 
   return (
-    <SettingsPage title="Webhooks" description="Events from other services that wake Hermes with a prompt.">
+    <SettingsPage
+      title="Webhooks"
+      description="Events from other services that wake Hermes with a prompt."
+      actions={
+        hooks.data?.enabled ? (
+          <button type="button" onClick={() => setCreating(true)} className="yu-btn yu-btn-tonal h-8 gap-1.5 rounded-lg px-3 text-xs">
+            <Plus className="size-3.5" aria-hidden />
+            New webhook
+          </button>
+        ) : undefined
+      }
+    >
       {hooks.isError ? (
         <ErrorNote message={hooks.error.message} onRetry={() => void hooks.refetch()} />
       ) : hooks.isPending ? (
@@ -95,7 +273,7 @@ export function WebhooksPage() {
         </Card>
       ) : hooks.data.subscriptions.length === 0 ? (
         <EmptyNote icon={<Webhook className="size-6" />} title="No webhooks yet">
-          Create one with <code className="font-mono text-xs">hermes webhooks add</code> or in the dashboard.
+          Create one with <b className="font-medium">New webhook</b>: you get a URL to give GitHub, a form service or anything that can call a URL.
         </EmptyNote>
       ) : (
         <div className="space-y-2.5">
@@ -129,12 +307,7 @@ export function WebhooksPage() {
                   type="button"
                   aria-label={`Copy ${hook.name} URL`}
                   className="yu-btn yu-btn-ghost size-7 rounded-lg"
-                  onClick={() =>
-                    void copyText(hook.url).then(
-                      () => toast('Webhook URL copied.', 'success'),
-                      () => toast('Copy failed.', 'error'),
-                    )
-                  }
+                  onClick={() => copy(hook.url, 'Webhook URL')}
                 >
                   <Copy className="size-3.5" aria-hidden />
                 </button>
@@ -151,6 +324,7 @@ export function WebhooksPage() {
           ))}
         </div>
       )}
+      {creating ? <NewWebhookSheet onClose={() => setCreating(false)} /> : null}
     </SettingsPage>
   );
 }

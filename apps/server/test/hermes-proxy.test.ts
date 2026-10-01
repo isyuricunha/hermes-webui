@@ -89,6 +89,32 @@ describe('allowlisted dashboard proxy (/api/hx/*)', () => {
     expect(calls.map((call) => call.url.pathname)).toContain('/api/messaging/whatsapp/onboarding/Ab_c-12/apply');
   });
 
+  it('forwards the setup routes for toolsets, memory providers, pairing, profiles and webhooks', async () => {
+    handler = () => json({ ok: true });
+    for (const [method, url] of [
+      ['GET', '/api/hx/tools/toolsets/web/config'],
+      ['PUT', '/api/hx/tools/toolsets/web/provider'],
+      ['PUT', '/api/hx/tools/toolsets/web/env'],
+      ['GET', '/api/hx/memory/providers/honcho/config'],
+      ['PUT', '/api/hx/memory/provider'],
+      ['POST', '/api/hx/memory/providers/honcho/setup'],
+      ['GET', '/api/hx/pairing'],
+      ['POST', '/api/hx/pairing/approve'],
+      ['POST', '/api/hx/profiles'],
+      ['DELETE', '/api/hx/profiles/work'],
+      ['POST', '/api/hx/webhooks'],
+      ['POST', '/api/hx/gateway/start'],
+      ['POST', '/api/hx/curator/run?profile=default'],
+    ] as const) {
+      const response = await app.inject({ method, url, ...(method === 'POST' || method === 'PUT' ? { payload: {} } : {}) });
+      expect(response.statusCode, url).toBe(200);
+    }
+    expect(calls.at(-1)!.url.search).toBe('?profile=default');
+    // Stopping the gateway would cut the WebUI off from Hermes: never proxied.
+    const stop = await app.inject({ method: 'POST', url: '/api/hx/gateway/stop', payload: {} });
+    expect(stop.statusCode).toBe(404);
+  });
+
   it('never forwards routes that are not on the allowlist', async () => {
     for (const url of ['/api/hx/env/reveal', '/api/hx/audio/voice-config', '/api/hx/fs/write-text', '/api/hx/git/review/push']) {
       const response = await app.inject({ method: url.includes('write') || url.includes('push') || url.includes('reveal') ? 'POST' : 'GET', url });
