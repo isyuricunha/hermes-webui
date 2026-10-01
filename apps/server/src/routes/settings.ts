@@ -258,11 +258,12 @@ export async function settingsRoutes(
 
   app.get('/api/settings/messaging/platforms', async (request, reply) => {
     try {
-      const [platforms, live] = await Promise.all([
+      const [platforms, live, hub] = await Promise.all([
         dashboard.messagingPlatforms(),
         gateway?.healthDetailed().catch(() => null) ?? Promise.resolve(null),
+        dashboard.pluginsHub().catch(() => null),
       ]);
-      return await reply.send(withLiveStates(platforms, live));
+      return await reply.send(withPlatformPlugins(withLiveStates(platforms, live), hub));
     } catch (error) {
       return sendHermesError(reply, request.id, error);
     }
@@ -369,6 +370,39 @@ export function withLiveStates(platforms: unknown, live: unknown): unknown {
         error_code: typeof liveError.error_code === 'string' ? liveError.error_code : null,
         error_message: typeof liveError.error_message === 'string' ? liveError.error_message : null,
       };
+    }),
+  };
+}
+
+/**
+ * Most channel adapters are bundled plugins now (plugins/platforms/<id>), and a
+ * disabled plugin means the gateway never loads the adapter even with a valid
+ * token (`hermes plugins enable platforms/discord`). Each channel gets
+ * `plugin: { name, enabled }` when an adapter plugin backs it, null otherwise.
+ */
+/** Plugins that register more than one platform. */
+const SHARED_PLUGIN: Record<string, string> = { wecom_callback: 'wecom' };
+
+export function withPlatformPlugins(platforms: unknown, hub: unknown): unknown {
+  if (platforms === null || typeof platforms !== 'object') return platforms;
+  const list = (platforms as { platforms?: unknown }).platforms;
+  const plugins = (hub as { plugins?: unknown } | null)?.plugins;
+  if (!Array.isArray(list) || !Array.isArray(plugins)) return platforms;
+  const byDir = new Map<string, { name: string; enabled: boolean }>();
+  for (const entry of plugins) {
+    if (entry === null || typeof entry !== 'object') continue;
+    const plugin = entry as { name?: unknown; path?: unknown; runtime_status?: unknown };
+    const match = typeof plugin.path === 'string' ? /\/plugins\/platforms\/([^/]+)\/?$/.exec(plugin.path) : null;
+    if (match === null || typeof plugin.name !== 'string') continue;
+    byDir.set(match[1]!, { name: plugin.name, enabled: plugin.runtime_status === 'enabled' });
+  }
+  return {
+    ...platforms,
+    platforms: list.map((entry: unknown) => {
+      if (entry === null || typeof entry !== 'object') return entry;
+      const id = String((entry as { id?: unknown }).id ?? '');
+      const plugin = byDir.get(id) ?? byDir.get(SHARED_PLUGIN[id] ?? '') ?? null;
+      return { ...entry, plugin };
     }),
   };
 }

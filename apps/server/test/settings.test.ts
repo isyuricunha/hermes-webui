@@ -101,6 +101,33 @@ describe('dashboard settings routes', () => {
     expect(states).toEqual({ telegram: 'connected', discord: 'disabled', slack: 'pending_restart' });
   });
 
+  it('marks each channel with its adapter plugin and whether it is on', async () => {
+    handler = (url) => {
+      if (url.pathname === '/api/messaging/platforms') {
+        return json({ platforms: [{ id: 'discord' }, { id: 'wecom_callback' }, { id: 'api_server' }] });
+      }
+      if (url.pathname === '/api/dashboard/plugins/hub') {
+        return json({
+          plugins: [
+            { name: 'discord-platform', path: '/h/plugins/platforms/discord', runtime_status: 'disabled' },
+            { name: 'wecom-platform', path: '/h/plugins/platforms/wecom', runtime_status: 'enabled' },
+            { name: 'disk-cleanup', path: '/h/plugins/disk-cleanup', runtime_status: 'enabled' },
+          ],
+        });
+      }
+      return json({}, 404);
+    };
+    const response = await app.inject({ method: 'GET', url: '/api/settings/messaging/platforms' });
+    const plugins = Object.fromEntries(
+      (response.json().platforms as { id: string; plugin: unknown }[]).map((p) => [p.id, p.plugin]),
+    );
+    expect(plugins).toEqual({
+      discord: { name: 'discord-platform', enabled: false },
+      wecom_callback: { name: 'wecom-platform', enabled: true },
+      api_server: null,
+    });
+  });
+
   it('still lists channels when the gateway health check fails', async () => {
     handler = (url) =>
       url.pathname === '/api/messaging/platforms'

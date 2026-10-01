@@ -18,6 +18,7 @@ import {
 import { restartGateway } from '../../lib/api';
 import {
   approvePairing,
+  setAgentPluginEnabled,
   clearPendingPairing,
   fetchPairing,
   revokePairing,
@@ -62,10 +63,12 @@ const ELSEWHERE = new Set(['webhook']);
 
 type Tone = 'success' | 'warning' | 'danger' | 'neutral';
 
-function stateInfo(platform: Pick<MessagingPlatform, 'state' | 'enabled' | 'configured'>): {
+function stateInfo(platform: Pick<MessagingPlatform, 'state' | 'enabled' | 'configured' | 'plugin'>): {
   label: string;
   tone: Tone;
 } {
+  // The adapter plugin wins: while it is off the gateway never loads the channel.
+  if (platform.enabled && platform.plugin && !platform.plugin.enabled) return { label: 'Plugin off', tone: 'warning' };
   const state = platform.state ?? '';
   switch (state) {
     case 'connected':
@@ -474,12 +477,15 @@ function PlatformSheet({
   const missing = platform.env_vars.filter(
     (field) => field.required && (!field.is_set || clear.has(field.key)) && (values[field.key] ?? '').trim() === '',
   );
-  const dirty = edited.length > 0 || clear.size > 0 || enabled !== platform.enabled;
+  const pluginOff = platform.plugin !== undefined && platform.plugin !== null && !platform.plugin.enabled;
+  const dirty = edited.length > 0 || clear.size > 0 || enabled !== platform.enabled || (enabled && pluginOff);
   const basic = platform.env_vars.filter((field) => !field.advanced);
   const advanced = platform.env_vars.filter((field) => field.advanced);
 
   const save = useMutation({
     mutationFn: async (andRestart: boolean) => {
+      // Turning a channel on also turns on its adapter plugin, or the gateway skips it.
+      if (enabled && pluginOff) await setAgentPluginEnabled(platform.plugin!.name, true);
       await updateMessagingPlatform(platform.id, {
         env: Object.fromEntries(edited.map(([key, value]) => [key, value.trim()])),
         clear_env: [...clear],
@@ -531,6 +537,29 @@ function PlatformSheet({
           </div>
         ) : null}
 
+        {pluginOff && locked === undefined ? (
+          <div role="status" className="yu-chip-warning flex flex-wrap items-center gap-2.5 rounded-2xl px-3.5 py-3 text-[13px]">
+            <span className="min-w-0 flex-1">
+              The {platform.name} adapter is a Hermes plugin (<code className="font-mono text-xs">{platform.plugin!.name}</code>) and it is
+              off, so the gateway skips {platform.name} even with a valid token. Saving with {platform.name} turned on switches it on too.
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                void setAgentPluginEnabled(platform.plugin!.name, true).then(
+                  () => {
+                    void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+                    void gateway.ask(`The ${platform.name} plugin is on.`);
+                  },
+                  (error: unknown) => toastError(error),
+                )
+              }
+              className="yu-btn yu-btn-primary h-7 rounded-lg px-2.5 text-xs"
+            >
+              Turn plugin on
+            </button>
+          </div>
+        ) : null}
         {locked !== undefined ? (
           <Card className="px-4 py-3 text-[13px] text-text-secondary">{locked}</Card>
         ) : null}

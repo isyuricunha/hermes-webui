@@ -104,6 +104,8 @@ describe('allowlisted dashboard proxy (/api/hx/*)', () => {
       ['DELETE', '/api/hx/profiles/work'],
       ['POST', '/api/hx/webhooks'],
       ['POST', '/api/hx/gateway/start'],
+      ['POST', '/api/hx/dashboard/agent-plugins/discord-platform/enable'],
+      ['POST', '/api/hx/dashboard/agent-plugins/discord-platform/disable'],
       ['POST', '/api/hx/curator/run?profile=default'],
     ] as const) {
       const response = await app.inject({ method, url, ...(method === 'POST' || method === 'PUT' ? { payload: {} } : {}) });

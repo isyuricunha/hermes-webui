@@ -431,6 +431,8 @@ export interface MessagingPlatform {
   home_channel: { platform?: string; chat_id?: string; name?: string } | null;
   env_vars: MessagingEnvVar[];
   ingress_url: string | null;
+  /** Adapter plugin behind the channel; off means the gateway never loads it. */
+  plugin?: { name: string; enabled: boolean } | null;
 }
 
 export interface MessagingPlatformsResponse {
@@ -659,3 +661,9 @@ export const setupMemoryProvider = (name: string, values: Record<string, unknown
     method: 'POST',
     ...json({ values }),
   });
+
+export const setAgentPluginEnabled = (name: string, enabled: boolean) =>
+  requestJson<{ ok: boolean; restart_required?: boolean; unchanged?: boolean }>(
+    `/api/hx/dashboard/agent-plugins/${encodeURIComponent(name)}/${enabled ? 'enable' : 'disable'}`,
+    { method: 'POST', ...json({}) },
+  );

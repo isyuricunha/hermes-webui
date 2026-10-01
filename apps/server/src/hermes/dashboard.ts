@@ -266,6 +266,11 @@ export class HermesDashboardClient {
     return this.request('/api/messaging/platforms');
   }
 
+  /** Agent plugins (bundled and installed) with their runtime status. */
+  pluginsHub(): Promise<unknown> {
+    return this.request('/api/dashboard/plugins/hub');
+  }
+
   // -- Ops --------------------------------------------------------------------
 
   doctor(): Promise<unknown> {

@@ -4,6 +4,7 @@ All notable changes to Hermes WebUI are documented here.
 
 ## Unreleased
 
+- **Channel adapter plugins:** Discord, Slack, WhatsApp and most other channels are Hermes plugins now (`hermes plugins enable platforms/discord`), and a disabled plugin made a configured channel silently do nothing. Messaging shows *Plugin off* on those channels, explains it in the channel panel with a *Turn plugin on* button, and saving a channel turned on switches its plugin on too.
 - **Everything that used to send you to the terminal now works here:**
   - **Tools:** each toolset has a *Set up* / *Provider and keys* panel: pick the provider (web search, image generation, browser...), paste its API key, choose the model, and for web search pick separate backends for search and extraction.
   - **Memory:** open any memory provider to fill in its settings, install its dependencies, switch to it, or go back to the built-in memory. The curator has a *Run now* button.

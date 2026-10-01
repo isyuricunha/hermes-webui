@@ -115,6 +115,9 @@ export const PROXY_RULES: readonly ProxyRule[] = [
   { method: 'GET', path: 'messaging/whatsapp/onboarding/:id' },
   { method: 'POST', path: 'messaging/whatsapp/onboarding/:id/apply', timeoutMs: 60_000 },
   { method: 'DELETE', path: 'messaging/whatsapp/onboarding/:id' },
+  // Channel adapter plugins (plugins/platforms/*): on/off by manifest name
+  { method: 'POST', path: 'dashboard/agent-plugins/:name/enable', timeoutMs: 60_000 },
+  { method: 'POST', path: 'dashboard/agent-plugins/:name/disable' },
   // Pairing: people who messaged a bot and wait for access
   { method: 'GET', path: 'pairing' },
   { method: 'POST', path: 'pairing/approve' },
