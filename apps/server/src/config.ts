@@ -125,7 +125,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     uploadMaxMb: intFromEnv(env.HERMES_WEBUI_UPLOAD_MAX_MB, 100),
     trustProxy: trustProxyFromEnv(env),
     session: {
-      idleMs: intFromEnv(env.HERMES_WEBUI_SESSION_IDLE_HOURS, 24 * 7) * 60 * 60 * 1000,
+      idleMs: intFromEnv(env.HERMES_WEBUI_SESSION_IDLE_HOURS, 24 * 14) * 60 * 60 * 1000,
       absoluteMs: intFromEnv(env.HERMES_WEBUI_SESSION_ABSOLUTE_DAYS, 30) * 24 * 60 * 60 * 1000,
       recentAuthMs: intFromEnv(env.HERMES_WEBUI_REAUTH_MINUTES, 10) * 60 * 1000,
     },

@@ -153,7 +153,7 @@ Files attached in the chat (audio, video, PDFs, documents...) are saved in `~/.l
 | `HERMES_WEBUI_UPLOAD_MAX_MB` | `100` | Largest attachment in MB |
 | `HERMES_WEBUI_TRUST_PROXY` | none | Comma-separated IPs/CIDRs of trusted reverse proxies |
 | `HERMES_WEBUI_COOKIE_SECURE` | `auto` | `always` to force Secure cookies (TLS ends elsewhere) |
-| `HERMES_WEBUI_SESSION_IDLE_HOURS` | `168` | Sign out after this long without use |
+| `HERMES_WEBUI_SESSION_IDLE_HOURS` | `336` (14 days) | Sign out after this long without use; every visit restarts the count |
 | `HERMES_WEBUI_SESSION_ABSOLUTE_DAYS` | `30` | Sign out after this long regardless |
 | `HERMES_WEBUI_REAUTH_MINUTES` | `10` | How recent a sign-in must be for sensitive actions |
 | `HERMES_BIN` | `hermes` | Hermes command, for the restricted CLI page |

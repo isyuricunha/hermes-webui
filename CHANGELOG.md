@@ -4,6 +4,8 @@ All notable changes to Hermes WebUI are documented here.
 
 ## Unreleased
 
+- **No more sign-outs when the app is closed:** the sign-in cookie had no expiry, so browsers treated it as a browser-session cookie and iOS dropped it whenever the installed app was closed or suspended. It now lasts until the session really ends.
+- Sessions now last 14 days without use by default (was 7); every visit restarts the count, up to the 30-day limit.
 - `HOST` accepts several comma-separated addresses, so the WebUI can serve a VPN address and loopback (for a Cloudflare Tunnel or reverse proxy on the same machine) at the same time. The install guide covers tunnels.
 
 ## 0.2.1

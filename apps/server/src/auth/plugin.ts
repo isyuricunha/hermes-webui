@@ -155,11 +155,18 @@ export function setSessionCookie(
   reply: FastifyReply,
   cookieToken: string,
   secureMode: 'auto' | 'always',
+  /** When the session ends for good (absolute expiry, ms since epoch). */
+  expiresAt: number,
 ): void {
   void reply.setCookie(SESSION_COOKIE, cookieToken, {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
+    // A persistent cookie: without an expiry it is a browser-session cookie,
+    // which iOS drops whenever the installed app is closed or suspended,
+    // signing people out long before the session ends. The server still
+    // enforces the idle and absolute limits.
+    expires: new Date(expiresAt),
     // spec 2.5: auto = Secure when the request itself is HTTPS (trusted
     // proxy already honored by Fastify); 'always' for TLS-terminated setups.
     secure: secureMode === 'always' || request.protocol === 'https',

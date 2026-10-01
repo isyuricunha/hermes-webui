@@ -100,7 +100,7 @@ export function buildAuthRoutes(
           context: requestContext(request, ipHashSalt),
           requestId: request.id,
         });
-        setSessionCookie(request, reply, result.session.cookieToken, secureMode);
+        setSessionCookie(request, reply, result.session.cookieToken, secureMode, result.session.absoluteExpiresAt);
         return {
           authenticated: true,
           user: result.user,
@@ -132,7 +132,7 @@ export function buildAuthRoutes(
           context: requestContext(request, ipHashSalt),
           requestId: request.id,
         });
-        setSessionCookie(request, reply, result.session.cookieToken, secureMode);
+        setSessionCookie(request, reply, result.session.cookieToken, secureMode, result.session.absoluteExpiresAt);
         return {
           authenticated: true,
           user: result.user,
@@ -212,7 +212,7 @@ export function buildAuthRoutes(
       for (const revokedId of result.revokedSessionIds) {
         app.invalidateSessionStreams(revokedId);
       }
-      setSessionCookie(request, reply, result.cookieToken, secureMode);
+      setSessionCookie(request, reply, result.cookieToken, secureMode, result.absoluteExpiresAt);
       return {
         ok: true,
         csrfToken: result.csrfToken,

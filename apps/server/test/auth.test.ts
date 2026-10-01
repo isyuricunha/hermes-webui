@@ -169,6 +169,12 @@ describe('auth phase 1', () => {
     });
     const cookie = cookieFrom(login);
     const csrf = login.json().csrfToken;
+    // A persistent cookie (installed apps on iOS drop session-only cookies),
+    // expiring with the session itself.
+    const sessionCookie = login.cookies.find((entry) => entry.name === 'hermes_webui_session') as { expires?: Date } | undefined;
+    expect(sessionCookie?.expires).toBeInstanceOf(Date);
+    const absolute = new Date(login.json().session.absoluteExpiresAt).getTime();
+    expect(Math.abs((sessionCookie?.expires?.getTime() ?? 0) - absolute)).toBeLessThan(1000);
 
     const status = await app.inject({
       method: 'GET',
