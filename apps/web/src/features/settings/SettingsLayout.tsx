@@ -165,7 +165,7 @@ export function SettingsLayout() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col md:flex-row">
       {/* Mobile top bar: back to Chat + navigation + current section */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-1 border-b border-border-subtle bg-background/85 px-2 backdrop-blur-md md:hidden">
+      <header className="safe-top-bar fixed inset-x-0 top-0 z-30 flex items-center gap-1 border-b border-border-subtle bg-background/85 backdrop-blur-md md:hidden">
         <button
           type="button"
           className="yu-btn yu-btn-ghost size-10 rounded-lg"
@@ -199,7 +199,7 @@ export function SettingsLayout() {
       <nav
         aria-label="Settings"
         className={[
-          'fixed inset-y-0 left-0 z-40 w-72 shrink-0 border-r border-border-subtle bg-surface p-3',
+          'fixed inset-y-0 left-0 z-40 w-72 shrink-0 border-r border-border-subtle bg-surface p-3 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-[calc(0.75rem+env(safe-area-inset-bottom))]',
           'transition-transform duration-200 md:static md:w-60 md:translate-x-0',
           drawerOpen ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
@@ -208,7 +208,7 @@ export function SettingsLayout() {
       </nav>
 
       {/* Content: full available width, own scroll */}
-      <div className="min-w-0 flex-1 overflow-y-auto pt-12 md:pt-0">
+      <div className="min-w-0 flex-1 overflow-y-auto">
         <Outlet />
       </div>
     </div>

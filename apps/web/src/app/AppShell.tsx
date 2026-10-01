@@ -57,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-background text-text-primary">
       {/* Mobile top bar */}
-      <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-2 border-b border-border-subtle bg-background/85 px-2 backdrop-blur-md md:hidden">
+      <header className="safe-top-bar fixed inset-x-0 top-0 z-30 flex items-center gap-2 border-b border-border-subtle bg-background/85 backdrop-blur-md md:hidden">
         <button
           type="button"
           className="yu-btn yu-btn-ghost size-9"
@@ -86,7 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <aside
         className={[
-          'fixed inset-y-0 left-0 z-40 flex shrink-0 flex-col border-r border-border-subtle bg-surface',
+          'safe-drawer fixed inset-y-0 left-0 z-40 flex shrink-0 flex-col border-r border-border-subtle bg-surface',
           'transition-[width,transform] duration-200 md:static md:translate-x-0',
           collapsed ? 'w-[60px]' : 'w-[284px]',
           drawerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
@@ -100,7 +100,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col pt-12 md:pt-0">
+      <main className="safe-below-bar flex min-w-0 flex-1 flex-col">
         <HeaderSlotContext.Provider value={inConversation ? headerSlot : null}>{children}</HeaderSlotContext.Provider>
       </main>
 
@@ -108,7 +108,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {restartRequired ? (
         <div
           role="status"
-          className="yu-pop fixed inset-x-3 bottom-3 z-40 flex items-center justify-between gap-3 rounded-2xl px-4 py-2.5 text-xs md:left-auto md:right-4 md:w-[26rem]"
+          className="yu-pop fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 flex items-center justify-between gap-3 rounded-2xl px-4 py-2.5 text-xs md:left-auto md:right-4 md:w-[26rem]"
         >
           <span className="text-text-secondary">Changes saved. A gateway restart may be required.</span>
           <span className="flex items-center gap-1.5">

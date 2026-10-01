@@ -845,3 +845,42 @@ body {
   border-radius: 8px;
   border-color: #888888;
 }
+
+/*
+ * Installed app on phones (viewport-fit=cover + translucent status bar): the
+ * page runs under the notch and the home indicator, so bars, drawers and
+ * sheets pad themselves with the safe-area insets.
+ */
+.safe-top-bar {
+  height: calc(3rem + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+}
+@media (max-width: 767.98px) {
+  .safe-below-bar {
+    padding-top: calc(3rem + env(safe-area-inset-top));
+  }
+  .safe-drawer {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+html,
+body {
+  overscroll-behavior: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* iOS zooms the page when a field under 16px gets focus: keep fields at 16px there. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+}

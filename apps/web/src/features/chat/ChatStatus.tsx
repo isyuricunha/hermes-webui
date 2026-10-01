@@ -55,7 +55,7 @@ export function ReasoningChip() {
       align="start"
       above
       tip={`Reasoning effort: ${current}. How long the model thinks before answering (Hermes' agent.reasoning_effort, same as /reasoning). Click to change; it applies from your next message.`}
-      triggerClassName="yu-btn yu-btn-ghost h-8 gap-1 rounded-lg px-2 text-xs"
+      triggerClassName="yu-btn yu-btn-ghost h-8 shrink-0 gap-1 rounded-lg px-2 text-xs"
       trigger={
         <>
           <Brain className="size-3.5 shrink-0 text-agent-soft" aria-hidden />
@@ -98,10 +98,10 @@ export function ContextMeter({ info }: { info: SessionContextInfo | undefined })
       data-tip={tip}
       data-tip-wide
       aria-label={`Context ${percent === null ? `${compactNumber(info.used)} tokens` : `${Math.round(percent)} percent full`}`}
-      className="flex h-8 items-center gap-1.5 rounded-lg px-2 font-mono text-[11px] text-text-tertiary outline-none hover:text-text-secondary focus-visible:text-text-secondary"
+      className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 font-mono text-[11px] text-text-tertiary outline-none hover:text-text-secondary focus-visible:text-text-secondary"
     >
       {share !== null ? (
-        <span className="relative h-1.5 w-10 overflow-hidden rounded-full bg-chip" aria-hidden>
+        <span className="relative hidden h-1.5 w-10 overflow-hidden rounded-full bg-chip sm:block" aria-hidden>
           <span className={['absolute inset-y-0 left-0 rounded-full transition-[width] duration-500', tone].join(' ')} style={{ width: `${Math.max(3, share * 100)}%` }} />
         </span>
       ) : null}

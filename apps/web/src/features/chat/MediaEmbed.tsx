@@ -39,7 +39,7 @@ export function Lightbox({ src, name, onClose }: { src: string; name: string; on
       className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div className="flex h-14 shrink-0 items-center gap-2 px-4 text-sm text-white/80" onClick={(event) => event.stopPropagation()}>
+      <div className="flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center gap-2 px-4 pt-[env(safe-area-inset-top)] text-sm text-white/80" onClick={(event) => event.stopPropagation()}>
         <span className="min-w-0 flex-1 truncate">{name}</span>
         <a href={src} download={name} className="yu-btn yu-btn-ghost h-9 gap-1.5 px-3 text-white/80 hover:text-white">
           <Download className="size-4" aria-hidden />

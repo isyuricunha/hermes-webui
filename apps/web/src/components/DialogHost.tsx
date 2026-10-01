@@ -34,7 +34,7 @@ function DialogBody({ request }: { request: DialogRequest }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center p-4 sm:items-center">
+    <div className="fixed inset-0 z-[80] flex items-end justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center">
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
         aria-hidden

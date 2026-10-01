@@ -10,7 +10,7 @@ export function Toaster() {
   if (toasts.length === 0) return null;
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-16 z-[80] flex flex-col items-center gap-2 px-4 md:inset-x-auto md:top-5 md:right-5 md:items-end md:px-0"
+      className="pointer-events-none fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top))] z-[80] flex flex-col items-center gap-2 px-4 md:inset-x-auto md:top-5 md:right-5 md:items-end md:px-0"
       role="status"
       aria-live="polite"
     >

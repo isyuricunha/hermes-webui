@@ -121,7 +121,7 @@ export function SessionItem({
       >
         <SourceIcon source={source} />
         <span className="min-w-0 flex-1 truncate group-hover:pr-7 group-focus-within:pr-7">{name}</span>
-        {pinned ? <Pin className="size-3 shrink-0 text-accent group-hover:hidden" aria-label="Pinned" /> : null}
+        {pinned ? <Pin className="size-3 shrink-0 text-accent group-hover:hidden [@media(hover:none)]:hidden" aria-label="Pinned" /> : null}
       </Link>
       <span className="absolute top-1/2 right-1 hidden -translate-y-1/2 group-hover:block group-focus-within:block [@media(hover:none)]:block">
         <Menu

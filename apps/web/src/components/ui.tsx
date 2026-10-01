@@ -389,7 +389,7 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="yu-pop yu-rise relative flex max-h-[88dvh] w-full flex-col rounded-t-3xl md:max-h-none md:w-[min(44rem,92vw)] md:rounded-none md:rounded-l-3xl"
+        className="yu-pop yu-rise relative flex max-h-[calc(100dvh-env(safe-area-inset-top)-1rem)] w-full flex-col rounded-t-3xl pb-[env(safe-area-inset-bottom)] md:max-h-none md:pb-0 md:w-[min(44rem,92vw)] md:rounded-none md:rounded-l-3xl"
         style={{ animationDuration: '0.35s' }}
       >
         <header className="flex items-start gap-3 border-b border-border-subtle px-5 py-4">

@@ -135,7 +135,7 @@ export function CommandPalette({ onCycleTheme }: { onCycleTheme: () => void }) {
   let lastSection: string | null = null;
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-4 pt-[12vh] backdrop-blur-[2px]"
+      className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-4 pt-[calc(12vh+env(safe-area-inset-top))] backdrop-blur-[2px]"
       role="dialog"
       aria-modal="true"
       aria-label="Command palette"

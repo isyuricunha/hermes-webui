@@ -455,10 +455,11 @@ export function Composer({
             aria-label="Attach files"
             title="Attach files: images, audio, video, PDFs, documents, code (also drag and drop or paste)"
             disabled={steering}
-            className="yu-btn yu-btn-ghost size-8 rounded-lg"
+            className="yu-btn yu-btn-ghost size-8 shrink-0 rounded-lg"
           >
             <Paperclip className="size-4" aria-hidden />
           </button>
+          <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
           {onOpenModelPicker !== undefined ? (
             <button
               type="button"
@@ -466,7 +467,7 @@ export function Composer({
               aria-label="Change model"
               data-tip={modelHint ?? `Change model${modelLabel !== undefined ? ` (current: ${modelLabel})` : ''}`}
               data-tip-wide
-              className="yu-btn yu-btn-ghost h-8 max-w-[14rem] gap-1.5 rounded-lg px-2.5 text-xs"
+              className="yu-btn yu-btn-ghost h-8 max-w-[9.5rem] shrink-0 gap-1.5 rounded-lg px-2.5 text-xs sm:max-w-[14rem]"
             >
               <Sparkles className="size-3.5 shrink-0 text-accent" aria-hidden />
               <span className="truncate font-mono">{modelLabel ?? 'Model'}</span>
@@ -474,7 +475,7 @@ export function Composer({
             </button>
           ) : null}
           {extras}
-          <span className="flex-1" />
+          </div>
           {voice.supported && !running ? (
             voice.state === 'recording' ? (
               <>
@@ -502,7 +503,7 @@ export function Composer({
                 disabled={voice.state === 'transcribing'}
                 aria-label="Dictate"
                 title="Dictate (transcribed by Hermes)"
-                className="yu-btn yu-btn-ghost size-9 rounded-full"
+                className="yu-btn yu-btn-ghost size-9 shrink-0 rounded-full"
               >
                 <Mic className="size-4" aria-hidden />
               </button>
@@ -524,7 +525,7 @@ export function Composer({
               onClick={onStop}
               aria-label="Stop run"
               title="Stop"
-              className="yu-btn yu-btn-tonal size-9 rounded-full"
+              className="yu-btn yu-btn-tonal size-9 shrink-0 rounded-full"
             >
               <Square className="size-3.5 fill-current" aria-hidden />
             </button>
@@ -535,7 +536,7 @@ export function Composer({
               disabled={value.trim() === '' && attachments.length === 0}
               aria-label="Send message"
               title="Send (Enter)"
-              className="yu-btn yu-btn-primary size-9 rounded-full"
+              className="yu-btn yu-btn-primary size-9 shrink-0 rounded-full"
             >
               <ArrowUp className="size-4" aria-hidden />
             </button>
