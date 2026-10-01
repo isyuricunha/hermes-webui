@@ -811,11 +811,26 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     setError(null);
     setSending(true);
     try {
-      const titleSeed = text !== '' ? text : (attachments[0]?.name ?? 'Attachment');
+      // Placeholder name shown until Hermes titles the conversation (never a
+      // file name: an upload is not what the conversation is about).
+      const first = attachments[0];
+      const titleSeed =
+        text !== ''
+          ? text
+          : first?.kind === 'image'
+            ? 'Image'
+            : first?.upload?.kind === 'audio'
+              ? 'Audio'
+              : first?.upload?.kind === 'video'
+                ? 'Video'
+                : 'File';
       if (sessionId === undefined) {
         // A conversation exists only once something is sent: create it now and
         // hand the message to that conversation's own view.
-        const created = await createSession({ title: titleSeed.slice(0, 60) });
+        // No title: Hermes names the conversation itself after the first
+        // reply (as on Telegram). A title set here counts as the user's
+        // choice and Hermes would never replace it.
+        const created = await createSession({});
         rememberDerivedTitle(created.session.id, titleSeed);
         pendingFirstSends.set(created.session.id, { text, attachments });
         void queryClient.invalidateQueries({ queryKey: ['sessions'] });

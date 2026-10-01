@@ -4,6 +4,7 @@ All notable changes to Hermes WebUI are documented here.
 
 ## Unreleased
 
+- **Hermes names new conversations again:** the WebUI created each conversation with a title (the first message, or a file name when you only sent a file), which Hermes treats as chosen by you and never replaces. Conversations are now created untitled and Hermes titles them after the first reply, as on Telegram; the sidebar shows a short placeholder until then.
 - **No more sign-outs when the app is closed:** the sign-in cookie had no expiry, so browsers treated it as a browser-session cookie and iOS dropped it whenever the installed app was closed or suspended. It now lasts until the session really ends.
 - Sessions now last 14 days without use by default (was 7); every visit restarts the count, up to the 30-day limit.
 - `HOST` accepts several comma-separated addresses, so the WebUI can serve a VPN address and loopback (for a Cloudflare Tunnel or reverse proxy on the same machine) at the same time. The install guide covers tunnels.
