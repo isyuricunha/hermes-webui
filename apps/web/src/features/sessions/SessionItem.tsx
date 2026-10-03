@@ -150,7 +150,12 @@ export function SessionItem({
               : { label: t('sessions.pin'), icon: <Pin />, onSelect: actions.onTogglePin },
             { label: t('sessions.fork'), icon: <GitFork />, onSelect: actions.onFork },
             { label: t('sessions.archive'), icon: <Archive />, onSelect: actions.onArchive },
-            { label: t('common.delete'), icon: <Trash2 />, danger: true, onSelect: actions.onDelete },
+            {
+              label: t('common.delete'),
+              icon: <Trash2 />,
+              danger: true,
+              onSelect: actions.onDelete,
+            },
           ]}
         />
       </span>

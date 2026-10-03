@@ -71,7 +71,7 @@ export function ChatHeader({ sessionId, items }: { sessionId: string; items: Tra
     staleTime: 15_000,
   });
   const session = detail.data?.session;
-  const title = displayTitle(session, sessionId);
+  const title = displayTitle(session, sessionId) ?? t('sessions.newChat');
   const source = SOURCE[(session?.source ?? '').toLowerCase()] ?? {
     label: 'chat.header.sourceWebui',
     icon: MessageSquare,

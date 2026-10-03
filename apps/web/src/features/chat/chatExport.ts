@@ -2,11 +2,14 @@ import type { SessionRow } from '../../lib/api';
 import { derivedTitle } from '../../lib/sessionTitles';
 import type { TranscriptItem } from './transcript';
 
-export function displayTitle(session: Pick<SessionRow, 'id' | 'title'> | undefined, fallbackId?: string): string {
+export function displayTitle(
+  session: Pick<SessionRow, 'id' | 'title'> | undefined,
+  fallbackId?: string,
+): string | null {
   const title = session?.title?.trim();
   if (title !== undefined && title !== '') return title;
   const id = session?.id ?? fallbackId;
-  return (id !== undefined ? derivedTitle(id) : null) ?? 'New chat';
+  return (id !== undefined ? derivedTitle(id) : null) ?? null;
 }
 
 /** Transcript -> Markdown, for "Export as Markdown". */
