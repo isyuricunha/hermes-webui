@@ -26,7 +26,11 @@ function HermesStatusPill() {
     retry: false,
   });
 
-  const state = isPending ? 'connecting' : isError || data.hermes.state === 'offline' ? 'offline' : data.hermes.state;
+  const state = isPending
+    ? 'connecting'
+    : isError || data.hermes.state === 'offline'
+      ? 'offline'
+      : data.hermes.state;
   const label =
     state === 'connecting'
       ? 'Hermes: Connecting…'
@@ -36,7 +40,11 @@ function HermesStatusPill() {
           ? 'Hermes: Degraded'
           : 'Hermes: Connected';
   const dot =
-    state === 'offline' ? 'bg-danger text-danger' : state === 'connected' ? 'bg-success text-success' : 'bg-warning text-warning';
+    state === 'offline'
+      ? 'bg-danger text-danger'
+      : state === 'connected'
+        ? 'bg-success text-success'
+        : 'bg-warning text-warning';
   return (
     <span
       className={[
@@ -44,7 +52,12 @@ function HermesStatusPill() {
         state === 'connected' ? 'yu-sheen' : 'border border-border-subtle',
       ].join(' ')}
     >
-      <span className={['size-1.5 rounded-full', dot, state === 'connected' ? 'yu-pulse' : ''].join(' ')} aria-hidden />
+      <span
+        className={['size-1.5 rounded-full', dot, state === 'connected' ? 'yu-pulse' : ''].join(
+          ' ',
+        )}
+        aria-hidden
+      />
       {label}
     </span>
   );
@@ -99,6 +112,9 @@ export function SessionSidebar({
   const sessionsQuery = useQuery({
     queryKey: ['sessions'],
     queryFn: () => fetchSessions(80),
+    // Keep the sidebar fresh while platform surfaces (e.g. Telegram) create
+    // or update sessions outside the WebUI.
+    refetchInterval: 10000,
   });
 
   const invalidate = () => {
@@ -117,8 +133,13 @@ export function SessionSidebar({
   };
 
   const patch = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { title?: string; pinned?: boolean; archived?: boolean } }) =>
-      patchSession(id, body),
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: { title?: string; pinned?: boolean; archived?: boolean };
+    }) => patchSession(id, body),
     onSuccess: (_data, variables) => {
       invalidate();
       void queryClient.invalidateQueries({ queryKey: ['session-detail', variables.id] });
@@ -144,7 +165,10 @@ export function SessionSidebar({
       {
         onSuccess: () =>
           toast(`Archived "${name}".`, 'success', {
-            action: { label: 'Undo', onClick: () => patch.mutate({ id, body: { archived: false } }) },
+            action: {
+              label: 'Undo',
+              onClick: () => patch.mutate({ id, body: { archived: false } }),
+            },
           }),
       },
     );
@@ -186,7 +210,11 @@ export function SessionSidebar({
 
   return (
     <div className="flex h-full flex-col">
-      <div className={['flex items-center gap-1 px-3 pt-3 pb-2', collapsed ? 'flex-col' : ''].join(' ')}>
+      <div
+        className={['flex items-center gap-1 px-3 pt-3 pb-2', collapsed ? 'flex-col' : ''].join(
+          ' ',
+        )}
+      >
         {collapsed ? null : (
           <Link
             to="/"
@@ -204,7 +232,11 @@ export function SessionSidebar({
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           className={[iconButton, 'hidden md:inline-flex'].join(' ')}
         >
-          {collapsed ? <PanelLeftOpen className="size-4" aria-hidden /> : <PanelLeftClose className="size-4" aria-hidden />}
+          {collapsed ? (
+            <PanelLeftOpen className="size-4" aria-hidden />
+          ) : (
+            <PanelLeftClose className="size-4" aria-hidden />
+          )}
         </button>
       </div>
 
@@ -275,9 +307,13 @@ export function SessionSidebar({
                               pinned={session.pinned === true}
                               onNavigate={onNavigate}
                               actions={{
-                                onRename: (title) => patch.mutate({ id: session.id, body: { title } }),
+                                onRename: (title) =>
+                                  patch.mutate({ id: session.id, body: { title } }),
                                 onTogglePin: () =>
-                                  patch.mutate({ id: session.id, body: { pinned: session.pinned !== true } }),
+                                  patch.mutate({
+                                    id: session.id,
+                                    body: { pinned: session.pinned !== true },
+                                  }),
                                 onFork: () => void fork(session.id),
                                 onArchive: () => archive(session.id, name),
                                 onDelete: () => void remove(session.id, name),
@@ -308,7 +344,11 @@ export function SessionSidebar({
             onClick={onNavigate}
             aria-label="Settings"
             title="Settings"
-            className={collapsed ? iconButton : 'yu-btn yu-btn-ghost h-8 flex-1 justify-start rounded-lg px-2 text-[13px]'}
+            className={
+              collapsed
+                ? iconButton
+                : 'yu-btn yu-btn-ghost h-8 flex-1 justify-start rounded-lg px-2 text-[13px]'
+            }
           >
             <Settings className="size-4" aria-hidden />
             {collapsed ? null : <span>Settings</span>}

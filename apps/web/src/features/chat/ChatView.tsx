@@ -299,6 +299,11 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     queryKey: ['messages', sessionId],
     queryFn: () => fetchSessionMessages(sessionId as string),
     enabled: sessionId !== undefined,
+    // Cross-surface live sync: the gateway writes Telegram (and other platform)
+    // messages into the same store this query reads, so a short poll keeps an
+    // open chat current without any run-scoped SSE. Duplicates are impossible:
+    // the response is a full reset keyed by stable row ids.
+    refetchInterval: 2000,
   });
 
   const imagesQuery = useQuery({
