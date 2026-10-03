@@ -16,6 +16,7 @@ import {
   fetchSessionImages,
   fetchSessionMessages,
   fetchSessionModel,
+  fetchSessions,
   stopRun,
   steerRun,
 } from '../../lib/api';
@@ -306,6 +307,16 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     refetchInterval: 2000,
   });
 
+  // The session's originating surface (telegram, webui, ...), used to warn
+  // when a Hermes command is better run natively on that surface.
+  const sessionsQuery = useQuery({
+    queryKey: ['sessions'],
+    queryFn: () => fetchSessions(80),
+    enabled: sessionId !== undefined,
+    staleTime: 10_000,
+  });
+  const sessionSource = sessionsQuery.data?.data.find((row) => row.id === sessionId)?.source;
+
   const imagesQuery = useQuery({
     queryKey: ['session-images', sessionId],
     queryFn: () => fetchSessionImages(sessionId as string),
@@ -560,12 +571,22 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       void execHermesCommand(commandText, sessionId)
         .then((result) => {
           if (result.kind === 'output') {
+            const output = stripAnsi(result.output);
+            const emptyOutput = output.trim() === '' || output.trim() === '(no output)';
+            // A session born on another surface (telegram, discord, ...) is
+            // owned by that surface's process: mutative commands like /compress
+            // dispatched from here can be a silent no-op on the live
+            // conversation, so an empty result gets an explanatory warning.
+            const foreignOwned = sessionSource !== undefined && sessionSource !== 'webui';
+            const noEffect = emptyOutput && foreignOwned;
             dispatch({
               type: 'systemPatch',
               id,
               pending: false,
-              detail: stripAnsi(result.output) + (result.warning ? `\n\n⚠ ${result.warning}` : ''),
-              tone: result.warning ? 'warning' : 'info',
+              detail: noEffect
+                ? `No output came back. This session lives on the '${sessionSource}' surface: run the command there (send /compress in that chat, for example) so it applies to the live conversation. The WebUI-side dispatch can be a silent no-op for sessions owned by another surface.`
+                : output + (result.warning ? `\n\n⚠ ${result.warning}` : ''),
+              tone: noEffect || result.warning ? 'warning' : 'info',
             });
             // Commands can change config (model, personality, reasoning...).
             void queryClient.invalidateQueries({ queryKey: ['settings-config'] });
