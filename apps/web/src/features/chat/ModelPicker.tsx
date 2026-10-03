@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
+import '../../i18n';
 import { Sparkles, X } from 'lucide-react';
 import { fetchModelOptions, fetchSessionModel, setSessionModel } from '../../lib/api';
 import { normalizeCatalog, pickableProviders } from '../../lib/modelCatalog';
@@ -20,14 +22,22 @@ interface ModelPickerProps {
 }
 
 export function ModelPicker({ sessionId, onClose }: ModelPickerProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const optionsQuery = useQuery({ queryKey: ['model-options'], queryFn: fetchModelOptions, staleTime: 5 * 60_000 });
+  const optionsQuery = useQuery({
+    queryKey: ['model-options'],
+    queryFn: fetchModelOptions,
+    staleTime: 5 * 60_000,
+  });
   const sessionModelQuery = useQuery({
     queryKey: ['session-model', sessionId],
     queryFn: () => fetchSessionModel(sessionId as string),
     enabled: sessionId !== undefined,
   });
-  const providers = useMemo(() => pickableProviders(normalizeCatalog(optionsQuery.data)), [optionsQuery.data]);
+  const providers = useMemo(
+    () => pickableProviders(normalizeCatalog(optionsQuery.data)),
+    [optionsQuery.data],
+  );
   const current = sessionModelQuery.data?.model ?? null;
   const currentProvider = sessionModelQuery.data?.provider ?? '';
 
@@ -40,10 +50,11 @@ export function ModelPicker({ sessionId, onClose }: ModelPickerProps) {
   }, [onClose]);
 
   const lock = useMutation({
-    mutationFn: (input: { model: string; provider: string }) => setSessionModel(sessionId as string, input),
+    mutationFn: (input: { model: string; provider: string }) =>
+      setSessionModel(sessionId as string, input),
     onSuccess: (_data, input) => {
       void queryClient.invalidateQueries({ queryKey: ['session-model', sessionId] });
-      toast(`This chat now uses ${input.model}.`, 'success');
+      toast(t('chat.picker.thisChatUses', { model: input.model }), 'success');
       onClose();
     },
   });
@@ -53,7 +64,7 @@ export function ModelPicker({ sessionId, onClose }: ModelPickerProps) {
       <div className="fixed inset-0 z-40" aria-hidden onClick={onClose} />
       <div
         role="dialog"
-        aria-label="Model picker"
+        aria-label={t('chat.modelPicker')}
         className="yu-pop yu-pop-in absolute right-2 bottom-full left-2 z-50 mb-2 flex max-h-[min(30rem,70dvh)] flex-col rounded-2xl p-3 md:right-auto md:left-3 md:w-[28rem]"
       >
         <div className="mb-2.5 flex items-start gap-2.5">
@@ -61,19 +72,29 @@ export function ModelPicker({ sessionId, onClose }: ModelPickerProps) {
             <Sparkles className="size-4" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-text-primary">Model for this chat</p>
+            <p className="text-sm font-medium text-text-primary">{t('chat.picker.title')}</p>
             <p className="truncate text-xs text-text-tertiary">
-              {current !== null ? `Locked to ${currentProvider !== '' ? `${currentProvider} / ` : ''}${current}` : 'Using the global default'}
+              {current !== null
+                ? t('chat.picker.lockedTo', {
+                    provider: currentProvider !== '' ? `${currentProvider} / ` : '',
+                    model: current,
+                  })
+                : t('chat.picker.usingGlobalDefault')}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close model picker" className="yu-btn yu-btn-ghost size-8 rounded-lg">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('chat.picker.closePicker')}
+            className="yu-btn yu-btn-ghost size-8 rounded-lg"
+          >
             <X className="size-4" aria-hidden />
           </button>
         </div>
 
         {sessionId === undefined ? (
           <p className="rounded-xl bg-surface-input px-3 py-2.5 text-xs text-text-secondary">
-            Send the first message, then pick a model for this conversation. The default for every new chat lives in Settings &gt; Models.
+            {t('chat.picker.sendFirst')}
           </p>
         ) : optionsQuery.isPending ? (
           <div className="space-y-2 py-1">
@@ -84,8 +105,8 @@ export function ModelPicker({ sessionId, onClose }: ModelPickerProps) {
         ) : providers.length === 0 ? (
           <p className="rounded-xl bg-surface-input px-3 py-2.5 text-xs text-text-secondary">
             {optionsQuery.isError
-              ? `Could not load the model list: ${optionsQuery.error.message}`
-              : 'No provider with credentials and models. Add a provider key in Settings > Environment.'}
+              ? t('chat.picker.loadFailed', { message: optionsQuery.error.message })
+              : t('chat.picker.noProviders')}
           </p>
         ) : (
           <ModelBrowser
@@ -97,12 +118,14 @@ export function ModelPicker({ sessionId, onClose }: ModelPickerProps) {
         )}
 
         {lock.isError ? (
-          <p className="mt-2 text-xs text-danger">{lock.error instanceof Error ? lock.error.message : 'Model lock failed.'}</p>
+          <p className="mt-2 text-xs text-danger">
+            {lock.error instanceof Error ? lock.error.message : t('chat.picker.lockFailed')}
+          </p>
         ) : null}
         <p className="mt-2.5 border-t border-border-subtle pt-2.5 text-[11px] leading-relaxed text-text-tertiary">
-          Applies to this chat only. The default for new chats is in{' '}
+          {t('chat.picker.footer')}{' '}
           <Link to="/settings/models" className="text-accent hover:underline" onClick={onClose}>
-            Settings &gt; Models
+            {t('chat.picker.footerLink')}
           </Link>
           .
         </p>

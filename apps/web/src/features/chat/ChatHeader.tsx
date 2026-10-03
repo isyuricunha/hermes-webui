@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { createPortal } from 'react-dom';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import '../../i18n';
 import { CHAT_ACTION_EVENT, type ChatAction } from '../../lib/events';
 import {
   Archive,
@@ -29,10 +31,10 @@ import { useHeaderSlot } from '../../app/headerSlot';
 import { displayTitle, transcriptToMarkdown } from './chatExport';
 
 const SOURCE: Record<string, { label: string; icon: typeof Send }> = {
-  telegram: { label: 'Telegram', icon: Send },
-  cron: { label: 'Cron', icon: Clock },
-  cli: { label: 'CLI', icon: SquareTerminal },
-  tui: { label: 'Terminal', icon: SquareTerminal },
+  telegram: { label: 'chat.header.sourceTelegram', icon: Send },
+  cron: { label: 'chat.header.sourceCron', icon: Clock },
+  cli: { label: 'chat.header.sourceCli', icon: SquareTerminal },
+  tui: { label: 'chat.header.sourceTerminal', icon: SquareTerminal },
 };
 
 function download(filename: string, content: string, type: string): void {
@@ -45,7 +47,13 @@ function download(filename: string, content: string, type: string): void {
 }
 
 function slug(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'conversation';
+  return (
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 48) || 'conversation'
+  );
 }
 
 /**
@@ -55,6 +63,7 @@ function slug(text: string): string {
 export function ChatHeader({ sessionId, items }: { sessionId: string; items: TranscriptItem[] }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const mobileSlot = useHeaderSlot();
   const detail = useQuery({
     queryKey: ['session-detail', sessionId],
@@ -63,7 +72,10 @@ export function ChatHeader({ sessionId, items }: { sessionId: string; items: Tra
   });
   const session = detail.data?.session;
   const title = displayTitle(session, sessionId);
-  const source = SOURCE[(session?.source ?? '').toLowerCase()] ?? { label: 'WebUI', icon: MessageSquare };
+  const source = SOURCE[(session?.source ?? '').toLowerCase()] ?? {
+    label: 'chat.header.sourceWebui',
+    icon: MessageSquare,
+  };
   const SourceIcon = source.icon;
 
   const refresh = () => {
@@ -72,13 +84,18 @@ export function ChatHeader({ sessionId, items }: { sessionId: string; items: Tra
   };
 
   const patch = useMutation({
-    mutationFn: (body: { title?: string; pinned?: boolean; archived?: boolean }) => patchSession(sessionId, body),
+    mutationFn: (body: { title?: string; pinned?: boolean; archived?: boolean }) =>
+      patchSession(sessionId, body),
     onSuccess: refresh,
     onError: (error) => toastError(error),
   });
 
   const rename = async () => {
-    const next = await promptDialog({ title: 'Rename conversation', initialValue: title, confirmLabel: 'Rename' });
+    const next = await promptDialog({
+      title: t('chat.header.renameConversation'),
+      initialValue: title,
+      confirmLabel: t('chat.header.rename'),
+    });
     if (next !== null && next !== title) patch.mutate({ title: next });
   };
 
@@ -87,8 +104,11 @@ export function ChatHeader({ sessionId, items }: { sessionId: string; items: Tra
       { archived: true },
       {
         onSuccess: () => {
-          toast('Conversation archived.', 'success', {
-            action: { label: 'Undo', onClick: () => patch.mutate({ archived: false }) },
+          toast(t('chat.header.archived'), 'success', {
+            action: {
+              label: t('chat.header.undo'),
+              onClick: () => patch.mutate({ archived: false }),
+            },
           });
           void navigate({ to: '/' });
         },
@@ -98,16 +118,16 @@ export function ChatHeader({ sessionId, items }: { sessionId: string; items: Tra
 
   const remove = async () => {
     const ok = await confirmDialog({
-      title: 'Delete this conversation?',
-      description: `"${title}" and its messages are removed from Hermes. This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t('chat.header.deleteTitle'),
+      description: t('chat.header.deleteDescription', { title }),
+      confirmLabel: t('common.delete'),
       tone: 'danger',
     });
     if (!ok) return;
     try {
       await deleteSession(sessionId);
       void queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      toast('Conversation deleted.', 'success');
+      toast(t('chat.header.deleted'), 'success');
       void navigate({ to: '/' });
     } catch (error) {
       toastError(error);
@@ -118,7 +138,7 @@ export function ChatHeader({ sessionId, items }: { sessionId: string; items: Tra
     try {
       const created = await forkSession(sessionId);
       void queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      toast('Forked into a new conversation.', 'success');
+      toast(t('chat.header.forked'), 'success');
       void navigate({ to: '/chat/$sessionId', params: { sessionId: created.session.id } });
     } catch (error) {
       toastError(error);
@@ -128,7 +148,8 @@ export function ChatHeader({ sessionId, items }: { sessionId: string; items: Tra
   // /title, /fork and /export in the composer land here.
   useEffect(() => {
     const handler = (event: Event) => {
-      const { action, arg = '' } = (event as CustomEvent<{ action: ChatAction; arg?: string }>).detail;
+      const { action, arg = '' } = (event as CustomEvent<{ action: ChatAction; arg?: string }>)
+        .detail;
       if (action === 'rename') {
         if (arg.trim() !== '') patch.mutate({ title: arg.trim().slice(0, 120) });
         else void rename();
@@ -154,21 +175,30 @@ export function ChatHeader({ sessionId, items }: { sessionId: string; items: Tra
 
   const menu = (
     <Menu
-      label="Conversation actions"
+      label={t('chat.header.actions')}
       trigger={<MoreHorizontal className="size-4" aria-hidden />}
       items={[
-        { label: 'Rename', icon: <Pencil />, onSelect: () => void rename() },
+        { label: t('chat.header.rename'), icon: <Pencil />, onSelect: () => void rename() },
         pinned
-          ? { label: 'Unpin', icon: <PinOff />, onSelect: () => patch.mutate({ pinned: false }) }
-          : { label: 'Pin', icon: <Pin />, onSelect: () => patch.mutate({ pinned: true }) },
-        { label: 'Fork', icon: <GitFork />, onSelect: () => void fork() },
+          ? {
+              label: t('chat.header.unpin'),
+              icon: <PinOff />,
+              onSelect: () => patch.mutate({ pinned: false }),
+            }
+          : {
+              label: t('chat.header.pin'),
+              icon: <Pin />,
+              onSelect: () => patch.mutate({ pinned: true }),
+            },
+        { label: t('chat.header.fork'), icon: <GitFork />, onSelect: () => void fork() },
         {
-          label: 'Export as Markdown',
+          label: t('chat.header.exportMarkdown'),
           icon: <Download />,
-          onSelect: () => download(`${slug(title)}.md`, transcriptToMarkdown(title, items), 'text/markdown'),
+          onSelect: () =>
+            download(`${slug(title)}.md`, transcriptToMarkdown(title, items), 'text/markdown'),
         },
         {
-          label: 'Export as JSON',
+          label: t('chat.header.exportJson'),
           icon: <Braces />,
           onSelect: () => {
             const link = document.createElement('a');
@@ -177,12 +207,16 @@ export function ChatHeader({ sessionId, items }: { sessionId: string; items: Tra
             link.click();
           },
         },
-        { label: 'Archive', icon: <Archive />, onSelect: archive },
-        { label: 'Delete', icon: <Trash2 />, danger: true, onSelect: () => void remove() },
+        { label: t('chat.header.archive'), icon: <Archive />, onSelect: archive },
+        {
+          label: t('common.delete'),
+          icon: <Trash2 />,
+          danger: true,
+          onSelect: () => void remove(),
+        },
       ]}
     />
   );
-
 
   return (
     <>
@@ -191,24 +225,38 @@ export function ChatHeader({ sessionId, items }: { sessionId: string; items: Tra
           type="button"
           onClick={() => void rename()}
           className="min-w-0 truncate rounded-lg px-1.5 py-1 text-left text-[15px] font-medium text-text-primary transition-colors hover:bg-surface-input"
-          title="Rename"
+          title={t('chat.header.rename')}
         >
           {title}
         </button>
-        {pinned ? <Pin className="size-3.5 shrink-0 text-accent" aria-label="Pinned" /> : null}
+        {pinned ? (
+          <Pin className="size-3.5 shrink-0 text-accent" aria-label={t('chat.header.pinned')} />
+        ) : null}
         <span className="yu-chip yu-chip-neutral shrink-0">
           <SourceIcon className="size-3" aria-hidden />
-          {source.label}
+          {t(source.label)}
         </span>
         <span className="flex-1" />
         {session !== undefined ? (
           <span className="hidden shrink-0 items-center gap-3 font-mono text-[11px] text-text-tertiary lg:flex">
-            {session.message_count > 0 ? <span title="Messages">{session.message_count} msgs</span> : null}
-            {tokens > 0 ? <span title="Input + output tokens">{compactNumber(tokens)} tokens</span> : null}
-            {typeof session.estimated_cost_usd === 'number' && session.estimated_cost_usd > 0 ? (
-              <span title="Estimated cost">{money(session.estimated_cost_usd)}</span>
+            {session.message_count > 0 ? (
+              <span title={t('chat.header.messagesTitle')}>
+                {t('chat.header.messageCount', { count: session.message_count })}
+              </span>
             ) : null}
-            {session.last_active ? <span title="Last activity">{relativeTime(session.last_active)}</span> : null}
+            {tokens > 0 ? (
+              <span title={t('chat.header.tokensTitle')}>
+                {t('chat.header.tokens', { count: compactNumber(tokens) })}
+              </span>
+            ) : null}
+            {typeof session.estimated_cost_usd === 'number' && session.estimated_cost_usd > 0 ? (
+              <span title={t('chat.header.costTitle')}>{money(session.estimated_cost_usd)}</span>
+            ) : null}
+            {session.last_active ? (
+              <span title={t('chat.header.activityTitle')}>
+                {relativeTime(session.last_active)}
+              </span>
+            ) : null}
           </span>
         ) : null}
         {menu}

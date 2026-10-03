@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Brain } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import '../../i18n';
 import { fetchSettingsConfig, putSettingsConfig, type SessionContextInfo } from '../../lib/api';
 import { compactNumber } from '../../lib/format';
 import { toast, toastError } from '../../lib/toast';
@@ -10,17 +12,26 @@ import { Menu } from '../../components/ui';
  * and how full the conversation's context window is.
  */
 
-export const REASONING_LEVELS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'] as const;
+export const REASONING_LEVELS = [
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+  'ultra',
+] as const;
 
 const LEVEL_HINT: Record<string, string> = {
-  none: 'No extended thinking',
-  minimal: 'Barely thinks first',
-  low: 'Quick answers',
-  medium: 'Balanced',
-  high: 'Thinks longer',
-  xhigh: 'Much longer',
-  max: 'As long as the model allows',
-  ultra: 'Extended max where supported',
+  none: 'chat.status.level.none',
+  minimal: 'chat.status.level.minimal',
+  low: 'chat.status.level.low',
+  medium: 'chat.status.level.medium',
+  high: 'chat.status.level.high',
+  xhigh: 'chat.status.level.xhigh',
+  max: 'chat.status.level.max',
+  ultra: 'chat.status.level.ultra',
 };
 
 export function reasoningOf(config: unknown): string | null {
@@ -33,28 +44,38 @@ export const configQueryKey = ['settings-config'];
 
 export function useReasoningEffort() {
   const queryClient = useQueryClient();
-  const config = useQuery({ queryKey: configQueryKey, queryFn: fetchSettingsConfig, staleTime: 60_000 });
+  const { t } = useTranslation();
+  const config = useQuery({
+    queryKey: configQueryKey,
+    queryFn: fetchSettingsConfig,
+    staleTime: 60_000,
+  });
   const mutation = useMutation({
     mutationFn: (level: string) => putSettingsConfig({ agent: { reasoning_effort: level } }),
     onSuccess: (_data, level) => {
       void queryClient.invalidateQueries({ queryKey: configQueryKey });
-      toast(`Reasoning effort: ${level}. Applies from your next message.`, 'success');
+      toast(t('chat.status.effortSaved', { level }), 'success');
     },
-    onError: (error) => toastError(error, 'Could not change the reasoning effort.'),
+    onError: (error) => toastError(error, t('chat.status.effortFail')),
   });
-  return { level: reasoningOf(config.data), loading: config.isPending, set: (level: string) => mutation.mutate(level) };
+  return {
+    level: reasoningOf(config.data),
+    loading: config.isPending,
+    set: (level: string) => mutation.mutate(level),
+  };
 }
 
 export function ReasoningChip() {
+  const { t } = useTranslation();
   const { level, loading, set } = useReasoningEffort();
   if (loading) return null;
   const current = level ?? 'default';
   return (
     <Menu
-      label="Reasoning effort"
+      label={t('chat.status.effortLabel')}
       align="start"
       above
-      tip={`Reasoning effort: ${current}. How long the model thinks before answering (Hermes' agent.reasoning_effort, same as /reasoning). Click to change; it applies from your next message.`}
+      tip={t('chat.status.effortTip', { current })}
       triggerClassName="yu-btn yu-btn-ghost h-8 shrink-0 gap-1 rounded-lg px-2 text-xs"
       trigger={
         <>
@@ -64,7 +85,7 @@ export function ReasoningChip() {
       }
       items={REASONING_LEVELS.map((value) => ({
         label: value,
-        hint: LEVEL_HINT[value],
+        hint: t(LEVEL_HINT[value] ?? 'chat.status.level.none'),
         checked: value === level,
         onSelect: () => {
           if (value !== level) set(value);
@@ -75,20 +96,36 @@ export function ReasoningChip() {
 }
 
 /** Share of the context window in use, 0..1, or null when unknown. */
-export function contextShare(info: Pick<SessionContextInfo, 'used' | 'contextLength'> | undefined): number | null {
+export function contextShare(
+  info: Pick<SessionContextInfo, 'used' | 'contextLength'> | undefined,
+): number | null {
   if (info?.used === null || info?.used === undefined || !info.contextLength) return null;
   return Math.min(1, Math.max(0, info.used / info.contextLength));
 }
 
 export function ContextMeter({ info }: { info: SessionContextInfo | undefined }) {
+  const { t } = useTranslation();
   if (info === undefined || info.used === null) return null;
   const share = contextShare(info);
   const percent = share === null ? null : share * 100;
-  const tone = share === null ? 'bg-text-tertiary' : share >= 0.85 ? 'bg-danger' : share >= 0.6 ? 'bg-warning' : 'bg-success';
+  const tone =
+    share === null
+      ? 'bg-text-tertiary'
+      : share >= 0.85
+        ? 'bg-danger'
+        : share >= 0.6
+          ? 'bg-warning'
+          : 'bg-success';
   const tip = [
-    `Context: ${info.used.toLocaleString()} tokens in the last model call${info.contextLength ? ` of ${info.contextLength.toLocaleString()} (${percent?.toFixed(1)}%)` : ''}.`,
-    info.contextLength ? '' : 'The window size of this conversation\'s model is not known here.',
-    'Hermes compresses older turns automatically when it gets close to full; /compress does it now.',
+    info.contextLength
+      ? t('chat.status.contextTipFull', {
+          used: info.used.toLocaleString(),
+          length: info.contextLength.toLocaleString(),
+          pct: percent?.toFixed(1),
+        })
+      : t('chat.status.contextTipBasic', { used: info.used.toLocaleString() }),
+    t('chat.status.contextTipUnknownSize'),
+    t('chat.status.contextTipCompress'),
   ]
     .filter((line) => line !== '')
     .join('\n');
@@ -97,15 +134,32 @@ export function ContextMeter({ info }: { info: SessionContextInfo | undefined })
       tabIndex={0}
       data-tip={tip}
       data-tip-wide
-      aria-label={`Context ${percent === null ? `${compactNumber(info.used)} tokens` : `${Math.round(percent)} percent full`}`}
+      aria-label={
+        percent === null
+          ? t('chat.status.contextLabel', { used: compactNumber(info.used) })
+          : t('chat.status.contextLabelPercent', { pct: Math.round(percent) })
+      }
       className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 font-mono text-[11px] text-text-tertiary outline-none hover:text-text-secondary focus-visible:text-text-secondary"
     >
       {share !== null ? (
-        <span className="relative hidden h-1.5 w-10 overflow-hidden rounded-full bg-chip sm:block" aria-hidden>
-          <span className={['absolute inset-y-0 left-0 rounded-full transition-[width] duration-500', tone].join(' ')} style={{ width: `${Math.max(3, share * 100)}%` }} />
+        <span
+          className="relative hidden h-1.5 w-10 overflow-hidden rounded-full bg-chip sm:block"
+          aria-hidden
+        >
+          <span
+            className={[
+              'absolute inset-y-0 left-0 rounded-full transition-[width] duration-500',
+              tone,
+            ].join(' ')}
+            style={{ width: `${Math.max(3, share * 100)}%` }}
+          />
         </span>
       ) : null}
-      <span>{percent === null ? compactNumber(info.used) : `${percent < 10 ? percent.toFixed(1) : Math.round(percent)}%`}</span>
+      <span>
+        {percent === null
+          ? compactNumber(info.used)
+          : `${percent < 10 ? percent.toFixed(1) : Math.round(percent)}%`}
+      </span>
     </span>
   );
 }

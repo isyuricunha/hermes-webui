@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Bell, BellOff, Check, Download, Keyboard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Bell, BellOff, Check, Download, Keyboard, Languages } from 'lucide-react';
 import { useTheme, useAccent, useChatStyle, THEME_OPTIONS, ACCENT_OPTIONS, CHAT_STYLE_OPTIONS } from '../../lib/theme';
 import { notificationsSupported, requestNotificationPermission } from '../../lib/notify';
 import { OPEN_SHORTCUTS_EVENT } from '../../lib/events';
 import { toast } from '../../lib/toast';
 import { Card, Section } from '../../components/ui';
 import { SettingsPage } from './SettingsLayout';
+import { LANGUAGES, resolveLanguage, setLanguage } from '../../i18n';
 
 const PREVIEW: Record<string, { canvas: string; card: string; line: string }> = {
   'true-black': { canvas: '#000000', card: '#0b0b0a', line: '#1a1a18' },
@@ -19,10 +21,12 @@ interface InstallPromptEvent extends Event {
 }
 
 /**
- * Settings > Appearance: theme and accent (applied instantly via data-theme
- * / data-accent on <html>), background notifications and app install.
+ * Settings > Appearance: theme, accent, UI language, background notifications
+ * and app install. Theme and accent apply instantly via data-theme /
+ * data-accent on <html>; language applies instantly via i18next.
  */
 export function AppearancePage() {
+  const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
   const { chatStyle, setChatStyle } = useChatStyle();
@@ -30,6 +34,7 @@ export function AppearancePage() {
     notificationsSupported() ? Notification.permission : 'unsupported',
   );
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
+  const activeLanguage = i18n.language.startsWith('pt') ? 'pt-BR' : resolveLanguage();
 
   useEffect(() => {
     const onPrompt = (event: Event) => {
@@ -41,10 +46,19 @@ export function AppearancePage() {
   }, []);
 
   const standalone = typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches;
+  const themeLabel = (id: string) =>
+    t(`settings.appearance.themeOption.${id.replace('-', '_')}.label`);
+  const themeHint = (id: string) => t(`settings.appearance.themeOption.${id.replace('-', '_')}.hint`);
+  const accentLabel = (id: string) => t(`settings.appearance.accentOption.${id}`);
+  const chatStyleLabel = (id: string) => t(`settings.appearance.chatStyleOption.${id}.label`);
+  const chatStyleHint = (id: string) => t(`settings.appearance.chatStyleOption.${id}.hint`);
 
   return (
-    <SettingsPage title="Appearance" description="How this app looks and behaves on this device.">
-      <Section title="Theme">
+    <SettingsPage
+      title={t('settings.appearance.title')}
+      description={t('settings.appearance.description')}
+    >
+      <Section title={t('settings.appearance.theme')}>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {THEME_OPTIONS.map((option) => {
             const preview = PREVIEW[option.id] ?? PREVIEW['true-black']!;
@@ -55,7 +69,7 @@ export function AppearancePage() {
                 type="button"
                 onClick={() => setTheme(option.id)}
                 aria-pressed={selected}
-                aria-label={`${option.label}: ${option.hint}`}
+                aria-label={`${themeLabel(option.id)}: ${themeHint(option.id)}`}
                 className={[
                   'yu-card yu-lift overflow-hidden rounded-2xl text-left',
                   selected ? '!border-accent/70 ring-1 ring-accent/50' : '',
@@ -66,8 +80,8 @@ export function AppearancePage() {
                 </span>
                 <span className="flex items-center gap-2 px-3 py-2.5">
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-text-primary">{option.label}</span>
-                    <span className="block truncate text-[11px] text-text-tertiary">{option.hint}</span>
+                    <span className="block text-[13px] font-medium text-text-primary">{themeLabel(option.id)}</span>
+                    <span className="block truncate text-[11px] text-text-tertiary">{themeHint(option.id)}</span>
                   </span>
                   {selected ? <Check className="size-4 shrink-0 text-accent" aria-hidden /> : null}
                 </span>
@@ -78,8 +92,8 @@ export function AppearancePage() {
       </Section>
 
       <Section
-        title="Chat and code"
-        description="How conversations and code blocks look. YuCode is a terminal-style skin; the rest of the app keeps the theme above."
+        title={t('settings.appearance.chatAndCode')}
+        description={t('settings.appearance.chatAndCodeDesc')}
       >
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {CHAT_STYLE_OPTIONS.map((option) => {
@@ -91,7 +105,7 @@ export function AppearancePage() {
                 type="button"
                 onClick={() => setChatStyle(option.id)}
                 aria-pressed={selected}
-                aria-label={`${option.label}: ${option.hint}`}
+                aria-label={`${chatStyleLabel(option.id)}: ${chatStyleHint(option.id)}`}
                 className={[
                   'yu-card yu-lift overflow-hidden rounded-2xl text-left',
                   selected ? '!border-accent/70 ring-1 ring-accent/50' : '',
@@ -123,9 +137,9 @@ export function AppearancePage() {
                 </span>
                 <span className="flex items-center gap-2 border-t border-border-subtle px-3 py-2.5">
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-text-primary">{option.label}</span>
+                    <span className="block text-[13px] font-medium text-text-primary">{chatStyleLabel(option.id)}</span>
                     <span className="block truncate text-[11px] text-text-tertiary">
-                      {option.hint}
+                      {chatStyleHint(option.id)}
                       {option.credit !== undefined ? ` · ${option.credit}` : ''}
                     </span>
                   </span>
@@ -137,15 +151,18 @@ export function AppearancePage() {
         </div>
       </Section>
 
-      <Section title="Accent" description="Buttons, focus and highlights. Charts keep their own validated color.">
+      <Section
+        title={t('settings.appearance.accent')}
+        description={t('settings.appearance.accentDesc')}
+      >
         <div className="flex flex-wrap gap-2">
           {ACCENT_OPTIONS.map((option) => (
             <button
               key={option.id}
               type="button"
               onClick={() => setAccent(option.id)}
-              aria-label={`Accent ${option.label}`}
-              title={option.label}
+              aria-label={`${t('settings.appearance.accent')} ${accentLabel(option.id)}`}
+              title={accentLabel(option.id)}
               aria-pressed={accent === option.id}
               className={[
                 'flex h-11 items-center gap-2 rounded-xl px-3 text-[13px] transition-colors',
@@ -153,13 +170,39 @@ export function AppearancePage() {
               ].join(' ')}
             >
               <span className="size-4 rounded-full" style={{ backgroundColor: option.swatch }} />
-              {option.label.replace(' (default)', '')}
+              {accentLabel(option.id).replace(' (default)', '')}
             </button>
           ))}
         </div>
       </Section>
 
-      <Section title="On this device">
+      <Section title={t('common.language')} description={t('common.languageHint')}>
+        <div className="flex flex-wrap gap-2">
+          {LANGUAGES.map((option) => (
+            <button
+              key={option.code}
+              type="button"
+              onClick={() => setLanguage(option.code)}
+              aria-pressed={activeLanguage === option.code}
+              className={[
+                'flex h-11 items-center gap-2 rounded-xl px-3 text-[13px] transition-colors',
+                activeLanguage === option.code
+                  ? 'bg-chip text-text-primary shadow-[var(--yu-highlight)]'
+                  : 'text-text-secondary hover:bg-surface-input',
+              ].join(' ')}
+            >
+              {activeLanguage === option.code ? (
+                <Check className="size-4 shrink-0 text-accent" aria-hidden />
+              ) : (
+                <Languages className="size-4 shrink-0 text-text-tertiary" aria-hidden />
+              )}
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title={t('settings.appearance.onThisDevice')}>
         <Card>
           <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3.5">
             {permission === 'granted' ? (
@@ -168,15 +211,15 @@ export function AppearancePage() {
               <BellOff className="size-4 shrink-0 text-text-tertiary" aria-hidden />
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-text-primary">Notify when a reply finishes</p>
+              <p className="text-sm text-text-primary">{t('settings.appearance.notifyReply')}</p>
               <p className="text-xs text-text-tertiary">
                 {permission === 'unsupported'
-                  ? 'Needs HTTPS (or localhost) and a browser with notifications.'
+                  ? t('settings.appearance.notifyUnsupported')
                   : permission === 'granted'
-                    ? 'On. You get a notification when Hermes finishes while this tab is in the background.'
+                    ? t('settings.appearance.notifyGranted')
                     : permission === 'denied'
-                      ? 'Blocked in the browser settings for this site.'
-                      : 'Off. The tab title still shows a counter.'}
+                      ? t('settings.appearance.notifyDenied')
+                      : t('settings.appearance.notifyOff')}
               </p>
             </div>
             {permission === 'default' ? (
@@ -186,24 +229,24 @@ export function AppearancePage() {
                 onClick={() =>
                   void requestNotificationPermission().then((result) => {
                     setPermission(result);
-                    if (result === 'granted') toast('Notifications on.', 'success');
+                    if (result === 'granted') toast(t('settings.appearance.notificationsOn'), 'success');
                   })
                 }
               >
-                Turn on
+                {t('settings.appearance.turnOn')}
               </button>
             ) : null}
           </div>
           <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3.5">
             <Download className="size-4 shrink-0 text-text-tertiary" aria-hidden />
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-text-primary">Install as an app</p>
+              <p className="text-sm text-text-primary">{t('settings.appearance.installApp')}</p>
               <p className="text-xs text-text-tertiary">
                 {standalone
-                  ? 'Installed. You are using the app.'
+                  ? t('settings.appearance.installAppInstalled')
                   : installEvent !== null
-                    ? 'Adds Hermes to your home screen or dock, full screen, no browser bar.'
-                    : 'Use your browser menu: “Install app” or “Add to Home Screen” (needs HTTPS).'}
+                    ? t('settings.appearance.installAppHint')
+                    : t('settings.appearance.installAppBrowserHint')}
               </p>
             </div>
             {installEvent !== null && !standalone ? (
@@ -212,7 +255,7 @@ export function AppearancePage() {
                 className="yu-btn yu-btn-tonal h-8 px-3 text-xs"
                 onClick={() => void installEvent.prompt().then(() => setInstallEvent(null))}
               >
-                Install
+                {t('settings.appearance.install')}
               </button>
             ) : null}
           </div>
@@ -223,8 +266,8 @@ export function AppearancePage() {
           >
             <Keyboard className="size-4 shrink-0 text-text-tertiary" aria-hidden />
             <span className="min-w-0 flex-1">
-              <span className="block text-sm text-text-primary">Keyboard shortcuts</span>
-              <span className="block text-xs text-text-tertiary">Press ? anywhere to see them.</span>
+              <span className="block text-sm text-text-primary">{t('settings.appearance.keyboardShortcuts')}</span>
+              <span className="block text-xs text-text-tertiary">{t('settings.appearance.keyboardShortcutsHint')}</span>
             </span>
           </button>
         </Card>

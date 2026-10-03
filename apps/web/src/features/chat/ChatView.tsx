@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import '../../i18n';
 import { ArrowDown } from 'lucide-react';
 import type { NormalizedCommand } from '@hermes-webui/shared';
 import { commandArgs, findCommandIn } from '@hermes-webui/shared';
@@ -67,11 +69,12 @@ function stripAnsi(text: string): string {
 }
 
 function ThinkingRow() {
+  const { t } = useTranslation();
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-2" role="status" aria-live="polite">
       <div className="flex items-center gap-2.5">
         <DotMatrixLoader agent />
-        <span className="yu-shimmer-agent text-sm">Thinking…</span>
+        <span className="yu-shimmer-agent text-sm">{t('chat.thinking')}</span>
       </div>
     </div>
   );
@@ -268,6 +271,7 @@ function transcriptReducer(state: TranscriptState, action: ChatAction): Transcri
 export function ChatView({ sessionId }: { sessionId?: string }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [transcript, dispatch] = useReducer(transcriptReducer, emptyTranscript);
   const [activeRunId, setActiveRunId] = useState<string | null>(() =>
     sessionId ? loadActiveRunId(sessionId) : null,
@@ -391,7 +395,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
                   ? {
                       type: 'run.failed',
                       runId: activeRunId,
-                      error: status.error ?? 'The run failed.',
+                      error: status.error ?? t('chat.view.runFailed'),
                     }
                   : { type: 'run.completed', runId: activeRunId, output: status.output ?? '' },
               sessionId,
@@ -404,7 +408,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         .catch(() => undefined);
     }, 5_000);
     return () => clearInterval(interval);
-  }, [sessionId, activeRunId, transcript.runDone, queryClient]);
+  }, [sessionId, activeRunId, transcript.runDone, queryClient, t]);
 
   // Browser-side timings of the active run, for tokens per second.
   const timing = useRef<{ sentAt: number; firstDelta?: number; lastDelta?: number }>({ sentAt: 0 });
@@ -519,20 +523,24 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
   useEffect(() => {
     modelRef.current = effectiveModel ?? undefined;
   }, [effectiveModel]);
-  const modelLabel = effectiveModel ?? 'Model';
+  const modelLabel = effectiveModel ?? t('chat.model');
   const modelHint =
     currentModel !== null
-      ? `${currentModel}${currentProvider !== '' ? ` (${currentProvider})` : ''}: picked for this chat only. Click to change.`
+      ? t('chat.view.modelHintLocked', {
+          model: `${currentModel}${currentProvider !== '' ? ` (${currentProvider})` : ''}`,
+        })
       : defaultModel !== null
-        ? `${defaultModel}${defaultProvider !== '' ? ` (${defaultProvider})` : ''}: Hermes' default model (Settings > Models). Click to pick another one for this chat only.`
-        : 'Change the model for this chat';
+        ? t('chat.view.modelHintDefault', {
+            model: `${defaultModel}${defaultProvider !== '' ? ` (${defaultProvider})` : ''}`,
+          })
+        : t('chat.view.modelHintNone');
   const reasoning = useReasoningEffort();
   const stop = async () => {
     if (activeRunId === null) return;
     try {
       await stopRun(activeRunId);
     } catch (stopError) {
-      setError(stopError instanceof Error ? stopError.message : 'Stop failed.');
+      setError(stopError instanceof Error ? stopError.message : t('chat.view.stopFailed'));
     }
   };
 
@@ -546,8 +554,8 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
     } catch (steerError) {
       setError(
         steerError instanceof Error
-          ? `Hermes did not take that message: ${steerError.message}`
-          : 'Steer failed.',
+          ? t('chat.view.steerRejected', { message: steerError.message })
+          : t('chat.view.steerFailed'),
       );
     }
   };
@@ -563,7 +571,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         type: 'systemCard',
         id,
         title: commandText.length > 60 ? head : commandText,
-        detail: 'Running in Hermes…',
+        detail: t('chat.view.runningInHermes'),
         tone: 'info',
         mono: true,
         pending: true,
@@ -584,7 +592,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
               id,
               pending: false,
               detail: noEffect
-                ? `No output came back. This session lives on the '${sessionSource}' surface: run the command there (send /compress in that chat, for example) so it applies to the live conversation. The WebUI-side dispatch can be a silent no-op for sessions owned by another surface.`
+                ? t('chat.view.foreignCommandNoOutput', { source: sessionSource })
                 : output + (result.warning ? `\n\n⚠ ${result.warning}` : ''),
               tone: noEffect || result.warning ? 'warning' : 'info',
             });
@@ -596,7 +604,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
               type: 'systemPatch',
               id,
               pending: false,
-              detail: result.notice ?? 'Hermes turned this into a message; sending it now.',
+              detail: result.notice ?? t('chat.view.commandTurnedIntoMessage'),
             });
             void sendRef.current(result.message, [], { display: commandText });
           } else if (result.kind === 'prefill') {
@@ -604,7 +612,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
               type: 'systemPatch',
               id,
               pending: false,
-              detail: result.notice ?? 'Put into the composer: edit and send.',
+              detail: result.notice ?? t('chat.view.commandPrefilled'),
             });
             insertIntoComposer(result.message);
           } else {
@@ -623,11 +631,11 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
             id,
             pending: false,
             tone: 'warning',
-            detail: error instanceof Error ? error.message : 'Hermes did not answer.',
+            detail: error instanceof Error ? error.message : t('chat.view.hermesDidNotAnswer'),
           }),
         );
     },
-    [sessionId, queryClient],
+    [sessionId, queryClient, t],
   );
 
   const runCommand = useCallback(
@@ -645,12 +653,16 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           void created
             .then((result) => {
               void navigate({ to: '/chat/$sessionId', params: { sessionId: result.session.id } });
-              notice('New chat started', `Session ${result.session.id}`, 'success');
+              notice(
+                t('chat.view.newChatStarted'),
+                t('chat.view.newChatSession', { id: result.session.id }),
+                'success',
+              );
             })
             .catch((error: unknown) =>
               notice(
-                'Could not start a new chat',
-                error instanceof Error ? error.message : 'Unknown error.',
+                t('chat.view.newChatFailed'),
+                error instanceof Error ? error.message : t('chat.view.unknownError'),
                 'warning',
               ),
             );
@@ -668,48 +680,61 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
               const version = 'version' in status.hermes ? ` (v${status.hermes.version})` : '';
               const model =
                 currentModel !== null
-                  ? `${currentProvider !== '' ? `${currentProvider}/` : ''}${currentModel} (this chat)`
+                  ? `${currentProvider !== '' ? `${currentProvider}/` : ''}${currentModel}${t('chat.view.thisChat')}`
                   : defaultModel !== null
-                    ? `${defaultProvider !== '' ? `${defaultProvider}/` : ''}${defaultModel} (Hermes default)`
+                    ? `${defaultProvider !== '' ? `${defaultProvider}/` : ''}${defaultModel}${t('chat.view.hermesDefault')}`
                     : 'unknown';
               const lines = [
-                `Gateway:    ${status.hermes.state}${version}`,
-                `WebUI:      v${status.version}`,
-                `Model:      ${model}`,
-                `Reasoning:  ${reasoning.level ?? 'default'}`,
+                t('chat.view.statusGateway', { state: status.hermes.state, version }),
+                t('chat.view.statusWebui', { version: status.version }),
+                t('chat.view.statusModel', { model }),
+                t('chat.view.statusReasoning', { level: reasoning.level ?? 'default' }),
               ];
               if (context !== null && context !== undefined) {
                 if (context.used !== null) {
-                  lines.push(
-                    `Context:    ${context.used.toLocaleString()}${context.contextLength ? ` / ${context.contextLength.toLocaleString()} (${((context.used / context.contextLength) * 100).toFixed(1)}%)` : ' tokens'}`,
-                  );
+                  const used = context.used.toLocaleString();
+                  const rest = context.contextLength
+                    ? ` / ${context.contextLength.toLocaleString()} (${((context.used / context.contextLength) * 100).toFixed(1)}%)`
+                    : ' tokens';
+                  lines.push(t('chat.view.statusContext', { used, rest }));
                 }
                 lines.push(
-                  `Tokens:     ${compactNumber(context.input ?? 0)} in · ${compactNumber(context.output ?? 0)} out · ${compactNumber(context.cacheRead ?? 0)} cached`,
-                  `Messages:   ${context.messages ?? 0} · API calls ${context.apiCalls ?? 0}`,
+                  t('chat.view.statusTokens', {
+                    input: compactNumber(context.input ?? 0),
+                    output: compactNumber(context.output ?? 0),
+                    cache: compactNumber(context.cacheRead ?? 0),
+                  }),
+                  t('chat.view.statusMessages', {
+                    count: context.messages ?? 0,
+                    calls: context.apiCalls ?? 0,
+                  }),
                 );
               }
               lines.push(
-                `Session:    ${sessionId ?? '(new chat, not created yet)'}`,
-                `Run:        ${activeRunId !== null && !transcript.runDone ? 'working' : 'idle'}`,
+                t('chat.view.statusSession', { id: sessionId ?? t('chat.view.statusSessionNew') }),
+                t('chat.view.statusRun', {
+                  state: activeRunId !== null && !transcript.runDone ? 'working' : 'idle',
+                }),
               );
               dispatch({
                 type: 'systemCard',
-                title: 'Hermes status',
+                title: t('chat.view.statusTitle'),
                 detail: lines.join('\n'),
                 tone: 'info',
                 mono: true,
               });
             })
-            .catch(() => notice('Hermes status', 'Status unavailable.', 'warning'));
+            .catch(() =>
+              notice(t('chat.view.statusTitle'), t('chat.view.statusUnavailable'), 'warning'),
+            );
           return;
         }
         case 'context-card':
         case 'usage-card': {
           if (sessionId === undefined) {
             notice(
-              cmd.handler === 'usage-card' ? 'Token usage' : 'Context',
-              'Nothing yet: send a message first.',
+              cmd.handler === 'usage-card' ? t('chat.view.tokenUsage') : t('chat.view.context'),
+              t('chat.view.nothingYet'),
             );
             return;
           }
@@ -722,30 +747,48 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
               const lines =
                 cmd.handler === 'usage-card'
                   ? [
-                      `Model:            ${context.model ?? 'unknown'}`,
-                      `Input tokens:     ${(context.input ?? 0).toLocaleString()}`,
-                      `Output tokens:    ${(context.output ?? 0).toLocaleString()}`,
-                      `Cache read:       ${(context.cacheRead ?? 0).toLocaleString()}`,
-                      `Cache write:      ${(context.cacheWrite ?? 0).toLocaleString()}`,
+                      t('chat.view.usageModel', { model: context.model ?? 'unknown' }),
+                      t('chat.view.usageInput', { count: (context.input ?? 0).toLocaleString() }),
+                      t('chat.view.usageOutput', { count: (context.output ?? 0).toLocaleString() }),
+                      t('chat.view.usageCacheRead', {
+                        count: (context.cacheRead ?? 0).toLocaleString(),
+                      }),
+                      t('chat.view.usageCacheWrite', {
+                        count: (context.cacheWrite ?? 0).toLocaleString(),
+                      }),
                       ...(context.reasoning
-                        ? [`Reasoning tokens: ${context.reasoning.toLocaleString()}`]
+                        ? [
+                            t('chat.view.usageReasoning', {
+                              count: context.reasoning.toLocaleString(),
+                            }),
+                          ]
                         : []),
-                      `API calls:        ${(context.apiCalls ?? 0).toLocaleString()}`,
+                      t('chat.view.usageApiCalls', {
+                        count: (context.apiCalls ?? 0).toLocaleString(),
+                      }),
                       ...(context.cost !== null && context.cost > 0
-                        ? [`Cost (approx.):   $${context.cost.toFixed(4)}`]
+                        ? [t('chat.view.usageCost', { cost: context.cost.toFixed(4) })]
                         : []),
                     ]
                   : [
-                      `Conversation: ${context.messages ?? 0} messages`,
-                      `Model: ${context.model ?? 'unknown'}`,
+                      t('chat.view.contextConversation', { count: context.messages ?? 0 }),
+                      t('chat.view.contextModel', { model: context.model ?? 'unknown' }),
                       context.used !== null
-                        ? `Context usage: ${context.used.toLocaleString()}${context.contextLength ? ` / ${context.contextLength.toLocaleString()} tokens (${pct?.toFixed(1)}%)` : ' tokens'}`
-                        : 'Context usage: not measured yet (after the first reply)',
-                      'Hermes compresses older turns when the window gets close to full; /compress does it now.',
+                        ? t('chat.view.contextUsage', {
+                            used: context.used.toLocaleString(),
+                            rest: context.contextLength
+                              ? ` / ${context.contextLength.toLocaleString()} tokens (${pct?.toFixed(1)}%)`
+                              : ' tokens',
+                          })
+                        : t('chat.view.contextUsageNotMeasured'),
+                      t('chat.view.contextCompress'),
                     ];
               dispatch({
                 type: 'systemCard',
-                title: cmd.handler === 'usage-card' ? 'Session token usage' : 'Context',
+                title:
+                  cmd.handler === 'usage-card'
+                    ? t('chat.view.sessionTokenUsage')
+                    : t('chat.view.context'),
                 detail: lines.join('\n'),
                 tone: 'info',
                 mono: true,
@@ -753,8 +796,8 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
             })
             .catch((error: unknown) =>
               notice(
-                'Context unavailable',
-                error instanceof Error ? error.message : 'Unknown error.',
+                t('chat.view.contextUnavailable'),
+                error instanceof Error ? error.message : t('chat.view.unknownError'),
                 'warning',
               ),
             );
@@ -767,8 +810,11 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
             .replace(/\s*--global$/, '');
           if (level === '') {
             notice(
-              'Reasoning effort',
-              `Current: ${reasoning.level ?? 'default'}.\nUse /reasoning <${REASONING_LEVELS.join('|')}>, or the brain chip under the composer.`,
+              t('chat.view.reasoningEffort'),
+              t('chat.view.reasoningCurrent', {
+                level: reasoning.level ?? 'default',
+                levels: REASONING_LEVELS.join('|'),
+              }),
             );
             return;
           }
@@ -782,14 +828,14 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         }
         case 'retry-last':
           if (running)
-            notice('Still working', 'Wait for the current reply, or /stop it first.', 'warning');
+            notice(t('chat.view.stillWorking'), t('chat.view.stillWorkingTip'), 'warning');
           else retryRef.current();
           return;
         case 'rename-session':
         case 'fork-session':
         case 'export-session': {
           if (sessionId === undefined) {
-            notice('No conversation yet', 'Send a message first.', 'warning');
+            notice(t('chat.view.noConversationYet'), t('chat.view.sendFirstMessage'), 'warning');
             return;
           }
           const action: HeaderAction =
@@ -808,22 +854,20 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
             .reverse()
             .find((item) => item.kind === 'message' && item.role === 'assistant');
           if (last?.kind !== 'message') {
-            notice('Nothing to copy', 'There is no reply yet.', 'warning');
+            notice(t('chat.view.nothingToCopy'), t('chat.view.noReplyYet'), 'warning');
             return;
           }
           void copyText(last.content)
-            .then(() => notice('Copied', 'The last reply is on your clipboard.', 'success'))
-            .catch(() => notice('Copy failed', 'The clipboard is not available.', 'warning'));
+            .then(() => notice(t('common.copied'), t('chat.view.copiedLastReply'), 'success'))
+            .catch(() =>
+              notice(t('chat.view.copyFailedTitle'), t('chat.view.copyFailedBody'), 'warning'),
+            );
           return;
         }
         case 'steer': {
           const text = argsText.trim();
           if (text === '') {
-            notice(
-              'Steer',
-              'Usage: /steer <message>. Or just type while Hermes is working.',
-              'warning',
-            );
+            notice(t('chat.view.steerTitle'), t('chat.view.steerUsage'), 'warning');
           } else if (running) {
             void steer(text);
           } else {
@@ -834,16 +878,12 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         case 'queue': {
           const text = argsText.trim();
           if (text === '') {
-            notice(
-              'Queue',
-              'Usage: /queue <message>: sent when the current reply finishes.',
-              'warning',
-            );
+            notice(t('chat.view.queueTitle'), t('chat.view.queueUsage'), 'warning');
           } else if (running) {
             setQueued((list) => [...list, text]);
             notice(
-              'Queued',
-              `Sent when Hermes finishes: ${text.length > 80 ? `${text.slice(0, 80)}…` : text}`,
+              t('chat.view.queuedTitle'),
+              t('chat.view.queued', { text: text.length > 80 ? `${text.slice(0, 80)}…` : text }),
               'success',
             );
           } else {
@@ -861,10 +901,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           void navigate({ to: '/settings/appearance' });
           return;
         case 'voice':
-          notice(
-            'Voice',
-            'Use the microphone button in the composer: Hermes transcribes what you say. Read aloud is under each reply.',
-          );
+          notice(t('chat.view.voiceTitle'), t('chat.view.voiceTip'));
           return;
         case 'open-sessions':
           window.dispatchEvent(new CustomEvent('hermes-webui:open-sessions'));
@@ -886,7 +923,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           if (verb === 'pending' || verb === 'list') {
             dispatch({
               type: 'systemCard',
-              title: 'Pending memory writes',
+              title: t('chat.view.pendingMemoryWrites'),
               tone: 'info',
               widget: 'memory-approvals',
             });
@@ -901,17 +938,15 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           ) {
             const action = verb === 'approve' || verb === 'apply' ? 'approve' : 'reject';
             if (arg === '') {
-              notice(
-                'Which write?',
-                `Usage: /memory ${action} <id|all>. Type /memory to see what is pending.`,
-                'warning',
-              );
+              notice(t('chat.view.whichWrite'), t('chat.view.memoryUsage', { action }), 'warning');
               return;
             }
             void resolvePendingWrite('memory', arg, action)
               .then((result) => {
                 notice(
-                  action === 'approve' ? 'Memory approval' : 'Memory rejection',
+                  action === 'approve'
+                    ? t('chat.view.memoryApproval')
+                    : t('chat.view.memoryRejection'),
                   result.message,
                   result.ok ? 'success' : 'warning',
                 );
@@ -919,8 +954,8 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
               })
               .catch((error: unknown) =>
                 notice(
-                  'Memory approvals unavailable',
-                  error instanceof Error ? error.message : 'Unknown error.',
+                  t('chat.view.memoryApprovalsUnavailable'),
+                  error instanceof Error ? error.message : t('chat.view.unknownError'),
                   'warning',
                 ),
               );
@@ -934,50 +969,48 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
                 ? false
                 : null;
             if (enabled === null) {
-              notice('Memory approval gate', 'Usage: /memory approval <on|off>', 'warning');
+              notice(t('chat.view.memoryGate'), t('chat.view.memoryGateUsage'), 'warning');
               return;
             }
             void setWriteApproval('memory', enabled)
               .then(() => {
                 notice(
-                  'Memory approval gate',
-                  enabled
-                    ? 'On: Hermes asks before saving memories.'
-                    : 'Off: Hermes saves memories directly.',
+                  t('chat.view.memoryGate'),
+                  enabled ? t('chat.view.memoryGateOn') : t('chat.view.memoryGateOff'),
                   'success',
                 );
                 void queryClient.invalidateQueries({ queryKey: pendingWritesKey('memory') });
               })
               .catch((error: unknown) =>
                 notice(
-                  'Could not change the gate',
-                  error instanceof Error ? error.message : 'Unknown error.',
+                  t('chat.view.gateChangeFailed'),
+                  error instanceof Error ? error.message : t('chat.view.unknownError'),
                   'warning',
                 ),
               );
             return;
           }
-          notice(
-            'Unknown /memory subcommand',
-            'Use: pending, approve <id|all>, reject <id|all>, approval <on|off>.',
-            'warning',
-          );
+          notice(t('chat.view.memoryUnknown'), t('chat.view.memoryHelp'), 'warning');
           return;
         }
         case 'stop-run':
           if (activeRunId !== null && !transcript.runDone) {
             void stop();
-            notice('Stop requested', 'The active run is being stopped.');
+            notice(t('chat.view.stopRequested'), t('chat.view.stopRequestedTip'));
           } else {
-            notice('No active run', 'There is no run to stop in this session.', 'warning');
+            notice(t('chat.view.noActiveRun'), t('chat.view.noActiveRunTip'), 'warning');
           }
           return;
         case 'help-card': {
           const all = commandsQuery.data?.commands ?? [];
           const count = (kind: string) => all.filter((item) => item.availability === kind).length;
           notice(
-            'Hermes commands',
-            `Type "/" to browse them all. ${count('native')} run right here in the WebUI, ${count('hermes')} run inside Hermes (same output as the terminal), ${count('unsupported')} only make sense in a terminal.\nSkill commands (like /<skill-name>) work too.`,
+            t('chat.hermesCommands'),
+            t('chat.view.helpBody', {
+              native: count('native'),
+              hermes: count('hermes'),
+              unsupported: count('unsupported'),
+            }),
           );
           return;
         }
@@ -987,8 +1020,8 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
             return;
           }
           notice(
-            `${cmd.name} is for the terminal`,
-            cmd.disabledReason ?? 'This Hermes command only makes sense in the terminal app.',
+            t('chat.view.terminalOnly', { command: cmd.name }),
+            cmd.disabledReason ?? t('chat.view.terminalOnlyReason'),
             'warning',
           );
       }
@@ -1040,12 +1073,12 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         text !== ''
           ? text
           : first?.kind === 'image'
-            ? 'Image'
+            ? t('chat.view.titleImage')
             : first?.upload?.kind === 'audio'
-              ? 'Audio'
+              ? t('chat.view.titleAudio')
               : first?.upload?.kind === 'video'
-                ? 'Video'
-                : 'File';
+                ? t('chat.view.titleVideo')
+                : t('chat.view.titleFile');
       if (sessionId === undefined) {
         // A conversation exists only once something is sent: create it now and
         // hand the message to that conversation's own view.
@@ -1083,7 +1116,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
       saveActiveRunId(targetSession, run.run_id);
       setActiveRunId(run.run_id);
     } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : 'Failed to start the run.');
+      setError(sendError instanceof Error ? sendError.message : t('chat.view.runStartFailed'));
     } finally {
       setSending(false);
     }
@@ -1214,7 +1247,7 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
           className="yu-pop yu-btn absolute bottom-32 left-1/2 z-10 h-8 -translate-x-1/2 rounded-full px-3 text-xs text-text-secondary hover:text-text-primary"
         >
           <ArrowDown className="size-3.5" aria-hidden />
-          Latest
+          {t('chat.view.latest')}
         </button>
       ) : null}
 
@@ -1234,12 +1267,12 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
             data-tip={queued.join('\n\n')}
             data-tip-wide
           >
-            {queued.length} message{queued.length > 1 ? 's' : ''} queued for when Hermes finishes.
+            {t('chat.view.queuedCount', { count: queued.length })}
           </p>
         ) : null}
         {running && pendingApprovals.length > 0 ? (
           <p className="mb-2 px-1 text-xs text-accent">
-            {pendingApprovals.length} approval{pendingApprovals.length > 1 ? 's' : ''} waiting
+            {t('chat.view.pendingApprovals', { count: pendingApprovals.length })}
             above.
           </p>
         ) : null}

@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import '../../i18n';
 
 /**
  * Tool results as people read them: a JSON object becomes labelled rows
@@ -11,7 +13,10 @@ import type { ReactNode } from 'react';
 const MAX_DEPTH = 3;
 
 export function humanKey(key: string): string {
-  const spaced = key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
+  const spaced = key
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim();
   return spaced === '' ? key : spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
 }
 
@@ -21,7 +26,10 @@ function isEmpty(value: unknown): boolean {
     value === undefined ||
     value === '' ||
     (Array.isArray(value) && value.length === 0) ||
-    (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 0)
+    (typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      Object.keys(value).length === 0)
   );
 }
 
@@ -46,21 +54,32 @@ export function readableText(raw: string): string {
 function isBlock(value: unknown): boolean {
   if (typeof value === 'string') return value.includes('\n') || value.length > 90;
   if (Array.isArray(value)) {
-    const primitives = value.every((item) => item === null || ['string', 'number', 'boolean'].includes(typeof item));
+    const primitives = value.every(
+      (item) => item === null || ['string', 'number', 'boolean'].includes(typeof item),
+    );
     return !primitives || value.map(String).join(', ').length > 90;
   }
   return typeof value === 'object' && value !== null;
 }
 
 function Scalar({ value }: { value: unknown }): ReactNode {
+  const { t } = useTranslation();
   if (typeof value === 'boolean') {
     return (
-      <span className={['yu-chip h-5 rounded-full px-2 text-[11px]', value ? 'yu-chip-success' : 'yu-chip-neutral'].join(' ')}>
-        {value ? 'yes' : 'no'}
+      <span
+        className={[
+          'yu-chip h-5 rounded-full px-2 text-[11px]',
+          value ? 'yu-chip-success' : 'yu-chip-neutral',
+        ].join(' ')}
+      >
+        {value ? t('chat.payload.yes') : t('chat.payload.no')}
       </span>
     );
   }
-  if (typeof value === 'number') return <span className="font-mono text-text-primary tabular-nums">{value.toLocaleString()}</span>;
+  if (typeof value === 'number')
+    return (
+      <span className="font-mono text-text-primary tabular-nums">{value.toLocaleString()}</span>
+    );
   const text = String(value);
   if (text.includes('\n') || text.length > 90) {
     return (
@@ -74,9 +93,15 @@ function Scalar({ value }: { value: unknown }): ReactNode {
 
 function Value({ value, depth }: { value: unknown; depth: number }): ReactNode {
   if (Array.isArray(value)) {
-    if (value.every((item) => item === null || ['string', 'number', 'boolean'].includes(typeof item))) {
+    if (
+      value.every((item) => item === null || ['string', 'number', 'boolean'].includes(typeof item))
+    ) {
       const joined = value.map(String).join(', ');
-      return joined.length <= 90 ? <span className="break-words text-text-primary">{joined}</span> : <Scalar value={value.map(String).join('\n')} />;
+      return joined.length <= 90 ? (
+        <span className="break-words text-text-primary">{joined}</span>
+      ) : (
+        <Scalar value={value.map(String).join('\n')} />
+      );
     }
     if (depth >= MAX_DEPTH) return <Scalar value={JSON.stringify(value, null, 2)} />;
     return (
@@ -103,9 +128,17 @@ function Value({ value, depth }: { value: unknown; depth: number }): ReactNode {
  * width under their label.
  */
 function Rows({ record, depth }: { record: Record<string, unknown>; depth: number }) {
+  const { t } = useTranslation();
   const entries = Object.entries(record).filter(([, value]) => !isEmpty(value));
-  if (entries.length === 0) return <span className="text-text-tertiary">(empty)</span>;
-  const labelChars = Math.min(16, Math.max(6, ...entries.filter(([, value]) => !isBlock(value)).map(([key]) => humanKey(key).length)));
+  if (entries.length === 0)
+    return <span className="text-text-tertiary">{t('chat.payload.empty')}</span>;
+  const labelChars = Math.min(
+    16,
+    Math.max(
+      6,
+      ...entries.filter(([, value]) => !isBlock(value)).map(([key]) => humanKey(key).length),
+    ),
+  );
   return (
     <dl className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-surface/40">
       {entries.map(([key, value]) =>
@@ -118,7 +151,10 @@ function Rows({ record, depth }: { record: Record<string, unknown>; depth: numbe
           </div>
         ) : (
           <div key={key} className="flex items-baseline gap-3 px-3 py-1.5">
-            <dt className="shrink-0 text-[11px] font-medium text-text-tertiary" style={{ width: `${labelChars + 1}ch` }}>
+            <dt
+              className="shrink-0 text-[11px] font-medium text-text-tertiary"
+              style={{ width: `${labelChars + 1}ch` }}
+            >
               {humanKey(key)}
             </dt>
             <dd className="min-w-0 flex-1 text-[12.5px]">
@@ -135,7 +171,9 @@ export function ReadablePayload({ raw }: { raw: string }) {
   const parsed = parsePayload(raw);
   if (parsed === null || typeof parsed !== 'object') {
     return (
-      <pre className="font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap break-words text-text-secondary">{readableText(raw)}</pre>
+      <pre className="font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap break-words text-text-secondary">
+        {readableText(raw)}
+      </pre>
     );
   }
   return <Value value={parsed} depth={0} />;

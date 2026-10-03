@@ -1,4 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import '../../i18n';
 import {
   Brain,
   Check,
@@ -54,7 +56,20 @@ export function formatToolPayload(raw: string): string {
 }
 
 /** First meaningful line of a payload, for the collapsed card header. */
-const SUMMARY_KEYS = ['summary', 'message', 'output', 'stdout', 'result', 'content', 'text', 'path', 'url', 'query', 'command', 'error'];
+const SUMMARY_KEYS = [
+  'summary',
+  'message',
+  'output',
+  'stdout',
+  'result',
+  'content',
+  'text',
+  'path',
+  'url',
+  'query',
+  'command',
+  'error',
+];
 
 export function actionSummary(raw: string | undefined, fallback: string): string {
   if (raw === undefined || raw.trim() === '') return fallback;
@@ -62,9 +77,15 @@ export function actionSummary(raw: string | undefined, fallback: string): string
   const parsed = parsePayload(raw);
   if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
     const record = parsed as Record<string, unknown>;
-    const key = SUMMARY_KEYS.find((name) => typeof record[name] === 'string' && (record[name] as string).trim() !== '');
+    const key = SUMMARY_KEYS.find(
+      (name) => typeof record[name] === 'string' && (record[name] as string).trim() !== '',
+    );
     if (key !== undefined) {
-      const line = (record[key] as string).split('\n').map((part) => part.trim()).find((part) => part !== '') ?? '';
+      const line =
+        (record[key] as string)
+          .split('\n')
+          .map((part) => part.trim())
+          .find((part) => part !== '') ?? '';
       if (line !== '') return line.length > 96 ? `${line.slice(0, 93)}…` : line;
     }
   }
@@ -93,9 +114,12 @@ function ToolGlyph({ name }: { name: string }) {
 }
 
 /** "terminal" -> "Terminal", "web_search" -> "Web search". */
-function toolLabel(name: string): string {
-  const spaced = name.replace(/^mcp[-_]/, '').replace(/[_-]+/g, ' ').trim();
-  return spaced === '' ? 'Tool' : spaced.charAt(0).toUpperCase() + spaced.slice(1);
+function toolLabel(name: string, fallback: string): string {
+  const spaced = name
+    .replace(/^mcp[-_]/, '')
+    .replace(/[_-]+/g, ' ')
+    .trim();
+  return spaced === '' ? fallback : spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 function formatDuration(durationMs: number | undefined): string | null {
@@ -105,6 +129,7 @@ function formatDuration(durationMs: number | undefined): string | null {
 }
 
 export function ToolCard({ tool }: { tool: TranscriptTool }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [raw, setRaw] = useState(false);
   const summary = useMemo(() => actionSummary(tool.preview, ''), [tool.preview]);
@@ -119,13 +144,16 @@ export function ToolCard({ tool }: { tool: TranscriptTool }) {
   const staged = useMemo(() => stagedWriteOf(tool.name, tool.preview), [tool.name, tool.preview]);
 
   return (
-    <div className="yu-card my-1.5 w-full overflow-hidden rounded-xl text-[13px]" data-tool-card={tool.name}>
+    <div
+      className="yu-card my-1.5 w-full overflow-hidden rounded-xl text-[13px]"
+      data-tool-card={tool.name}
+    >
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         className="flex min-h-10 w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-surface-input"
         aria-expanded={open}
-        aria-label={`${tool.name} tool call, ${tool.state}`}
+        aria-label={t('chat.toolCard.callState', { name: tool.name, state: tool.state })}
       >
         <span
           aria-hidden
@@ -136,17 +164,21 @@ export function ToolCard({ tool }: { tool: TranscriptTool }) {
         >
           <ToolGlyph name={tool.name} />
         </span>
-        <span className="shrink-0 font-medium text-text-primary">{toolLabel(tool.name)}</span>
+        <span className="shrink-0 font-medium text-text-primary">
+          {toolLabel(tool.name, t('chat.toolCard.tool'))}
+        </span>
         <span
           className={[
             'min-w-0 flex-1 truncate font-mono text-xs',
             running ? 'yu-shimmer' : 'text-text-tertiary',
           ].join(' ')}
         >
-          {summary !== '' ? summary : running ? 'Running…' : ''}
+          {summary !== '' ? summary : running ? t('chat.running') : ''}
         </span>
         {duration !== null ? (
-          <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-tertiary">{duration}</span>
+          <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-tertiary">
+            {duration}
+          </span>
         ) : null}
         <span aria-hidden className="flex shrink-0 items-center">
           {tool.state === 'completed' ? (
@@ -159,7 +191,10 @@ export function ToolCard({ tool }: { tool: TranscriptTool }) {
         </span>
         <ChevronRight
           aria-hidden
-          className={['size-3.5 shrink-0 text-text-tertiary transition-transform', open ? 'rotate-90' : ''].join(' ')}
+          className={[
+            'size-3.5 shrink-0 text-text-tertiary transition-transform',
+            open ? 'rotate-90' : '',
+          ].join(' ')}
         />
       </button>
       {open ? (
@@ -168,23 +203,37 @@ export function ToolCard({ tool }: { tool: TranscriptTool }) {
             <button
               type="button"
               onClick={() => setRaw((value) => !value)}
-              title={raw ? 'Show as readable fields' : 'Show exactly what the tool returned'}
+              title={raw ? t('chat.toolCard.showReadable') : t('chat.toolCard.showRaw')}
               className="yu-btn yu-btn-ghost h-6 rounded-md px-2 text-[11px]"
             >
-              {raw ? 'Readable' : 'Raw'}
+              {raw ? t('chat.toolCard.readable') : t('chat.toolCard.raw')}
             </button>
           </div>
           <div className="max-h-96 overflow-auto px-3.5 pt-1 pb-3">
             {output === '' ? (
-              <p className="font-mono text-[11.5px] text-text-tertiary">(no output captured)</p>
+              <p className="font-mono text-[11.5px] text-text-tertiary">
+                {t('chat.toolCard.noOutputCaptured')}
+              </p>
             ) : raw ? (
               <pre className="font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap break-words text-text-secondary">
-                {truncated ? `${output.slice(0, MAX_EXPANDED_CHARS)}\n… truncated` : output}
+                {truncated
+                  ? `${output.slice(0, MAX_EXPANDED_CHARS)}\n${t('chat.toolCard.truncated')}`
+                  : output}
               </pre>
             ) : (
-              <ReadablePayload raw={truncated ? tool.preview?.slice(0, MAX_EXPANDED_CHARS) ?? '' : (tool.preview ?? '')} />
+              <ReadablePayload
+                raw={
+                  truncated
+                    ? (tool.preview?.slice(0, MAX_EXPANDED_CHARS) ?? '')
+                    : (tool.preview ?? '')
+                }
+              />
             )}
-            {tool.error ? <p className="mt-2 text-[12px] text-danger">Error: {tool.error}</p> : null}
+            {tool.error ? (
+              <p className="mt-2 text-[12px] text-danger">
+                {t('chat.toolCard.error', { error: tool.error })}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -194,11 +243,12 @@ export function ToolCard({ tool }: { tool: TranscriptTool }) {
 }
 
 export function ReasoningBlock({ reasoning }: { reasoning: TranscriptReasoning }) {
+  const { t } = useTranslation();
   return (
     <details className="group mx-auto w-full max-w-3xl px-4 py-0.5" data-reasoning-block>
       <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg py-1 text-xs font-medium text-agent-soft select-none hover:text-text-primary [&::-webkit-details-marker]:hidden">
         <Brain className="size-3.5" aria-hidden />
-        Reasoning
+        {t('chat.reasoning')}
         <ChevronRight className="size-3 transition-transform group-open:rotate-90" aria-hidden />
       </summary>
       <div className="mt-1 mb-2 border-l border-border-strong pl-3.5">
@@ -217,24 +267,36 @@ const TONE: Record<TranscriptSystem['tone'], { icon: ReactNode; className: strin
 };
 
 export function SystemCommandCard({ card }: { card: TranscriptSystem }) {
+  const { t } = useTranslation();
   const tone = TONE[card.tone];
   const [copied, setCopied] = useState(false);
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-1" data-system-card>
       <div className="yu-card flex w-full items-start gap-3 rounded-xl px-3.5 py-3 text-[13px]">
-        <span aria-hidden className={['mt-px flex size-6 shrink-0 items-center justify-center rounded-md', tone.className].join(' ')}>
+        <span
+          aria-hidden
+          className={[
+            'mt-px flex size-6 shrink-0 items-center justify-center rounded-md',
+            tone.className,
+          ].join(' ')}
+        >
           {card.pending === true ? <LoaderCircle className="size-3.5 animate-spin" /> : tone.icon}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className={['min-w-0 flex-1 font-medium text-text-primary', card.mono === true ? 'font-mono text-[12.5px]' : ''].join(' ')}>
+            <p
+              className={[
+                'min-w-0 flex-1 font-medium text-text-primary',
+                card.mono === true ? 'font-mono text-[12.5px]' : '',
+              ].join(' ')}
+            >
               {card.title}
             </p>
             {card.mono === true && card.pending !== true && card.detail ? (
               <button
                 type="button"
-                title={copied ? 'Copied' : 'Copy output'}
-                aria-label="Copy output"
+                title={copied ? t('common.copied') : t('chat.systemCard.copyOutput')}
+                aria-label={t('chat.systemCard.copyOutput')}
                 onClick={() => {
                   void copyText(card.detail ?? '').then(() => {
                     setCopied(true);
@@ -243,7 +305,11 @@ export function SystemCommandCard({ card }: { card: TranscriptSystem }) {
                 }}
                 className="yu-btn yu-btn-ghost size-7 shrink-0 rounded-lg"
               >
-                {copied ? <Check className="size-3.5 text-success" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
+                {copied ? (
+                  <Check className="size-3.5 text-success" aria-hidden />
+                ) : (
+                  <Copy className="size-3.5" aria-hidden />
+                )}
               </button>
             ) : null}
           </div>
@@ -258,7 +324,9 @@ export function SystemCommandCard({ card }: { card: TranscriptSystem }) {
                 {card.detail}
               </pre>
             ) : (
-              <p className="mt-0.5 whitespace-pre-wrap break-words text-text-secondary">{card.detail}</p>
+              <p className="mt-0.5 whitespace-pre-wrap break-words text-text-secondary">
+                {card.detail}
+              </p>
             )
           ) : null}
         </div>

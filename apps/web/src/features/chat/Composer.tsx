@@ -1,6 +1,28 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ArrowUp, ChevronDown, FileText, Film, LoaderCircle, Mic, Music, Paperclip, Sparkles, Square, X } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import '../../i18n';
+import {
+  ArrowUp,
+  ChevronDown,
+  FileText,
+  Film,
+  LoaderCircle,
+  Mic,
+  Music,
+  Paperclip,
+  Sparkles,
+  Square,
+  X,
+} from 'lucide-react';
 import type { NormalizedCommand } from '@hermes-webui/shared';
 import { fetchCommands } from '../../lib/api';
 import { toast } from '../../lib/toast';
@@ -95,16 +117,17 @@ function matchCommands(commands: NormalizedCommand[], value: string): SlashMatch
   return { query, hits };
 }
 
-function categoryLabel(cmd: NormalizedCommand): string {
-  if (cmd.availability === 'native') return 'WebUI';
-  if (cmd.availability === 'unsupported') return 'Terminal only';
+function categoryLabel(cmd: NormalizedCommand, t: (key: string) => string): string {
+  if (cmd.availability === 'native') return t('chat.composer.categoryWebui');
+  if (cmd.availability === 'unsupported') return t('chat.composer.categoryTerminalOnly');
   return cmd.category;
 }
 
-function categoryTip(cmd: NormalizedCommand): string {
-  if (cmd.availability === 'native') return 'Runs right here in the WebUI.';
-  if (cmd.availability === 'unsupported') return cmd.disabledReason ?? 'Only makes sense in the terminal app.';
-  return 'Runs inside Hermes; you see the same output as in the terminal.';
+function categoryTip(cmd: NormalizedCommand, t: (key: string) => string): string {
+  if (cmd.availability === 'native') return t('chat.composer.tipNative');
+  if (cmd.availability === 'unsupported')
+    return cmd.disabledReason ?? t('chat.composer.tipUnsupported');
+  return t('chat.composer.tipHermes');
 }
 
 /**
@@ -127,6 +150,7 @@ export function Composer({
   draftKey,
   placeholder,
 }: ComposerProps) {
+  const { t } = useTranslation();
   const [value, setValue] = useState(() => readDraft(draftKey));
   const [menuOpen, setMenuOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
@@ -136,34 +160,45 @@ export function Composer({
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(0);
 
-  const addFiles = useCallback(async (files: File[]) => {
-    for (const file of files) {
-      setUploading((count) => count + 1);
-      try {
-        const attachment = await readAttachment(file);
-        setAttachments((current) => {
-          if (current.length >= MAX_ATTACHMENTS) {
-            toast(`Up to ${MAX_ATTACHMENTS} attachments per message.`, 'error');
-            return current;
-          }
-          return [...current, attachment];
-        });
-      } catch (error) {
-        toast(error instanceof Error ? `${file.name}: ${error.message}` : 'Could not attach that file.', 'error');
-      } finally {
-        setUploading((count) => count - 1);
+  const addFiles = useCallback(
+    async (files: File[]) => {
+      for (const file of files) {
+        setUploading((count) => count + 1);
+        try {
+          const attachment = await readAttachment(file);
+          setAttachments((current) => {
+            if (current.length >= MAX_ATTACHMENTS) {
+              toast(t('chat.composer.maxAttachments', { count: MAX_ATTACHMENTS }), 'error');
+              return current;
+            }
+            return [...current, attachment];
+          });
+        } catch (error) {
+          toast(
+            error instanceof Error
+              ? `${file.name}: ${error.message}`
+              : t('chat.composer.attachFailed'),
+            'error',
+          );
+        } finally {
+          setUploading((count) => count - 1);
+        }
       }
-    }
-  }, []);
+    },
+    [t],
+  );
 
-  const appendText = useCallback((text: string) => {
-    setValue((current) => {
-      const next = current.trim() === '' ? text : `${current.replace(/\s+$/, '')} ${text}`;
-      persistDraft(draftKey, next);
-      return next;
-    });
-    inputRef.current?.focus();
-  }, [draftKey]);
+  const appendText = useCallback(
+    (text: string) => {
+      setValue((current) => {
+        const next = current.trim() === '' ? text : `${current.replace(/\s+$/, '')} ${text}`;
+        persistDraft(draftKey, next);
+        return next;
+      });
+      inputRef.current?.focus();
+    },
+    [draftKey],
+  );
 
   const voice = useVoiceInput(appendText, (message) => toast(message, 'error'));
 
@@ -232,7 +267,7 @@ export function Composer({
     } else {
       if (text === '' && attachments.length === 0) return;
       if (uploading > 0) {
-        toast('Still uploading an attachment…', 'info');
+        toast(t('chat.composer.stillUploading'), 'info');
         return;
       }
       onSend(text, attachments);
@@ -259,7 +294,7 @@ export function Composer({
       {menuVisible ? (
         <div
           role="listbox"
-          aria-label="Hermes commands"
+          aria-label={t('chat.hermesCommands')}
           className="yu-pop absolute bottom-full left-0 right-0 z-30 mb-2 max-h-72 overflow-y-auto rounded-2xl p-1.5 md:right-auto md:w-[26rem]"
         >
           {hits.map((cmd, index) => (
@@ -278,7 +313,7 @@ export function Composer({
               <span className="flex w-full items-center gap-2">
                 <span className="font-mono text-xs font-medium text-text-primary">{cmd.name}</span>
                 <span
-                  data-tip={categoryTip(cmd)}
+                  data-tip={categoryTip(cmd, t)}
                   className={[
                     'yu-chip shrink-0 px-1.5 py-0 text-[10px]',
                     cmd.availability === 'native'
@@ -288,11 +323,13 @@ export function Composer({
                         : 'yu-chip-agent',
                   ].join(' ')}
                 >
-                  {categoryLabel(cmd)}
+                  {categoryLabel(cmd, t)}
                 </span>
               </span>
               <span className="line-clamp-1 text-[11px] text-text-tertiary">
-                {cmd.argsHint !== null && cmd.argsHint !== undefined ? <span className="font-mono">{cmd.argsHint} · </span> : null}
+                {cmd.argsHint !== null && cmd.argsHint !== undefined ? (
+                  <span className="font-mono">{cmd.argsHint} · </span>
+                ) : null}
                 {cmd.description}
               </span>
             </button>
@@ -321,7 +358,7 @@ export function Composer({
       >
         {dragging ? (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[20px] bg-surface-input/90 text-sm text-accent">
-            Drop to attach
+            {t('chat.composer.dropToAttach')}
           </div>
         ) : null}
         {attachments.length > 0 ? (
@@ -337,7 +374,11 @@ export function Composer({
                 ) : (
                   <div
                     className="flex h-16 w-40 items-center gap-2 rounded-xl border border-border-subtle bg-chip px-2.5"
-                    title={attachment.kind === 'file' ? `${attachment.name}: saved for Hermes, which reads it from the server` : `${attachment.name}: inlined into the message`}
+                    title={
+                      attachment.kind === 'file'
+                        ? t('chat.attachmentSaved', { name: attachment.name })
+                        : t('chat.attachmentInlined', { name: attachment.name })
+                    }
                   >
                     {attachment.upload?.kind === 'audio' ? (
                       <Music className="size-4 shrink-0 text-text-tertiary" aria-hidden />
@@ -347,15 +388,21 @@ export function Composer({
                       <FileText className="size-4 shrink-0 text-text-tertiary" aria-hidden />
                     )}
                     <span className="min-w-0">
-                      <span className="block truncate text-xs text-text-primary">{attachment.name}</span>
-                      <span className="block font-mono text-[10px] text-text-tertiary">{bytes(attachment.size)}</span>
+                      <span className="block truncate text-xs text-text-primary">
+                        {attachment.name}
+                      </span>
+                      <span className="block font-mono text-[10px] text-text-tertiary">
+                        {bytes(attachment.size)}
+                      </span>
                     </span>
                   </div>
                 )}
                 <button
                   type="button"
-                  aria-label={`Remove ${attachment.name}`}
-                  onClick={() => setAttachments((current) => current.filter((item) => item.id !== attachment.id))}
+                  aria-label={t('chat.composer.removeAttachment', { name: attachment.name })}
+                  onClick={() =>
+                    setAttachments((current) => current.filter((item) => item.id !== attachment.id))
+                  }
                   className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-text-primary text-background shadow"
                 >
                   <X className="size-3" aria-hidden />
@@ -365,27 +412,27 @@ export function Composer({
             {uploading > 0 ? (
               <div className="flex h-16 items-center gap-2 rounded-xl border border-dashed border-border-strong px-3 text-xs text-text-secondary">
                 <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-                Uploading…
+                {t('chat.composer.uploading')}
               </div>
             ) : null}
           </div>
         ) : uploading > 0 ? (
           <div className="flex items-center gap-2 px-2.5 pt-1 pb-1.5 text-xs text-text-secondary">
             <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-            Uploading…
+            {t('chat.composer.uploading')}
           </div>
         ) : null}
         {voice.state === 'recording' ? (
           <div className="flex min-h-[2.75rem] items-center gap-3 px-2.5 py-2">
             <span className="yu-pulse size-2 rounded-full bg-danger text-danger" aria-hidden />
-            <span className="yu-shimmer text-[15px]">Listening…</span>
+            <span className="yu-shimmer text-[15px]">{t('chat.composer.listening')}</span>
             <span className="font-mono text-xs text-text-tertiary">
               {Math.floor(voice.elapsed / 60)}:{String(voice.elapsed % 60).padStart(2, '0')}
             </span>
           </div>
         ) : voice.state === 'transcribing' ? (
           <div className="flex min-h-[2.75rem] items-center px-2.5 py-2">
-            <span className="yu-shimmer-agent text-[15px]">Transcribing…</span>
+            <span className="yu-shimmer-agent text-[15px]">{t('chat.composer.transcribing')}</span>
           </div>
         ) : (
           <textarea
@@ -432,9 +479,11 @@ export function Composer({
             }}
             rows={1}
             placeholder={
-              steering ? 'Steer the running task…' : (placeholder ?? 'Message Hermes… ("/" for commands)')
+              steering
+                ? t('chat.composer.steerPlaceholder')
+                : (placeholder ?? t('chat.composer.placeholder'))
             }
-            aria-label="Message input"
+            aria-label={t('chat.messageInput')}
             className="block max-h-60 min-h-[2.75rem] w-full resize-none bg-transparent px-2.5 py-2 text-[15px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary"
           />
         )}
@@ -452,29 +501,34 @@ export function Composer({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            aria-label="Attach files"
-            title="Attach files: images, audio, video, PDFs, documents, code (also drag and drop or paste)"
+            aria-label={t('chat.composer.attachFiles')}
+            title={t('chat.composer.attachFilesTitle')}
             disabled={steering}
             className="yu-btn yu-btn-ghost size-8 shrink-0 rounded-lg"
           >
             <Paperclip className="size-4" aria-hidden />
           </button>
           <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-          {onOpenModelPicker !== undefined ? (
-            <button
-              type="button"
-              onClick={onOpenModelPicker}
-              aria-label="Change model"
-              data-tip={modelHint ?? `Change model${modelLabel !== undefined ? ` (current: ${modelLabel})` : ''}`}
-              data-tip-wide
-              className="yu-btn yu-btn-ghost h-8 max-w-[9.5rem] shrink-0 gap-1.5 rounded-lg px-2.5 text-xs sm:max-w-[14rem]"
-            >
-              <Sparkles className="size-3.5 shrink-0 text-accent" aria-hidden />
-              <span className="truncate font-mono">{modelLabel ?? 'Model'}</span>
-              <ChevronDown className="size-3 shrink-0" aria-hidden />
-            </button>
-          ) : null}
-          {extras}
+            {onOpenModelPicker !== undefined ? (
+              <button
+                type="button"
+                onClick={onOpenModelPicker}
+                aria-label={t('chat.composer.changeModel')}
+                data-tip={
+                  modelHint ??
+                  t('chat.composer.changeModelTip', {
+                    current: modelLabel !== undefined ? ` (current: ${modelLabel})` : '',
+                  })
+                }
+                data-tip-wide
+                className="yu-btn yu-btn-ghost h-8 max-w-[9.5rem] shrink-0 gap-1.5 rounded-lg px-2.5 text-xs sm:max-w-[14rem]"
+              >
+                <Sparkles className="size-3.5 shrink-0 text-accent" aria-hidden />
+                <span className="truncate font-mono">{modelLabel ?? t('chat.model')}</span>
+                <ChevronDown className="size-3 shrink-0" aria-hidden />
+              </button>
+            ) : null}
+            {extras}
           </div>
           {voice.supported && !running ? (
             voice.state === 'recording' ? (
@@ -482,15 +536,15 @@ export function Composer({
                 <button
                   type="button"
                   onClick={voice.cancel}
-                  aria-label="Cancel recording"
+                  aria-label={t('chat.composer.cancelRecording')}
                   className="yu-btn yu-btn-ghost h-8 rounded-lg px-2.5 text-xs"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={voice.stop}
-                  aria-label="Stop recording and transcribe"
+                  aria-label={t('chat.composer.stopRecording')}
                   className="yu-btn yu-btn-danger size-9 rounded-full"
                 >
                   <Square className="size-3.5 fill-current" aria-hidden />
@@ -501,8 +555,8 @@ export function Composer({
                 type="button"
                 onClick={() => void voice.start()}
                 disabled={voice.state === 'transcribing'}
-                aria-label="Dictate"
-                title="Dictate (transcribed by Hermes)"
+                aria-label={t('chat.composer.dictate')}
+                title={t('chat.composer.dictateTitle')}
                 className="yu-btn yu-btn-ghost size-9 shrink-0 rounded-full"
               >
                 <Mic className="size-4" aria-hidden />
@@ -513,18 +567,18 @@ export function Composer({
             <button
               type="button"
               onClick={submit}
-              aria-label="Steer"
+              aria-label={t('chat.composer.steer')}
               className="yu-btn yu-btn-tonal h-8 rounded-lg px-3 text-xs"
             >
-              Steer
+              {t('chat.composer.steer')}
             </button>
           ) : null}
           {running ? (
             <button
               type="button"
               onClick={onStop}
-              aria-label="Stop run"
-              title="Stop"
+              aria-label={t('chat.composer.stopRun')}
+              title={t('chat.stop')}
               className="yu-btn yu-btn-tonal size-9 shrink-0 rounded-full"
             >
               <Square className="size-3.5 fill-current" aria-hidden />
@@ -534,8 +588,8 @@ export function Composer({
               type="button"
               onClick={submit}
               disabled={value.trim() === '' && attachments.length === 0}
-              aria-label="Send message"
-              title="Send (Enter)"
+              aria-label={t('chat.composer.sendMessage')}
+              title={t('chat.composer.sendTitle')}
               className="yu-btn yu-btn-primary size-9 shrink-0 rounded-full"
             >
               <ArrowUp className="size-4" aria-hidden />
