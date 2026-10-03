@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useMatchRoute } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 import { Menu, RotateCw, X } from 'lucide-react';
 import { CommandPalette } from '../features/palette/CommandPalette';
 import { SessionSidebar } from '../features/sessions/SessionSidebar';
@@ -16,6 +17,7 @@ import { TOGGLE_SIDEBAR_EVENT } from '../lib/events';
  * visible and collapsible; mobile turns it into a drawer (PRD 10.3, 55.1).
  */
 export function AppShell({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [restartRequired, setRestartRequired] = useState(false);
@@ -61,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <button
           type="button"
           className="yu-btn yu-btn-ghost size-9"
-          aria-label="Open conversations"
+          aria-label={t('shell.openConversations')}
           onClick={() => setDrawerOpen(true)}
         >
           <Menu className="size-[18px]" aria-hidden />
@@ -69,7 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {inConversation ? (
           <div ref={setHeaderSlot} className="flex min-w-0 flex-1 items-center" />
         ) : (
-          <Link to="/" className="text-[15px] font-medium tracking-[-0.01em]" aria-label="Hermes WebUI home">
+          <Link to="/" className="text-[15px] font-medium tracking-[-0.01em]" aria-label={t('shell.homeAria')}>
             Hermes
           </Link>
         )}
@@ -91,7 +93,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           collapsed ? 'w-[60px]' : 'w-[284px]',
           drawerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         ].join(' ')}
-        aria-label="Conversations"
+        aria-label={t('shell.conversationsAria')}
       >
         <SessionSidebar
           collapsed={collapsed}
@@ -110,7 +112,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           role="status"
           className="yu-pop fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 flex items-center justify-between gap-3 rounded-2xl px-4 py-2.5 text-xs md:left-auto md:right-4 md:w-[26rem]"
         >
-          <span className="text-text-secondary">Changes saved. A gateway restart may be required.</span>
+          <span className="text-text-secondary">{t('shell.changesSavedRestart')}</span>
           <span className="flex items-center gap-1.5">
             <Link
               to="/settings/system"
@@ -118,11 +120,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => setRestartRequired(false)}
             >
               <RotateCw className="size-3.5" aria-hidden />
-              Restart Hermes
+              {t('shell.restartHermes')}
             </Link>
             <button
               type="button"
-              aria-label="Dismiss restart notice"
+              aria-label={t('shell.dismissRestart')}
               className="yu-btn yu-btn-ghost size-8"
               onClick={() => setRestartRequired(false)}
             >

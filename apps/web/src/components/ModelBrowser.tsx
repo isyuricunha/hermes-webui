@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, ChevronRight, Search } from 'lucide-react';
 import type { CatalogProvider } from '../lib/modelCatalog';
 
@@ -27,6 +28,7 @@ export function ModelBrowser({
 }) {
   const [query, setQuery] = useState('');
   const [only, setOnly] = useState<string | null>(null);
+  const { t } = useTranslation();
   const holdsSelected = (provider: CatalogProvider) =>
     selected !== null &&
     provider.models.some((model) => model.id === selected.model) &&
@@ -61,14 +63,14 @@ export function ModelBrowser({
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder={`Search ${totalModels} models`}
-          aria-label="Search models"
+          placeholder={t('modelBrowser.searchPlaceholder', { count: totalModels })}
+          aria-label={t('modelBrowser.searchAria')}
           className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
         />
       </label>
       {providers.length > 1 ? (
-        <div className="mb-2 flex shrink-0 gap-1.5 overflow-x-auto pb-0.5" role="radiogroup" aria-label="Filter by provider">
-          {[{ slug: null, name: 'All', count: totalModels, ready: true }, ...providers.map((provider) => ({ slug: provider.slug, name: provider.name, count: provider.models.length, ready: provider.ready }))].map(
+        <div className="mb-2 flex shrink-0 gap-1.5 overflow-x-auto pb-0.5" role="radiogroup" aria-label={t('modelBrowser.filterAria')}>
+          {[{ slug: null, name: t('modelBrowser.allChip'), count: totalModels, ready: true }, ...providers.map((provider) => ({ slug: provider.slug, name: provider.name, count: provider.models.length, ready: provider.ready }))].map(
             (chip) => {
               const active = only === chip.slug;
               return (
@@ -78,7 +80,7 @@ export function ModelBrowser({
                   role="radio"
                   aria-checked={active}
                   onClick={() => setOnly(active && chip.slug !== null ? null : chip.slug)}
-                  title={chip.ready ? undefined : `${chip.name} has no credential in Hermes yet`}
+                  title={chip.ready ? undefined : t('modelBrowser.noCredentialTip', { name: chip.name })}
                   className={[
                     'yu-chip h-7 shrink-0 rounded-full px-2.5 text-[11.5px] transition-colors',
                     active ? 'bg-chip text-text-primary ring-1 ring-accent/50' : 'yu-chip-neutral hover:text-text-primary',
@@ -93,9 +95,9 @@ export function ModelBrowser({
           )}
         </div>
       ) : null}
-      <div className={['min-h-0 overflow-y-auto pr-1', maxHeight].join(' ')} role="listbox" aria-label="Models">
+      <div className={['min-h-0 overflow-y-auto pr-1', maxHeight].join(' ')} role="listbox" aria-label={t('settings.nav.models')}>
         {filtered.length === 0 ? (
-          <p className="px-2 py-3 text-xs text-text-tertiary">No model matches “{query}”.</p>
+          <p className="px-2 py-3 text-xs text-text-tertiary">{t('modelBrowser.noMatch', { query })}</p>
         ) : (
           filtered.map((provider) => {
             const open = isOpen(provider);
@@ -111,9 +113,9 @@ export function ModelBrowser({
                 >
                   <ChevronRight aria-hidden className={['size-3 shrink-0 transition-transform', open ? 'rotate-90' : ''].join(' ')} />
                   <span className="truncate">{provider.name}</span>
-                  {provider.isCurrent ? <span className="text-accent normal-case">default</span> : null}
-                  {!provider.ready ? <span className="normal-case">no key</span> : null}
-                  {hasSelected && !open ? <Check className="size-3 text-accent" aria-label="Holds the selected model" /> : null}
+                  {provider.isCurrent ? <span className="text-accent normal-case">{t('modelBrowser.defaultChip')}</span> : null}
+                  {!provider.ready ? <span className="normal-case">{t('settings.models.noKeyLabel')}</span> : null}
+                  {hasSelected && !open ? <Check className="size-3 text-accent" aria-label={t('modelBrowser.holdsSelected')} /> : null}
                   <span className="ml-auto font-mono normal-case">{provider.models.length}</span>
                 </button>
                 {open

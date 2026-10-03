@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 import {
   Archive,
   Clock,
@@ -66,6 +67,7 @@ export function SessionItem({
   onNavigate?: () => void;
   actions: SessionItemActions;
 }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -88,7 +90,7 @@ export function SessionItem({
         <input
           ref={inputRef}
           value={draft}
-          aria-label={`New title for ${name}`}
+          aria-label={t('sessions.newTitleFor', { name })}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={commit}
           onKeyDown={(event) => {
@@ -120,16 +122,23 @@ export function SessionItem({
         title={`${name} (${id})`}
       >
         <SourceIcon source={source} />
-        <span className="min-w-0 flex-1 truncate group-hover:pr-7 group-focus-within:pr-7">{name}</span>
-        {pinned ? <Pin className="size-3 shrink-0 text-accent group-hover:hidden [@media(hover:none)]:hidden" aria-label="Pinned" /> : null}
+        <span className="min-w-0 flex-1 truncate group-hover:pr-7 group-focus-within:pr-7">
+          {name}
+        </span>
+        {pinned ? (
+          <Pin
+            className="size-3 shrink-0 text-accent group-hover:hidden [@media(hover:none)]:hidden"
+            aria-label={t('sessions.group.pinned')}
+          />
+        ) : null}
       </Link>
       <span className="absolute top-1/2 right-1 hidden -translate-y-1/2 group-hover:block group-focus-within:block [@media(hover:none)]:block">
         <Menu
-          label={`Actions for ${name}`}
+          label={t('sessions.actionsFor', { name })}
           trigger={<MoreHorizontal className="size-4" aria-hidden />}
           items={[
             {
-              label: 'Rename',
+              label: t('sessions.rename'),
               icon: <Pencil />,
               onSelect: () => {
                 setDraft(name);
@@ -137,11 +146,11 @@ export function SessionItem({
               },
             },
             pinned
-              ? { label: 'Unpin', icon: <PinOff />, onSelect: actions.onTogglePin }
-              : { label: 'Pin', icon: <Pin />, onSelect: actions.onTogglePin },
-            { label: 'Fork', icon: <GitFork />, onSelect: actions.onFork },
-            { label: 'Archive', icon: <Archive />, onSelect: actions.onArchive },
-            { label: 'Delete', icon: <Trash2 />, danger: true, onSelect: actions.onDelete },
+              ? { label: t('sessions.unpin'), icon: <PinOff />, onSelect: actions.onTogglePin }
+              : { label: t('sessions.pin'), icon: <Pin />, onSelect: actions.onTogglePin },
+            { label: t('sessions.fork'), icon: <GitFork />, onSelect: actions.onFork },
+            { label: t('sessions.archive'), icon: <Archive />, onSelect: actions.onArchive },
+            { label: t('common.delete'), icon: <Trash2 />, danger: true, onSelect: actions.onDelete },
           ]}
         />
       </span>

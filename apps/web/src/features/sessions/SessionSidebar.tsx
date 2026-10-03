@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 import { PanelLeftClose, PanelLeftOpen, Search, Settings, SquarePen } from 'lucide-react';
 import {
   deleteSession,
@@ -20,6 +21,7 @@ import { SessionItem } from './SessionItem';
 import { SessionSearch } from './SessionSearch';
 
 function HermesStatusPill() {
+  const { t } = useTranslation();
   const { data, isPending, isError } = useQuery({
     queryKey: ['app-status'],
     queryFn: fetchAppStatus,
@@ -33,12 +35,12 @@ function HermesStatusPill() {
       : data.hermes.state;
   const label =
     state === 'connecting'
-      ? 'Hermes: Connecting…'
+      ? t('sessions.statusConnecting')
       : state === 'offline'
-        ? 'Hermes: Offline'
+        ? t('sessions.statusOffline')
         : state === 'degraded'
-          ? 'Hermes: Degraded'
-          : 'Hermes: Connected';
+          ? t('sessions.statusDegraded')
+          : t('sessions.statusConnected');
   const dot =
     state === 'offline'
       ? 'bg-danger text-danger'
@@ -69,24 +71,30 @@ function HermesStatusPill() {
  * Raw technical session ids (api_*) never render as the primary label — they
  * stay in the tooltip/debug metadata.
  */
-function sessionLabel(id: string, title: string | null): string {
+function sessionLabel(id: string, title: string | null, fallback: string): string {
   if (title !== null && title.trim() !== '' && !/^[a-z0-9_]+_[0-9]{6,}_?[a-f0-9]*$/i.test(title)) {
     return title;
   }
-  return derivedTitle(id) ?? 'New chat';
+  return derivedTitle(id) ?? fallback;
 }
 
-const GROUPS = ['Pinned', 'Today', 'Yesterday', 'Previous 7 days', 'Older'] as const;
-type GroupLabel = (typeof GROUPS)[number];
+const GROUPS = [
+  'sessions.group.pinned',
+  'sessions.group.today',
+  'sessions.group.yesterday',
+  'sessions.group.last7Days',
+  'sessions.group.older',
+] as const;
+type GroupKey = (typeof GROUPS)[number];
 
-function groupLabel(session: SessionRow, now = new Date()): GroupLabel {
-  if (session.pinned === true) return 'Pinned';
+function groupKey(session: SessionRow, now = new Date()): GroupKey {
+  if (session.pinned === true) return 'sessions.group.pinned';
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const at = (session.last_active ?? session.started_at) * 1000;
-  if (at >= startOfToday) return 'Today';
-  if (at >= startOfToday - 86_400_000) return 'Yesterday';
-  if (at >= startOfToday - 7 * 86_400_000) return 'Previous 7 days';
-  return 'Older';
+  if (at >= startOfToday) return 'sessions.group.today';
+  if (at >= startOfToday - 86_400_000) return 'sessions.group.yesterday';
+  if (at >= startOfToday - 7 * 86_400_000) return 'sessions.group.last7Days';
+  return 'sessions.group.older';
 }
 
 interface SessionSidebarProps {
@@ -106,6 +114,7 @@ export function SessionSidebar({
   onCollapseToggle,
   onNavigate,
 }: SessionSidebarProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -151,7 +160,7 @@ export function SessionSidebar({
     try {
       const created = await forkSession(id);
       invalidate();
-      toast('Forked into a new conversation.', 'success');
+      toast(t('sessions.forked'), 'success');
       void navigate({ to: '/chat/$sessionId', params: { sessionId: created.session.id } });
       onNavigate?.();
     } catch (error) {
@@ -164,9 +173,9 @@ export function SessionSidebar({
       { id, body: { archived: true } },
       {
         onSuccess: () =>
-          toast(`Archived "${name}".`, 'success', {
+          toast(t('sessions.archived', { name }), 'success', {
             action: {
-              label: 'Undo',
+              label: t('common.undo'),
               onClick: () => patch.mutate({ id, body: { archived: false } }),
             },
           }),
@@ -176,16 +185,16 @@ export function SessionSidebar({
 
   const remove = async (id: string, name: string) => {
     const ok = await confirmDialog({
-      title: 'Delete this conversation?',
-      description: `"${name}" and its messages are removed from Hermes. This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t('sessions.deleteTitle'),
+      description: t('sessions.deleteDescription', { name }),
+      confirmLabel: t('common.delete'),
       tone: 'danger',
     });
     if (!ok) return;
     try {
       await deleteSession(id);
       invalidate();
-      toast('Conversation deleted.', 'success');
+      toast(t('sessions.deleted'), 'success');
       if (window.location.pathname === `/chat/${encodeURIComponent(id)}`) {
         void navigate({ to: '/' });
       }
@@ -197,12 +206,12 @@ export function SessionSidebar({
   const sessions = [...(sessionsQuery.data?.data ?? [])]
     .filter((session) => session.archived !== true)
     .sort((a, b) => (b.last_active ?? b.started_at) - (a.last_active ?? a.started_at));
-  const groups = new Map<GroupLabel, SessionRow[]>();
+  const groups = new Map<GroupKey, SessionRow[]>();
   for (const session of sessions) {
-    const label = groupLabel(session);
-    const list = groups.get(label) ?? [];
+    const key = groupKey(session);
+    const list = groups.get(key) ?? [];
     list.push(session);
-    groups.set(label, list);
+    groups.set(key, list);
   }
 
   const iconButton = 'yu-btn yu-btn-ghost size-8 rounded-lg';
@@ -228,8 +237,8 @@ export function SessionSidebar({
         <button
           type="button"
           onClick={onCollapseToggle}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? t('sessions.expand') : t('sessions.collapse')}
+          title={collapsed ? t('sessions.expand') : t('sessions.collapse')}
           className={[iconButton, 'hidden md:inline-flex'].join(' ')}
         >
           {collapsed ? (
@@ -245,8 +254,8 @@ export function SessionSidebar({
           type="button"
           onClick={() => newChat.mutate()}
           disabled={newChat.isPending}
-          aria-label="New chat"
-          title="New chat (Ctrl+Shift+O)"
+          aria-label={t('sessions.newChat')}
+          title={`${t('sessions.newChat')} (Ctrl+Shift+O)`}
           className={
             collapsed
               ? iconButton
@@ -254,14 +263,14 @@ export function SessionSidebar({
           }
         >
           <SquarePen className="size-4" aria-hidden />
-          {collapsed ? null : <span>New chat</span>}
+          {collapsed ? null : <span>{t('sessions.newChat')}</span>}
         </button>
         {collapsed ? (
           <button
             type="button"
             onClick={onCollapseToggle}
-            aria-label="Search conversations"
-            title="Search conversations"
+            aria-label={t('sessions.searchAria')}
+            title={t('sessions.searchAria')}
             className={iconButton}
           >
             <Search className="size-4" aria-hidden />
@@ -277,27 +286,34 @@ export function SessionSidebar({
           {searching ? (
             <div className="flex-1" />
           ) : (
-            <nav className="flex-1 overflow-y-auto px-2 pb-3" aria-label="Conversations">
+            <nav
+              className="flex-1 overflow-y-auto px-2 pb-3"
+              aria-label={t('sessions.conversationsAria')}
+            >
               {sessionsQuery.isPending ? (
-                <div className="space-y-2.5 px-2 pt-2" aria-label="Loading sessions">
+                <div className="space-y-2.5 px-2 pt-2" aria-label={t('sessions.loadingAria')}>
                   {[72, 54, 64, 40].map((width) => (
                     <div key={width} className="yu-skel h-3" style={{ width: `${width}%` }} />
                   ))}
                 </div>
               ) : sessionsQuery.isError ? (
-                <p className="px-2 py-2 text-[13px] text-danger">Could not load conversations.</p>
+                <p className="px-2 py-2 text-[13px] text-danger">{t('sessions.loadFailed')}</p>
               ) : sessions.length === 0 ? (
-                <p className="px-2 py-2 text-[13px] text-text-tertiary">No conversations yet.</p>
+                <p className="px-2 py-2 text-[13px] text-text-tertiary">{t('sessions.none')}</p>
               ) : (
-                GROUPS.map((label) => {
-                  const list = groups.get(label) ?? [];
+                GROUPS.map((key) => {
+                  const list = groups.get(key) ?? [];
                   if (list.length === 0) return null;
                   return (
-                    <div key={label} className="mb-2">
-                      <p className="yu-eyebrow px-2.5 pt-2 pb-1">{label}</p>
+                    <div key={key} className="mb-2">
+                      <p className="yu-eyebrow px-2.5 pt-2 pb-1">{t(key)}</p>
                       <ul>
                         {list.map((session) => {
-                          const name = sessionLabel(session.id, session.title);
+                          const name = sessionLabel(
+                            session.id,
+                            session.title,
+                            t('sessions.newChat'),
+                          );
                           return (
                             <SessionItem
                               key={session.id}
@@ -342,8 +358,8 @@ export function SessionSidebar({
           <Link
             to="/settings"
             onClick={onNavigate}
-            aria-label="Settings"
-            title="Settings"
+            aria-label={t('settings.title')}
+            title={t('settings.title')}
             className={
               collapsed
                 ? iconButton
@@ -351,7 +367,7 @@ export function SessionSidebar({
             }
           >
             <Settings className="size-4" aria-hidden />
-            {collapsed ? null : <span>Settings</span>}
+            {collapsed ? null : <span>{t('settings.title')}</span>}
           </Link>
           <ThemeToggle />
           <AccountMenu />

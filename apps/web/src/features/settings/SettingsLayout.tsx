@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fetchConfigSchema } from '../../lib/api';
 import { searchSchema } from '../../lib/settingsSearch';
 import { goToChat } from '../../lib/navigation';
@@ -8,13 +9,13 @@ import { ArrowLeft, Menu, Search } from 'lucide-react';
 import { SETTINGS_ITEMS, SETTINGS_NAV } from '../../app/settingsNav';
 import { ErrorNote, Page, PageHeader } from '../../components/ui';
 
-function sectionTitle(pathname: string): string {
+function sectionKey(pathname: string): string {
   const match = SETTINGS_ITEMS.filter((item) => pathname.startsWith(item.to)).sort(
     (a, b) => b.to.length - a.to.length,
   )[0];
   if (match !== undefined) return match.label;
-  if (pathname.includes('/field')) return 'Setting';
-  return 'Settings';
+  if (pathname.includes('/field')) return 'settings.fallbackField';
+  return 'settings.title';
 }
 
 /**
@@ -25,6 +26,7 @@ function sectionTitle(pathname: string): string {
  * from the top bar, closed by selection, backdrop or Escape.
  */
 export function SettingsLayout() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -52,18 +54,20 @@ export function SettingsLayout() {
     return () => window.removeEventListener('keydown', onKey);
   }, [drawerOpen]);
 
-  const activeSection = sectionTitle(location.pathname);
+  const activeSection = t(sectionKey(location.pathname));
 
   const navContent = (
     <div className="flex h-full flex-col">
-      <p className="px-2.5 pb-3 text-[17px] font-medium tracking-[-0.02em] text-text-primary">Settings</p>
+      <p className="px-2.5 pb-3 text-[17px] font-medium tracking-[-0.02em] text-text-primary">
+        {t('settings.title')}
+      </p>
       <label className="yu-input mb-3 flex h-9 items-center gap-2 rounded-xl px-2.5">
         <Search className="size-3.5 shrink-0 text-text-tertiary" aria-hidden />
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search settings…"
-          aria-label="Search settings"
+          placeholder={t('settings.searchPlaceholder')}
+          aria-label={t('settings.searchAria')}
           className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
         />
       </label>
@@ -82,7 +86,7 @@ export function SettingsLayout() {
                   className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] text-text-secondary hover:bg-surface-input hover:text-text-primary"
                 >
                   <Icon className="size-4 text-text-tertiary" aria-hidden />
-                  {item.label}
+                  {t(item.label)}
                 </Link>
               </li>
             );
@@ -103,24 +107,29 @@ export function SettingsLayout() {
                 title={hit.path}
               >
                 <span className="block text-[13px] font-medium text-text-primary">{hit.label}</span>
-                <span className="block font-mono text-[10.5px] break-all text-text-tertiary">{hit.path}</span>
+                <span className="block font-mono text-[10.5px] break-all text-text-tertiary">
+                  {hit.path}
+                </span>
               </button>
             </li>
           ))}
           {hits.length === 0 && pageHits.length === 0 ? (
-            <li className="px-2.5 py-1 text-[13px] text-text-tertiary">No matches.</li>
+            <li className="px-2.5 py-1 text-[13px] text-text-tertiary">
+              {t('settings.noMatches')}
+            </li>
           ) : null}
         </ul>
       ) : (
         <div className="-mx-1 flex-1 overflow-y-auto px-1">
           {SETTINGS_NAV.map((group) => (
             <div key={group.group} className="mb-3">
-              <p className="yu-eyebrow px-2.5 pb-1">{group.group}</p>
+              <p className="yu-eyebrow px-2.5 pb-1">{t(group.group)}</p>
               <ul className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const active =
-                    location.pathname === item.to || (item.to === '/settings/models' && location.pathname === '/settings');
+                    location.pathname === item.to ||
+                    (item.to === '/settings/models' && location.pathname === '/settings');
                   return (
                     <li key={item.to}>
                       <Link
@@ -134,8 +143,13 @@ export function SettingsLayout() {
                             : 'text-text-secondary hover:bg-surface-input hover:text-text-primary',
                         ].join(' ')}
                       >
-                        <Icon className={['size-4', active ? 'text-accent' : 'text-text-tertiary'].join(' ')} aria-hidden />
-                        {item.label}
+                        <Icon
+                          className={['size-4', active ? 'text-accent' : 'text-text-tertiary'].join(
+                            ' ',
+                          )}
+                          aria-hidden
+                        />
+                        {t(item.label)}
                       </Link>
                     </li>
                   );
@@ -156,7 +170,7 @@ export function SettingsLayout() {
           className="yu-btn yu-btn-ghost h-9 w-full justify-start rounded-lg px-2.5 text-[13.5px]"
         >
           <ArrowLeft className="size-4" aria-hidden />
-          Chat
+          {t('settings.backToChat')}
         </button>
       </div>
     </div>
@@ -169,7 +183,7 @@ export function SettingsLayout() {
         <button
           type="button"
           className="yu-btn yu-btn-ghost size-10 rounded-lg"
-          aria-label="Back to Chat"
+          aria-label={t('settings.backToChatAria')}
           onClick={() => goToChat(navigate)}
         >
           <ArrowLeft className="size-[18px]" aria-hidden />
@@ -177,7 +191,7 @@ export function SettingsLayout() {
         <button
           type="button"
           className="yu-btn yu-btn-ghost size-10 rounded-lg"
-          aria-label="Open Settings navigation"
+          aria-label={t('settings.openNavAria')}
           aria-expanded={drawerOpen}
           onClick={() => setDrawerOpen(true)}
         >
@@ -197,7 +211,7 @@ export function SettingsLayout() {
 
       {/* Navigation: drawer on mobile, persistent column on desktop */}
       <nav
-        aria-label="Settings"
+        aria-label={t('settings.title')}
         className={[
           'fixed inset-y-0 left-0 z-40 w-72 shrink-0 border-r border-border-subtle bg-surface p-3 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-[calc(0.75rem+env(safe-area-inset-bottom))]',
           'transition-transform duration-200 md:static md:w-60 md:translate-x-0',

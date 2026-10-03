@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useDialogRequest, type DialogRequest } from '../lib/dialog';
 
 function DialogBody({ request }: { request: DialogRequest }) {
+  const { t } = useTranslation();
   const [value, setValue] = useState(request.initialValue ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -73,7 +75,7 @@ function DialogBody({ request }: { request: DialogRequest }) {
             className="yu-btn yu-btn-ghost h-9 px-3.5 text-[13px]"
             onClick={() => request.resolve(request.kind === 'confirm' ? false : null)}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             ref={confirmRef}
@@ -83,7 +85,7 @@ function DialogBody({ request }: { request: DialogRequest }) {
               request.tone === 'danger' ? 'yu-btn-danger' : 'yu-btn-primary',
             ].join(' ')}
           >
-            {request.confirmLabel ?? (request.kind === 'prompt' ? 'Save' : 'Confirm')}
+            {request.confirmLabel ?? (request.kind === 'prompt' ? t('common.save') : t('common.confirm'))}
           </button>
         </div>
       </form>

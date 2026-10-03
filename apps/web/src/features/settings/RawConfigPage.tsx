@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fetchConfigRaw, putConfigRaw } from '../../lib/api';
 import { SettingsError, SettingsPage } from './SettingsLayout';
 
@@ -10,14 +11,22 @@ import { SettingsError, SettingsPage } from './SettingsLayout';
  */
 
 /** Minimal LCS line diff for the pre-apply review (config files are small). */
-function lineDiff(original: string, edited: string): { kind: 'same' | 'add' | 'del'; text: string }[] {
+function lineDiff(
+  original: string,
+  edited: string,
+): { kind: 'same' | 'add' | 'del'; text: string }[] {
   const a = original.split('\n');
   const b = edited.split('\n');
   // LCS table: O(n*m) cells; config.yaml is a few hundred lines, fine.
-  const lcs: number[][] = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  const lcs: number[][] = Array.from({ length: a.length + 1 }, () =>
+    new Array(b.length + 1).fill(0),
+  );
   for (let i = a.length - 1; i >= 0; i -= 1) {
     for (let j = b.length - 1; j >= 0; j -= 1) {
-      lcs[i]![j] = a[i] === b[j] ? (lcs[i + 1]![j + 1] ?? 0) + 1 : Math.max(lcs[i + 1]![j] ?? 0, lcs[i]![j + 1] ?? 0);
+      lcs[i]![j] =
+        a[i] === b[j]
+          ? (lcs[i + 1]![j + 1] ?? 0) + 1
+          : Math.max(lcs[i + 1]![j] ?? 0, lcs[i]![j + 1] ?? 0);
     }
   }
   const out: { kind: 'same' | 'add' | 'del'; text: string }[] = [];
@@ -48,6 +57,7 @@ function lineDiff(original: string, edited: string): { kind: 'same' | 'add' | 'd
 }
 
 export function RawConfigPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const configQuery = useQuery({ queryKey: ['config-raw'], queryFn: fetchConfigRaw });
 
@@ -75,19 +85,22 @@ export function RawConfigPage() {
   });
 
   const dirty = edited !== null && edited !== original;
-  const diff = useMemo(() => (dirty ? lineDiff(original, edited ?? '') : []), [dirty, original, edited]);
+  const diff = useMemo(
+    () => (dirty ? lineDiff(original, edited ?? '') : []),
+    [dirty, original, edited],
+  );
   const changedLines = diff.filter((d) => d.kind !== 'same').length;
 
   if (configQuery.isPending) {
     return (
-      <SettingsPage title="Raw Config">
-        <p className="text-sm text-text-secondary">Loading config…</p>
+      <SettingsPage title={t('settings.rawConfig.title')}>
+        <p className="text-sm text-text-secondary">{t('settings.rawConfig.loading')}</p>
       </SettingsPage>
     );
   }
   if (configQuery.isError) {
     return (
-      <SettingsPage title="Raw Config">
+      <SettingsPage title={t('settings.rawConfig.title')}>
         <SettingsError message={configQuery.error.message} />
       </SettingsPage>
     );
@@ -95,20 +108,20 @@ export function RawConfigPage() {
 
   return (
     <SettingsPage
-      title="Raw Config"
+      title={t('settings.rawConfig.title')}
       description={
         <>
-          <span className="font-mono">{configQuery.data.path}</span>, saved by Hermes itself; invalid YAML is refused before
-          it is applied. Every key is explained in the{' '}
+          <span className="font-mono">{configQuery.data.path}</span>
+          {t('settings.rawConfig.descMid')}
           <a
             href="https://hermes-agent.nousresearch.com/docs/user-guide/configuration"
             target="_blank"
             rel="noreferrer noopener"
             className="text-accent hover:underline"
           >
-            Hermes configuration docs
+            {t('settings.rawConfig.docsLink')}
           </a>
-          .
+          {t('settings.rawConfig.descEnd')}
         </>
       }
       actions={
@@ -118,15 +131,14 @@ export function RawConfigPage() {
           rel="noreferrer noopener"
           className="yu-btn yu-btn-tonal h-9 px-3.5 text-[13px]"
         >
-          Hermes docs
+          {t('settings.rawConfig.docs')}
         </a>
       }
     >
-
       {dirty ? (
         <details className="mb-3 yu-card rounded-2xl p-3 text-xs">
           <summary className="cursor-pointer select-none font-medium">
-            Review changes ({changedLines} changed lines)
+            {t('settings.rawConfig.review', { count: changedLines })}
           </summary>
           <div className="mt-2 max-h-72 overflow-auto rounded-xl bg-surface-editor p-3 font-mono text-text-secondary">
             {diff.map((line, index) => (
@@ -155,7 +167,7 @@ export function RawConfigPage() {
           setSaved(false);
         }}
         spellCheck={false}
-        aria-label="Raw config.yaml"
+        aria-label={t('settings.rawConfig.aria')}
         className="h-[60vh] w-full resize-none yu-card rounded-2xl p-4 font-mono text-xs outline-none focus:border-accent"
       />
 
@@ -166,7 +178,7 @@ export function RawConfigPage() {
           onClick={() => save.mutate(edited ?? '')}
           className="yu-btn yu-btn-primary px-4 py-2 text-sm"
         >
-          {save.isPending ? 'Saving…' : 'Save config'}
+          {save.isPending ? t('settings.rawConfig.saving') : t('settings.rawConfig.saveConfig')}
         </button>
         {dirty ? (
           <button
@@ -177,10 +189,12 @@ export function RawConfigPage() {
             }}
             className="yu-btn yu-btn-secondary h-9 px-4 text-sm"
           >
-            Discard
+            {t('settings.rawConfig.discard')}
           </button>
         ) : null}
-        {saved ? <span className="text-sm text-success">Saved.</span> : null}
+        {saved ? (
+          <span className="text-sm text-success">{t('settings.rawConfig.saved')}</span>
+        ) : null}
         {save.isError ? <span className="text-sm text-danger">{save.error.message}</span> : null}
       </div>
     </SettingsPage>

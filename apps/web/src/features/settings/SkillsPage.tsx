@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, FileText, Plus, Search, Trash2, Wand2 } from 'lucide-react';
 import {
   createSkill,
@@ -12,7 +13,17 @@ import {
 } from '../../lib/hx';
 import { confirmDialog } from '../../lib/dialog';
 import { toast, toastError } from '../../lib/toast';
-import { Badge, Card, EmptyNote, ErrorNote, Section, Segmented, SkeletonRows, Sheet, Switch } from '../../components/ui';
+import {
+  Badge,
+  Card,
+  EmptyNote,
+  ErrorNote,
+  Section,
+  Segmented,
+  SkeletonRows,
+  Sheet,
+  Switch,
+} from '../../components/ui';
 import { Markdown } from '../chat/Markdown';
 import { SettingsPage } from './SettingsLayout';
 import { PendingWrites } from './PendingWrites';
@@ -43,6 +54,7 @@ function SkillSheet({
   onClose: () => void;
   onChanged: (name?: string) => void;
 }) {
+  const { t } = useTranslation();
   const content = useQuery({
     queryKey: ['skill-content', name],
     queryFn: () => fetchSkillContent(name as string),
@@ -65,7 +77,12 @@ function SkillSheet({
       return name as string;
     },
     onSuccess: (saved) => {
-      toast(creating ? `Skill ${saved} created.` : `${saved} saved. Conversations load it the next time the skill applies.`, 'success');
+      toast(
+        creating
+          ? t('settings.skills.created', { name: saved })
+          : t('settings.skills.saved', { name: saved }),
+        'success',
+      );
       setDraft(null);
       setMode('read');
       onChanged(saved);
@@ -76,15 +93,15 @@ function SkillSheet({
   const remove = async () => {
     if (name === null) return;
     const ok = await confirmDialog({
-      title: `Delete ${name}?`,
-      description: 'Hermes removes the skill folder (SKILL.md and its files). Pinned skills are refused. This cannot be undone from here.',
-      confirmLabel: 'Delete skill',
+      title: t('settings.skills.deleteTitle', { name }),
+      description: t('settings.skills.deleteDesc'),
+      confirmLabel: t('settings.skills.deleteConfirm'),
       tone: 'danger',
     });
     if (!ok) return;
     try {
       await deleteSkill(name);
-      toast(`${name} deleted.`, 'success');
+      toast(t('settings.skills.deleted', { name }), 'success');
       onChanged();
       onClose();
     } catch (error) {
@@ -97,21 +114,28 @@ function SkillSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title={creating ? 'New skill' : (name ?? '')}
-      subtitle={creating ? 'Saved to your skills folder' : content.data?.path}
+      title={creating ? t('settings.skills.newSkill') : (name ?? '')}
+      subtitle={creating ? t('settings.skills.savedToFolder') : content.data?.path}
       actions={
         creating ? null : (
           <>
             <Segmented
-              label="Skill view"
+              label={t('settings.skills.view')}
               value={mode}
               onChange={setMode}
               options={[
-                { value: 'read', label: 'Read' },
-                { value: 'edit', label: 'Edit' },
+                { value: 'read', label: t('settings.skills.read') },
+                { value: 'edit', label: t('settings.skills.edit') },
               ]}
             />
-            <button type="button" aria-label={`Delete ${name ?? 'skill'}`} onClick={() => void remove()} className="yu-btn yu-btn-ghost size-8 rounded-lg hover:text-danger">
+            <button
+              type="button"
+              aria-label={t('settings.skills.deleteAria', {
+                name: name ?? t('settings.skills.newSkill'),
+              })}
+              onClick={() => void remove()}
+              className="yu-btn yu-btn-ghost size-8 rounded-lg hover:text-danger"
+            >
               <Trash2 className="size-4" aria-hidden />
             </button>
           </>
@@ -132,14 +156,14 @@ function SkillSheet({
                 value={newName}
                 onChange={(event) => setNewName(event.target.value)}
                 placeholder="skill-name"
-                aria-label="Skill name"
+                aria-label={t('settings.skills.nameAria')}
                 className="yu-input h-10 px-3 font-mono text-[13px]"
               />
               <input
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
-                placeholder="category (optional)"
-                aria-label="Category"
+                placeholder={t('settings.skills.categoryPlaceholder')}
+                aria-label={t('settings.skills.categoryAria')}
                 className="yu-input h-10 px-3 text-[13px]"
               />
             </div>
@@ -152,19 +176,34 @@ function SkillSheet({
             className="yu-input min-h-[24rem] w-full flex-1 resize-y px-3.5 py-3 font-mono text-[12.5px] leading-relaxed"
           />
           <div className="flex items-center justify-end gap-2">
-            {dirty && !creating ? <span className="mr-auto text-xs text-accent">Unsaved changes</span> : null}
+            {dirty && !creating ? (
+              <span className="mr-auto text-xs text-accent">{t('settings.skills.unsaved')}</span>
+            ) : null}
             {!creating ? (
-              <button type="button" className="yu-btn yu-btn-ghost h-9 px-3.5 text-[13px]" disabled={!dirty} onClick={() => setDraft(null)}>
-                Discard
+              <button
+                type="button"
+                className="yu-btn yu-btn-ghost h-9 px-3.5 text-[13px]"
+                disabled={!dirty}
+                onClick={() => setDraft(null)}
+              >
+                {t('settings.skills.discard')}
               </button>
             ) : null}
             <button
               type="button"
               className="yu-btn yu-btn-primary h-9 px-4 text-[13px]"
-              disabled={!dirty || save.isPending || (creating && !/^[a-z0-9][a-z0-9._-]*$/i.test(newName.trim()))}
+              disabled={
+                !dirty ||
+                save.isPending ||
+                (creating && !/^[a-z0-9][a-z0-9._-]*$/i.test(newName.trim()))
+              }
               onClick={() => save.mutate()}
             >
-              {save.isPending ? 'Saving…' : creating ? 'Create skill' : 'Save'}
+              {save.isPending
+                ? t('settings.skills.saving')
+                : creating
+                  ? t('settings.skills.create')
+                  : t('settings.skills.save')}
             </button>
           </div>
         </div>
@@ -176,11 +215,23 @@ function SkillSheet({
 type SkillSource = 'all' | 'agent' | 'hub' | 'bundled';
 
 /** Hermes' own provenance: it does not tell skills you wrote from ones the agent wrote. */
-const SOURCES: readonly { id: SkillSource; label: string; tip: string }[] = [
-  { id: 'all', label: 'All', tip: 'Every installed skill.' },
-  { id: 'agent', label: 'Yours', tip: 'Made on this machine, by you or by Hermes itself (Hermes does not tell the two apart).' },
-  { id: 'hub', label: 'Community', tip: 'Installed from the Skills Hub.' },
-  { id: 'bundled', label: 'Official', tip: 'Ships with Hermes.' },
+const SOURCES: readonly { id: SkillSource; labelKey: string; tipKey: string }[] = [
+  { id: 'all', labelKey: 'settings.skills.sourceAll', tipKey: 'settings.skills.sourceAllTip' },
+  {
+    id: 'agent',
+    labelKey: 'settings.skills.sourceYours',
+    tipKey: 'settings.skills.sourceYoursTip',
+  },
+  {
+    id: 'hub',
+    labelKey: 'settings.skills.sourceCommunity',
+    tipKey: 'settings.skills.sourceCommunityTip',
+  },
+  {
+    id: 'bundled',
+    labelKey: 'settings.skills.sourceOfficial',
+    tipKey: 'settings.skills.sourceOfficialTip',
+  },
 ];
 
 function sourceOf(skill: SkillInfo): SkillSource {
@@ -188,13 +239,23 @@ function sourceOf(skill: SkillInfo): SkillSource {
 }
 
 function SourceBadge({ skill }: { skill: SkillInfo }) {
+  const { t } = useTranslation();
   const source = sourceOf(skill);
-  const label = source === 'hub' ? 'Community' : source === 'bundled' ? 'Official' : 'Yours';
+  const label =
+    source === 'hub'
+      ? t('settings.skills.sourceCommunity')
+      : source === 'bundled'
+        ? t('settings.skills.sourceOfficial')
+        : t('settings.skills.sourceYours');
   return (
     <span
       className={[
         'yu-chip h-5 rounded-full px-1.5 text-[10.5px] font-normal',
-        source === 'agent' ? 'yu-chip-agent' : source === 'bundled' ? 'yu-chip-info' : 'yu-chip-neutral',
+        source === 'agent'
+          ? 'yu-chip-agent'
+          : source === 'bundled'
+            ? 'yu-chip-info'
+            : 'yu-chip-neutral',
       ].join(' ')}
     >
       {label}
@@ -204,6 +265,7 @@ function SourceBadge({ skill }: { skill: SkillInfo }) {
 
 /** Skills: every installed skill, grouped by category, with on/off and the SKILL.md. */
 export function SkillsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<string | null>(null);
@@ -211,7 +273,8 @@ export function SkillsPage() {
   const skills = useQuery({ queryKey: ['skills-full'], queryFn: fetchSkillList });
 
   const toggle = useMutation({
-    mutationFn: ({ name, enabled }: { name: string; enabled: boolean }) => toggleSkill(name, enabled),
+    mutationFn: ({ name, enabled }: { name: string; enabled: boolean }) =>
+      toggleSkill(name, enabled),
     onMutate: async ({ name, enabled }) => {
       await queryClient.cancelQueries({ queryKey: ['skills-full'] });
       const previous = queryClient.getQueryData<SkillInfo[]>(['skills-full']);
@@ -225,7 +288,12 @@ export function SkillsPage() {
       toastError(error);
     },
     onSuccess: (_data, { name, enabled }) =>
-      toast(`${name} ${enabled ? 'enabled' : 'disabled'}. Applies to new conversations (/new or /reset for a running one).`, 'success'),
+      toast(
+        enabled
+          ? t('settings.skills.enabledToast', { name })
+          : t('settings.skills.disabledToast', { name }),
+        'success',
+      ),
   });
 
   const [source, setSource] = useState<SkillSource>('all');
@@ -249,7 +317,11 @@ export function SkillsPage() {
       if (source !== 'all' && sourceOf(skill) !== source) continue;
       if (state === 'on' && !skill.enabled) continue;
       if (state === 'off' && skill.enabled) continue;
-      if (needle !== '' && !`${skill.name} ${skill.description} ${skill.category ?? ''}`.toLowerCase().includes(needle)) continue;
+      if (
+        needle !== '' &&
+        !`${skill.name} ${skill.description} ${skill.category ?? ''}`.toLowerCase().includes(needle)
+      )
+        continue;
       const key = skill.category || 'general';
       map.set(key, [...(map.get(key) ?? []), skill]);
     }
@@ -261,23 +333,31 @@ export function SkillsPage() {
   const shown = groups.reduce((sum, [, list]) => sum + list.length, 0);
   // Long lists start folded (open a category from its header); searching opens everything.
   const foldByDefault = shown > 30 && query.trim() === '';
-  const groupOpen = (category: string) => (query.trim() !== '' ? true : (toggledGroups[category] ?? !foldByDefault));
+  const groupOpen = (category: string) =>
+    query.trim() !== '' ? true : (toggledGroups[category] ?? !foldByDefault);
 
   return (
     <SettingsPage
-      title="Skills"
+      title={t('settings.skills.title')}
       description={
         skills.data !== undefined
-          ? `${enabled} of ${total} skills enabled. Disabled skills are never loaded into a conversation.`
-          : 'Reusable know-how Hermes loads when a task calls for it.'
+          ? t('settings.skills.descriptionCount', { enabled, total })
+          : t('settings.skills.descriptionPlain')
       }
       actions={
-        <button type="button" onClick={() => setCreating(true)} className="yu-btn yu-btn-tonal h-9 gap-1.5 px-3.5 text-[13px]">
-          <Plus className="size-4" aria-hidden /> New skill
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="yu-btn yu-btn-tonal h-9 gap-1.5 px-3.5 text-[13px]"
+        >
+          <Plus className="size-4" aria-hidden /> {t('settings.skills.newSkillButton')}
         </button>
       }
     >
-      <Section title="Changes waiting for approval" description="Skill writes Hermes staged for review (skills.write_approval).">
+      <Section
+        title={t('settings.skills.pendingTitle')}
+        description={t('settings.skills.pendingDesc')}
+      >
         <PendingWrites subsystem="skills" />
       </Section>
       <div className="mb-6 space-y-3">
@@ -286,13 +366,17 @@ export function SkillsPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search skills by name, description or category"
-            aria-label="Filter skills"
+            placeholder={t('settings.skills.searchPlaceholder')}
+            aria-label={t('settings.skills.filterAria')}
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-text-tertiary"
           />
         </label>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Where the skill came from">
+          <div
+            className="flex flex-wrap gap-1.5"
+            role="radiogroup"
+            aria-label={t('settings.skills.sourceAria')}
+          >
             {SOURCES.map((option) => {
               const active = source === option.id;
               return (
@@ -301,35 +385,40 @@ export function SkillsPage() {
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  data-tip={option.tip}
+                  data-tip={t(option.tipKey)}
                   data-tip-wide
                   onClick={() => setSource(option.id)}
                   className={[
                     'yu-chip h-8 rounded-full px-3 text-[12px] transition-colors',
-                    active ? 'bg-chip text-text-primary ring-1 ring-accent/50' : 'yu-chip-neutral hover:text-text-primary',
+                    active
+                      ? 'bg-chip text-text-primary ring-1 ring-accent/50'
+                      : 'yu-chip-neutral hover:text-text-primary',
                   ].join(' ')}
                 >
-                  {option.label}
-                  <span className="font-mono text-[10.5px] text-text-tertiary">{counts[option.id]}</span>
+                  {t(option.labelKey)}
+                  <span className="font-mono text-[10.5px] text-text-tertiary">
+                    {counts[option.id]}
+                  </span>
                 </button>
               );
             })}
           </div>
           <span className="flex-1" />
           <Segmented
-            label="Skill state"
+            label={t('settings.skills.stateLabel')}
             value={state}
             onChange={setState}
             options={[
-              { value: 'all', label: 'All' },
-              { value: 'on', label: 'On' },
-              { value: 'off', label: 'Off' },
+              { value: 'all', label: t('settings.skills.stateAll') },
+              { value: 'on', label: t('settings.skills.stateOn') },
+              { value: 'off', label: t('settings.skills.stateOff') },
             ]}
           />
         </div>
-        {skills.data !== undefined && (source !== 'all' || state !== 'all' || query.trim() !== '') ? (
+        {skills.data !== undefined &&
+        (source !== 'all' || state !== 'all' || query.trim() !== '') ? (
           <p className="text-xs text-text-tertiary">
-            Showing {shown} of {total}.{' '}
+            {t('settings.skills.showing', { shown, total })}{' '}
             <button
               type="button"
               className="text-link hover:underline"
@@ -339,7 +428,7 @@ export function SkillsPage() {
                 setQuery('');
               }}
             >
-              Clear filters
+              {t('settings.skills.clearFilters')}
             </button>
           </p>
         ) : null}
@@ -349,7 +438,10 @@ export function SkillsPage() {
       ) : skills.isPending ? (
         <SkeletonRows rows={5} />
       ) : groups.length === 0 ? (
-        <EmptyNote icon={<Wand2 className="size-6" />} title={total === 0 ? 'No skills installed' : 'No skills match'} />
+        <EmptyNote
+          icon={<Wand2 className="size-6" />}
+          title={total === 0 ? t('settings.skills.noneInstalled') : t('settings.skills.noneMatch')}
+        />
       ) : (
         <div className="space-y-2.5">
           {groups.map(([category, list]) => {
@@ -363,37 +455,51 @@ export function SkillsPage() {
                   aria-expanded={open}
                   className="flex w-full items-center gap-2.5 px-4 py-3 text-left transition-colors hover:bg-surface-input"
                 >
-                  <ChevronRight aria-hidden className={['size-4 shrink-0 text-text-tertiary transition-transform', open ? 'rotate-90' : ''].join(' ')} />
+                  <ChevronRight
+                    aria-hidden
+                    className={[
+                      'size-4 shrink-0 text-text-tertiary transition-transform',
+                      open ? 'rotate-90' : '',
+                    ].join(' ')}
+                  />
                   <span className="flex-1 text-sm font-medium text-text-primary">
                     {category.charAt(0).toUpperCase() + category.slice(1)}
                   </span>
                   <span className="font-mono text-[11px] text-text-tertiary">
-                    {on} of {list.length} on
+                    {t('settings.skills.onOf', { on, total: list.length })}
                   </span>
                 </button>
                 {open ? (
                   <ul className="divide-y divide-border-subtle border-t border-border-subtle">
                     {list.map((skill) => (
                       <li key={skill.name} className="flex items-center gap-3 px-4 py-3">
-                        <button type="button" onClick={() => setOpen(skill.name)} className="group min-w-0 flex-1 text-left">
+                        <button
+                          type="button"
+                          onClick={() => setOpen(skill.name)}
+                          className="group min-w-0 flex-1 text-left"
+                        >
                           <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-text-primary">
-                            <span className="truncate group-hover:underline group-hover:underline-offset-4">{skill.name}</span>
+                            <span className="truncate group-hover:underline group-hover:underline-offset-4">
+                              {skill.name}
+                            </span>
                             <SourceBadge skill={skill} />
-                            {!skill.enabled ? <Badge>Off</Badge> : null}
+                            {!skill.enabled ? <Badge>{t('settings.skills.stateOff')}</Badge> : null}
                           </span>
-                          <span className="mt-0.5 line-clamp-2 block text-[13px] text-text-secondary">{skill.description}</span>
+                          <span className="mt-0.5 line-clamp-2 block text-[13px] text-text-secondary">
+                            {skill.description}
+                          </span>
                         </button>
                         <button
                           type="button"
-                          aria-label={`Read ${skill.name}`}
-                          title="Read SKILL.md"
+                          aria-label={t('settings.skills.readAria', { name: skill.name })}
+                          title={t('settings.skills.readSkillMd')}
                           onClick={() => setOpen(skill.name)}
                           className="yu-btn yu-btn-ghost size-8 rounded-lg"
                         >
                           <FileText className="size-4" aria-hidden />
                         </button>
                         <Switch
-                          label={`${skill.name} enabled`}
+                          label={t('settings.skills.enabledAria', { name: skill.name })}
                           checked={skill.enabled}
                           onChange={(next) => toggle.mutate({ name: skill.name, enabled: next })}
                         />

@@ -5,7 +5,15 @@ import { encode } from 'uqr';
  * QR code as crisp SVG. Always dark modules on white with a quiet zone:
  * phone cameras need that contrast whatever the app theme is.
  */
-export function QrCode({ value, size = 208, label }: { value: string; size?: number; label: string }) {
+export function QrCode({
+  value,
+  size = 208,
+  label,
+}: {
+  value: string;
+  size?: number;
+  label: string;
+}) {
   const path = useMemo(() => {
     const { data } = encode(value, { border: 0 });
     let d = '';

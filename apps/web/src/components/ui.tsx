@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Check, TriangleAlert } from 'lucide-react';
 
 /**
@@ -193,8 +194,9 @@ export function StatusDot({ tone }: { tone: 'success' | 'warning' | 'danger' | '
 }
 
 export function SkeletonRows({ rows = 3 }: { rows?: number }) {
+  const { t } = useTranslation();
   return (
-    <div className="space-y-2.5" aria-label="Loading">
+    <div className="space-y-2.5" aria-label={t('common.loading')}>
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="yu-skel h-11 rounded-xl" style={{ opacity: 1 - index * 0.18 }} />
       ))}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSearch } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight, LockKeyhole } from 'lucide-react';
 import { storeCsrfToken, useAuthState } from '../../lib/auth';
 
@@ -22,6 +23,7 @@ function safeNextPath(next: string | undefined): string {
 }
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const search = useSearch({ from: '/login' }) as LoginSearch;
   const authState = useAuthState();
   const hermesMode = authState.data?.mode !== 'local';
@@ -45,14 +47,14 @@ export function LoginPage() {
         error?: { code?: string; message?: string };
       };
       if (!response.ok) {
-        setError(body.error?.message ?? 'Sign in failed.');
+        setError(body.error?.message ?? t('auth.loginFailed'));
         return;
       }
       storeCsrfToken(body.csrfToken ?? null);
       const next = safeNextPath(search.next);
       window.location.assign(next);
     } catch {
-      setError('Server unavailable.');
+      setError(t('auth.serverUnavailable'));
     } finally {
       setPending(false);
     }
@@ -65,7 +67,7 @@ export function LoginPage() {
           <h1 className="text-[44px] leading-none font-normal tracking-[-0.03em]">
             <span className="yu-shimmer-gold pr-[0.12em] italic">Hermes</span>
           </h1>
-          <p className="mt-3 text-sm text-text-secondary">Sign in to continue</p>
+          <p className="mt-3 text-sm text-text-secondary">{t('auth.signInToContinue')}</p>
         </div>
 
         <form
@@ -74,7 +76,7 @@ export function LoginPage() {
           style={{ ['--yu-delay' as string]: '100ms' }}
         >
           <label className="block">
-            <span className="yu-eyebrow mb-1.5 block">Username</span>
+            <span className="yu-eyebrow mb-1.5 block">{t('auth.username')}</span>
             <input
               value={username}
               onChange={(event) => setUsername(event.target.value)}
@@ -86,7 +88,7 @@ export function LoginPage() {
           </label>
 
           <label className="mt-4 block">
-            <span className="yu-eyebrow mb-1.5 block">Password</span>
+            <span className="yu-eyebrow mb-1.5 block">{t('auth.password')}</span>
             <input
               type="password"
               value={password}
@@ -103,10 +105,16 @@ export function LoginPage() {
             </p>
           ) : null}
 
-          <button type="submit" disabled={pending} className="yu-btn yu-btn-primary mt-6 h-11 w-full text-sm">
-            {pending ? <span>Signing in…</span> : (
+          <button
+            type="submit"
+            disabled={pending}
+            className="yu-btn yu-btn-primary mt-6 h-11 w-full text-sm"
+          >
+            {pending ? (
+              <span>{t('auth.signingIn')}</span>
+            ) : (
               <>
-                <span>Sign in</span>
+                <span>{t('auth.signIn')}</span>
                 <ArrowRight className="size-4" aria-hidden />
               </>
             )}
@@ -115,11 +123,10 @@ export function LoginPage() {
           {hermesMode ? (
             <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-text-tertiary">
               <LockKeyhole className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              <span>Use the same username and password as your Hermes dashboard.</span>
+              <span>{t('auth.sameCredentialsAsDashboard')}</span>
             </p>
           ) : null}
         </form>
-
       </div>
     </div>
   );

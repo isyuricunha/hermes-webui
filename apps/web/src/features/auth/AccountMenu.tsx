@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { authPost, fetchAuthState, logout } from '../../lib/auth';
 
 /**
@@ -9,6 +10,7 @@ import { authPost, fetchAuthState, logout } from '../../lib/auth';
  */
 
 export function AccountMenu() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<'menu' | 'password' | 'sessions'>('menu');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -51,7 +53,7 @@ export function AccountMenu() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        aria-label="Account menu"
+        aria-label={t('auth.menu.accountMenu')}
         title={username}
         className="yu-btn yu-btn-ghost size-8 rounded-lg"
       >
@@ -63,7 +65,7 @@ export function AccountMenu() {
       {open ? (
         <div
           role="menu"
-          aria-label="Account"
+          aria-label={t('auth.menu.account')}
           className="yu-pop absolute bottom-full left-0 z-50 mb-2 w-64 rounded-2xl p-1.5 md:right-0 md:left-auto"
         >
           {view === 'menu' ? (
@@ -71,24 +73,24 @@ export function AccountMenu() {
               <div className="px-2.5 pt-1.5 pb-2">
                 <p className="truncate text-[13px] font-medium text-text-primary">{username}</p>
                 <p className="text-[11px] text-text-tertiary">
-                  {hermesMode ? 'Signed in with your Hermes account' : 'Local WebUI account'}
+                  {hermesMode ? t('auth.menu.signedInHermes') : t('auth.menu.localAccount')}
                 </p>
               </div>
               {hermesMode ? null : (
                 <MenuItem
-                  label="Change password"
+                  label={t('auth.menu.changePassword')}
                   onClick={() => {
                     setView('password');
                   }}
                 />
               )}
               <MenuItem
-                label="Sessions"
+                label={t('auth.menu.sessions')}
                 onClick={() => {
                   setView('sessions');
                 }}
               />
-              <MenuItem label="Sign out" danger onClick={() => void signOut()} />
+              <MenuItem label={t('auth.menu.signOut')} danger onClick={() => void signOut()} />
             </>
           ) : null}
 
@@ -133,13 +135,8 @@ function MenuItem({
   );
 }
 
-function PasswordForm({
-  onDone,
-  onCancel,
-}: {
-  onDone: () => void;
-  onCancel: () => void;
-}) {
+function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [reauthPassword, setReauthPassword] = useState('');
@@ -163,7 +160,7 @@ function PasswordForm({
           setPending(false);
           return;
         }
-        setError(result.errorMessage ?? 'Password change failed.');
+        setError(result.errorMessage ?? t('auth.menu.changeFailed'));
         return;
       }
       if (overridePassword !== undefined) {
@@ -173,13 +170,13 @@ function PasswordForm({
           newPassword: next,
         });
         if (!retry.ok) {
-          setError(retry.errorMessage ?? 'Password change failed.');
+          setError(retry.errorMessage ?? t('auth.menu.changeFailed'));
           return;
         }
       }
       onDone();
     } catch {
-      setError('Server unavailable.');
+      setError(t('auth.serverUnavailable'));
     } finally {
       setPending(false);
     }
@@ -188,12 +185,12 @@ function PasswordForm({
   return (
     <div className="space-y-2 p-1">
       <p className="text-[10px] font-semibold tracking-wide text-text-secondary uppercase">
-        Change password
+        {t('auth.menu.changePassword')}
       </p>
       {needsReauth ? (
         <label className="block">
           <span className="mb-1 block text-[10px] text-text-secondary">
-            Confirm your password to continue
+            {t('auth.menu.confirmToContinue')}
           </span>
           <input
             type="password"
@@ -208,7 +205,7 @@ function PasswordForm({
         <>
           <label className="block">
             <span className="mb-1 block text-[10px] font-medium text-text-secondary">
-              Current password
+              {t('auth.menu.currentPassword')}
             </span>
             <input
               type="password"
@@ -220,7 +217,7 @@ function PasswordForm({
           </label>
           <label className="block">
             <span className="mb-1 block text-[10px] font-medium text-text-secondary">
-              New password (min 12)
+              {t('auth.menu.newPassword')}
             </span>
             <input
               type="password"
@@ -240,14 +237,18 @@ function PasswordForm({
           onClick={() => void submit(needsReauth ? reauthPassword : undefined)}
           className="yu-btn yu-btn-primary h-9 flex-1 text-xs"
         >
-          {pending ? 'Saving…' : needsReauth ? 'Confirm' : 'Change'}
+          {pending
+            ? t('auth.menu.saving')
+            : needsReauth
+              ? t('auth.menu.confirm')
+              : t('auth.menu.change')}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="h-9 rounded-lg border border-border-subtle px-3 text-xs text-text-secondary"
         >
-          Cancel
+          {t('common.cancel')}
         </button>
       </div>
     </div>
@@ -255,6 +256,7 @@ function PasswordForm({
 }
 
 function SessionsPanel({ onBack }: { onBack: () => void }) {
+  const { t } = useTranslation();
   const query = useQuery({
     queryKey: ['auth-sessions'],
     queryFn: async () => {
@@ -262,7 +264,7 @@ function SessionsPanel({ onBack }: { onBack: () => void }) {
         headers: { accept: 'application/json' },
       });
       if (!response.ok) {
-        throw new Error('Failed to list sessions.');
+        throw new Error(t('auth.menu.listFailed'));
       }
       return (await response.json()) as {
         sessions: { id: string; current: boolean; lastSeenAt: string; userAgent: string | null }[];
@@ -283,7 +285,7 @@ function SessionsPanel({ onBack }: { onBack: () => void }) {
         onClick={onBack}
         className="text-[11px] text-text-secondary hover:text-text-primary"
       >
-        ‹ Back
+        ‹ {t('auth.menu.back')}
       </button>
       {(query.data?.sessions ?? []).map((session) => (
         <div
@@ -291,9 +293,13 @@ function SessionsPanel({ onBack }: { onBack: () => void }) {
           className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-[11px] text-text-secondary"
         >
           <span className="min-w-0 truncate">
-            {session.current ? 'This session' : session.userAgent ?? 'Other session'}
+            {session.current
+              ? t('auth.menu.thisSession')
+              : (session.userAgent ?? t('auth.menu.otherSession'))}
           </span>
-          {session.current ? <span className="shrink-0 text-success">active</span> : null}
+          {session.current ? (
+            <span className="shrink-0 text-success">{t('auth.menu.active')}</span>
+          ) : null}
         </div>
       ))}
       <button
@@ -302,7 +308,7 @@ function SessionsPanel({ onBack }: { onBack: () => void }) {
         onClick={() => revokeOthers.mutate()}
         className="min-h-[36px] w-full rounded-lg border border-border-subtle text-xs font-medium hover:bg-surface"
       >
-        Sign out other sessions
+        {t('auth.menu.signOutOthers')}
       </button>
     </div>
   );

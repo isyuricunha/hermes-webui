@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   fetchConfigSchema,
   fetchSettingsConfig,
@@ -15,10 +16,14 @@ import { SettingsError, SettingsPage } from './SettingsLayout';
  * confirm the change landed (never trusts the 200 alone).
  */
 export function FieldDetailPage({ path }: { path: string }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const schemaQuery = useQuery({ queryKey: ['settings-schema'], queryFn: fetchConfigSchema });
   const configQuery = useQuery({ queryKey: ['settings-config'], queryFn: fetchSettingsConfig });
-  const defaultsQuery = useQuery({ queryKey: ['settings-defaults'], queryFn: fetchSettingsDefaults });
+  const defaultsQuery = useQuery({
+    queryKey: ['settings-defaults'],
+    queryFn: fetchSettingsDefaults,
+  });
 
   const field = schemaQuery.data?.fields[path];
   const current = configQuery.data !== undefined ? getByPath(configQuery.data, path) : undefined;
@@ -56,7 +61,7 @@ export function FieldDetailPage({ path }: { path: string }) {
   if (schemaQuery.isPending || configQuery.isPending || defaultsQuery.isPending) {
     return (
       <SettingsPage title={path}>
-        <p className="text-sm text-text-secondary">Loading…</p>
+        <p className="text-sm text-text-secondary">{t('settings.fieldDetail.loading')}</p>
       </SettingsPage>
     );
   }
@@ -70,9 +75,7 @@ export function FieldDetailPage({ path }: { path: string }) {
   if (field === undefined) {
     return (
       <SettingsPage title={path}>
-        <p className="text-sm text-text-secondary">
-          Unknown setting. It may exist in a newer Hermes version — check Raw Config.
-        </p>
+        <p className="text-sm text-text-secondary">{t('settings.fieldDetail.unknownSetting')}</p>
       </SettingsPage>
     );
   }
@@ -106,8 +109,8 @@ export function FieldDetailPage({ path }: { path: string }) {
       <div className="yu-card rounded-2xl p-4">
         <p className="text-sm font-medium">{field.description ?? path}</p>
         <p className="mt-1 text-xs text-text-secondary">
-          type: {type} · category: {field.category ?? '?'}
-          {current !== undefined ? '' : ' · not set (using default)'}
+          {t('settings.fieldDetail.fieldType', { type, category: field.category ?? '?' })}
+          {current !== undefined ? '' : t('settings.fieldDetail.notSetDefault')}
         </p>
         <input
           value={draft}
@@ -115,12 +118,12 @@ export function FieldDetailPage({ path }: { path: string }) {
             setInput(event.target.value);
             setConfirmed(false);
           }}
-          aria-label={`Value for ${path}`}
+          aria-label={t('settings.fieldDetail.valueAria', { path })}
           spellCheck={false}
           className="mt-3 h-10 w-full max-w-md yu-input px-3 text-sm"
         />
         {invalid ? (
-          <p className="mt-1 text-xs text-danger">Not a valid number.</p>
+          <p className="mt-1 text-xs text-danger">{t('settings.fieldDetail.notValidNumber')}</p>
         ) : null}
         <div className="mt-3 flex items-center gap-3">
           <button
@@ -129,19 +132,20 @@ export function FieldDetailPage({ path }: { path: string }) {
             onClick={() => save.mutate(buildValue())}
             className="yu-btn yu-btn-primary px-4 py-2 text-sm"
           >
-            {save.isPending ? 'Saving…' : 'Save'}
+            {save.isPending ? t('settings.fieldDetail.saving') : t('settings.fieldDetail.save')}
           </button>
-          {confirmed ? <span className="text-sm text-success">Saved and confirmed by re-read.</span> : null}
+          {confirmed ? (
+            <span className="text-sm text-success">{t('settings.fieldDetail.savedConfirmed')}</span>
+          ) : null}
           {save.isError ? <span className="text-sm text-danger">{save.error.message}</span> : null}
         </div>
         {fallback !== undefined ? (
-          <p className="mt-2 text-xs text-text-secondary">Default: {String(fallback)}</p>
+          <p className="mt-2 text-xs text-text-secondary">
+            {t('settings.fieldDetail.defaultLabel', { value: String(fallback) })}
+          </p>
         ) : null}
       </div>
-      <p className="mt-4 text-xs text-text-secondary">
-        Saving deep-merges into the real Hermes config.yaml. Some changes apply on the next turn;
-        others need a gateway restart (System → Restart Hermes).
-      </p>
+      <p className="mt-4 text-xs text-text-secondary">{t('settings.fieldDetail.saveHint')}</p>
     </SettingsPage>
   );
 }

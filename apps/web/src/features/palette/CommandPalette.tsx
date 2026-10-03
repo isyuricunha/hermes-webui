@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CornerDownLeft, Keyboard, MessageSquare, Search, SquarePen, SunMoon } from 'lucide-react';
 import { fetchSessions } from '../../lib/api';
 import { derivedTitle } from '../../lib/sessionTitles';
@@ -10,7 +11,7 @@ import { OPEN_PALETTE_EVENT, OPEN_SHORTCUTS_EVENT } from '../../lib/events';
 
 interface Command {
   id: string;
-  section: 'Actions' | 'Conversations' | 'Settings';
+  section: string;
   label: string;
   hint?: string;
   icon: ReactNode;
@@ -27,6 +28,7 @@ export function CommandPalette({ onCycleTheme }: { onCycleTheme: () => void }) {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const listRef = useRef<HTMLUListElement>(null);
 
   const sessions = useQuery({
@@ -67,24 +69,24 @@ export function CommandPalette({ onCycleTheme }: { onCycleTheme: () => void }) {
     const actions: Command[] = [
       {
         id: 'new-chat',
-        section: 'Actions',
-        label: 'New chat',
+        section: t('palette.section.actions'),
+        label: t('sessions.newChat'),
         hint: 'Ctrl+Shift+O',
         icon: <SquarePen />,
         run: close(() => void navigate({ to: '/' })),
       },
       {
         id: 'theme',
-        section: 'Actions',
-        label: 'Switch theme',
-        hint: 'AMOLED, Graphite, Light, System',
+        section: t('palette.section.actions'),
+        label: t('palette.switchTheme'),
+        hint: t('palette.themeHints'),
         icon: <SunMoon />,
         run: close(onCycleTheme),
       },
       {
         id: 'shortcuts',
-        section: 'Actions',
-        label: 'Keyboard shortcuts',
+        section: t('palette.section.actions'),
+        label: t('common.keyboardShortcuts'),
         hint: '?',
         icon: <Keyboard />,
         run: close(() => window.dispatchEvent(new Event(OPEN_SHORTCUTS_EVENT))),
@@ -97,19 +99,21 @@ export function CommandPalette({ onCycleTheme }: { onCycleTheme: () => void }) {
       .map((session) => ({
         id: `chat-${session.id}`,
         section: 'Conversations' as const,
-        label: session.title?.trim() || derivedTitle(session.id) || 'New chat',
+        label: session.title?.trim() || derivedTitle(session.id) || t('sessions.newChat'),
         hint: relativeTime(session.last_active ?? session.started_at),
         icon: <MessageSquare />,
         keywords: session.source,
-        run: close(() => void navigate({ to: '/chat/$sessionId', params: { sessionId: session.id } })),
+        run: close(
+          () => void navigate({ to: '/chat/$sessionId', params: { sessionId: session.id } }),
+        ),
       }));
     const settings: Command[] = SETTINGS_ITEMS.map((item) => {
       const Icon = item.icon;
       return {
         id: `settings-${item.to}`,
-        section: 'Settings' as const,
-        label: item.label,
-        hint: 'Settings',
+        section: t('settings.title'),
+        label: t(item.label),
+        hint: t('settings.title'),
         icon: <Icon />,
         keywords: item.keywords,
         run: close(() => void navigate({ to: item.to })),
@@ -119,11 +123,16 @@ export function CommandPalette({ onCycleTheme }: { onCycleTheme: () => void }) {
   }, [sessions.data, navigate, onCycleTheme]);
 
   const needle = query.trim().toLowerCase();
-  const filtered = needle === ''
-    ? commands.filter((command) => command.section !== 'Conversations' || commands.indexOf(command) < 3 + 8)
-    : commands.filter((command) =>
-        `${command.label} ${command.keywords ?? ''} ${command.section}`.toLowerCase().includes(needle),
-      );
+  const filtered =
+    needle === ''
+      ? commands.filter(
+          (command) => command.section !== 'Conversations' || commands.indexOf(command) < 3 + 8,
+        )
+      : commands.filter((command) =>
+          `${command.label} ${command.keywords ?? ''} ${command.section}`
+            .toLowerCase()
+            .includes(needle),
+        );
   const safeActive = Math.min(active, Math.max(0, filtered.length - 1));
 
   useEffect(() => {
@@ -143,7 +152,10 @@ export function CommandPalette({ onCycleTheme }: { onCycleTheme: () => void }) {
         if (event.target === event.currentTarget) setOpen(false);
       }}
     >
-      <div className="yu-pop yu-rise w-full max-w-xl overflow-hidden rounded-3xl" style={{ animationDuration: '0.35s' }}>
+      <div
+        className="yu-pop yu-rise w-full max-w-xl overflow-hidden rounded-3xl"
+        style={{ animationDuration: '0.35s' }}
+      >
         <div className="flex items-center gap-3 border-b border-border-subtle px-4">
           <Search className="size-4 shrink-0 text-text-tertiary" aria-hidden />
           <input
@@ -169,9 +181,16 @@ export function CommandPalette({ onCycleTheme }: { onCycleTheme: () => void }) {
             className="h-14 w-full bg-transparent text-[15px] outline-none placeholder:text-text-tertiary"
             aria-label="Search commands"
           />
-          <kbd className="shrink-0 rounded-md bg-chip px-1.5 py-0.5 font-mono text-[10px] text-text-tertiary">Esc</kbd>
+          <kbd className="shrink-0 rounded-md bg-chip px-1.5 py-0.5 font-mono text-[10px] text-text-tertiary">
+            Esc
+          </kbd>
         </div>
-        <ul ref={listRef} className="max-h-[50vh] overflow-y-auto p-2" role="listbox" aria-label="Results">
+        <ul
+          ref={listRef}
+          className="max-h-[50vh] overflow-y-auto p-2"
+          role="listbox"
+          aria-label="Results"
+        >
           {filtered.map((command, index) => {
             const header = command.section !== lastSection ? command.section : null;
             lastSection = command.section;
@@ -189,18 +208,26 @@ export function CommandPalette({ onCycleTheme }: { onCycleTheme: () => void }) {
                     index === safeActive ? 'bg-chip text-text-primary' : 'text-text-secondary',
                   ].join(' ')}
                 >
-                  <span className="flex shrink-0 text-text-tertiary [&>svg]:size-4">{command.icon}</span>
+                  <span className="flex shrink-0 text-text-tertiary [&>svg]:size-4">
+                    {command.icon}
+                  </span>
                   <span className="min-w-0 flex-1 truncate">{command.label}</span>
                   {command.hint !== undefined ? (
-                    <span className="shrink-0 font-mono text-[10.5px] text-text-tertiary">{command.hint}</span>
+                    <span className="shrink-0 font-mono text-[10.5px] text-text-tertiary">
+                      {command.hint}
+                    </span>
                   ) : null}
-                  {index === safeActive ? <CornerDownLeft className="size-3.5 shrink-0 text-text-tertiary" aria-hidden /> : null}
+                  {index === safeActive ? (
+                    <CornerDownLeft className="size-3.5 shrink-0 text-text-tertiary" aria-hidden />
+                  ) : null}
                 </button>
               </li>
             );
           })}
           {filtered.length === 0 ? (
-            <li className="px-3 py-6 text-center text-[13px] text-text-tertiary">Nothing matches “{query}”.</li>
+            <li className="px-3 py-6 text-center text-[13px] text-text-tertiary">
+              Nothing matches “{query}”.
+            </li>
           ) : null}
         </ul>
       </div>

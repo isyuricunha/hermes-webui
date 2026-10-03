@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bell, BellOff, Check, Download, Keyboard, Languages } from 'lucide-react';
-import { useTheme, useAccent, useChatStyle, THEME_OPTIONS, ACCENT_OPTIONS, CHAT_STYLE_OPTIONS } from '../../lib/theme';
+import {
+  useTheme,
+  useAccent,
+  useChatStyle,
+  THEME_OPTIONS,
+  ACCENT_OPTIONS,
+  CHAT_STYLE_OPTIONS,
+} from '../../lib/theme';
 import { notificationsSupported, requestNotificationPermission } from '../../lib/notify';
 import { OPEN_SHORTCUTS_EVENT } from '../../lib/events';
 import { toast } from '../../lib/toast';
@@ -13,7 +20,11 @@ const PREVIEW: Record<string, { canvas: string; card: string; line: string }> = 
   'true-black': { canvas: '#000000', card: '#0b0b0a', line: '#1a1a18' },
   dark: { canvas: '#262624', card: '#2b2b29', line: '#3b3b38' },
   light: { canvas: '#faf9f5', card: '#ffffff', line: '#ece9e1' },
-  system: { canvas: 'linear-gradient(135deg,#000 50%,#faf9f5 50%)', card: 'transparent', line: 'transparent' },
+  system: {
+    canvas: 'linear-gradient(135deg,#000 50%,#faf9f5 50%)',
+    card: 'transparent',
+    line: 'transparent',
+  },
 };
 
 interface InstallPromptEvent extends Event {
@@ -45,10 +56,12 @@ export function AppearancePage() {
     return () => window.removeEventListener('beforeinstallprompt', onPrompt);
   }, []);
 
-  const standalone = typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches;
+  const standalone =
+    typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches;
   const themeLabel = (id: string) =>
     t(`settings.appearance.themeOption.${id.replace('-', '_')}.label`);
-  const themeHint = (id: string) => t(`settings.appearance.themeOption.${id.replace('-', '_')}.hint`);
+  const themeHint = (id: string) =>
+    t(`settings.appearance.themeOption.${id.replace('-', '_')}.hint`);
   const accentLabel = (id: string) => t(`settings.appearance.accentOption.${id}`);
   const chatStyleLabel = (id: string) => t(`settings.appearance.chatStyleOption.${id}.label`);
   const chatStyleHint = (id: string) => t(`settings.appearance.chatStyleOption.${id}.hint`);
@@ -76,12 +89,22 @@ export function AppearancePage() {
                 ].join(' ')}
               >
                 <span className="block h-16 p-2.5" style={{ background: preview.canvas }}>
-                  <span className="block h-full rounded-lg" style={{ background: preview.card, boxShadow: `inset 0 0 0 0.5px ${preview.line}` }} />
+                  <span
+                    className="block h-full rounded-lg"
+                    style={{
+                      background: preview.card,
+                      boxShadow: `inset 0 0 0 0.5px ${preview.line}`,
+                    }}
+                  />
                 </span>
                 <span className="flex items-center gap-2 px-3 py-2.5">
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-text-primary">{themeLabel(option.id)}</span>
-                    <span className="block truncate text-[11px] text-text-tertiary">{themeHint(option.id)}</span>
+                    <span className="block text-[13px] font-medium text-text-primary">
+                      {themeLabel(option.id)}
+                    </span>
+                    <span className="block truncate text-[11px] text-text-tertiary">
+                      {themeHint(option.id)}
+                    </span>
                   </span>
                   {selected ? <Check className="size-4 shrink-0 text-accent" aria-hidden /> : null}
                 </span>
@@ -117,13 +140,20 @@ export function AppearancePage() {
                   style={
                     yucode
                       ? { background: '#0c0c0c', fontFamily: 'var(--font-mono)', color: '#cccccc' }
-                      : { background: 'var(--color-background)', color: 'var(--color-text-primary)' }
+                      : {
+                          background: 'var(--color-background)',
+                          color: 'var(--color-text-primary)',
+                        }
                   }
                 >
                   <span className="flex justify-end">
                     <span
                       className="rounded-md px-2 py-1"
-                      style={yucode ? { background: '#373737', color: '#ffffff' } : { background: 'var(--color-chip)' }}
+                      style={
+                        yucode
+                          ? { background: '#373737', color: '#ffffff' }
+                          : { background: 'var(--color-chip)' }
+                      }
                     >
                       {yucode ? '❯ fix the build' : 'Fix the build'}
                     </span>
@@ -131,13 +161,22 @@ export function AppearancePage() {
                   <span className="block">
                     {yucode ? <span style={{ color: '#d77757' }}>● </span> : null}
                     Done. The{' '}
-                    <span style={{ color: yucode ? '#d77757' : 'var(--color-accent)', fontFamily: 'var(--font-mono)' }}>tsconfig</span> path
-                    was wrong.
+                    <span
+                      style={{
+                        color: yucode ? '#d77757' : 'var(--color-accent)',
+                        fontFamily: 'var(--font-mono)',
+                      }}
+                    >
+                      tsconfig
+                    </span>{' '}
+                    path was wrong.
                   </span>
                 </span>
                 <span className="flex items-center gap-2 border-t border-border-subtle px-3 py-2.5">
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-text-primary">{chatStyleLabel(option.id)}</span>
+                    <span className="block text-[13px] font-medium text-text-primary">
+                      {chatStyleLabel(option.id)}
+                    </span>
                     <span className="block truncate text-[11px] text-text-tertiary">
                       {chatStyleHint(option.id)}
                       {option.credit !== undefined ? ` · ${option.credit}` : ''}
@@ -166,7 +205,9 @@ export function AppearancePage() {
               aria-pressed={accent === option.id}
               className={[
                 'flex h-11 items-center gap-2 rounded-xl px-3 text-[13px] transition-colors',
-                accent === option.id ? 'bg-chip text-text-primary shadow-[var(--yu-highlight)]' : 'text-text-secondary hover:bg-surface-input',
+                accent === option.id
+                  ? 'bg-chip text-text-primary shadow-[var(--yu-highlight)]'
+                  : 'text-text-secondary hover:bg-surface-input',
               ].join(' ')}
             >
               <span className="size-4 rounded-full" style={{ backgroundColor: option.swatch }} />
@@ -229,7 +270,8 @@ export function AppearancePage() {
                 onClick={() =>
                   void requestNotificationPermission().then((result) => {
                     setPermission(result);
-                    if (result === 'granted') toast(t('settings.appearance.notificationsOn'), 'success');
+                    if (result === 'granted')
+                      toast(t('settings.appearance.notificationsOn'), 'success');
                   })
                 }
               >
@@ -266,8 +308,12 @@ export function AppearancePage() {
           >
             <Keyboard className="size-4 shrink-0 text-text-tertiary" aria-hidden />
             <span className="min-w-0 flex-1">
-              <span className="block text-sm text-text-primary">{t('settings.appearance.keyboardShortcuts')}</span>
-              <span className="block text-xs text-text-tertiary">{t('settings.appearance.keyboardShortcutsHint')}</span>
+              <span className="block text-sm text-text-primary">
+                {t('settings.appearance.keyboardShortcuts')}
+              </span>
+              <span className="block text-xs text-text-tertiary">
+                {t('settings.appearance.keyboardShortcutsHint')}
+              </span>
             </span>
           </button>
         </Card>

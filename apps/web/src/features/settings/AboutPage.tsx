@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { ArrowUpRight, GitBranch, Heart, Palette, Scale, SquareTerminal } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { fetchAppStatus } from '../../lib/api';
@@ -23,12 +24,37 @@ function GitlabMark() {
 
 /** Where the project lives. GitHub is kept even while it is offline. */
 const REPOSITORIES: readonly { name: string; url: string; hint: string; icon: ReactNode }[] = [
-  { name: 'GitHub', url: 'https://github.com/isyuricunha/hermes-webui', hint: 'github.com/isyuricunha/hermes-webui', icon: <GithubMark /> },
-  { name: 'GitLab', url: 'https://gitlab.com/isyuricunha/hermes-webui', hint: 'gitlab.com/isyuricunha/hermes-webui', icon: <GitlabMark /> },
-  { name: 'YuGit', url: 'https://git.yuricunha.com/isyuricunha/hermes-webui', hint: 'git.yuricunha.com · Forgejo', icon: <GitBranch /> },
+  {
+    name: 'GitHub',
+    url: 'https://github.com/isyuricunha/hermes-webui',
+    hint: 'github.com/isyuricunha/hermes-webui',
+    icon: <GithubMark />,
+  },
+  {
+    name: 'GitLab',
+    url: 'https://gitlab.com/isyuricunha/hermes-webui',
+    hint: 'gitlab.com/isyuricunha/hermes-webui',
+    icon: <GitlabMark />,
+  },
+  {
+    name: 'YuGit',
+    url: 'https://git.yuricunha.com/isyuricunha/hermes-webui',
+    hint: 'git.yuricunha.com · Forgejo',
+    icon: <GitBranch />,
+  },
 ];
 
-function LinkRow({ href, icon, title, hint }: { href: string; icon: ReactNode; title: string; hint: string }) {
+function LinkRow({
+  href,
+  icon,
+  title,
+  hint,
+}: {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  hint: string;
+}) {
   return (
     <a
       href={href}
@@ -36,7 +62,10 @@ function LinkRow({ href, icon, title, hint }: { href: string; icon: ReactNode; t
       rel="noreferrer noopener"
       className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-input focus-visible:bg-surface-input focus-visible:outline-none"
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-chip text-text-secondary [&>svg]:size-4" aria-hidden>
+      <span
+        className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-chip text-text-secondary [&>svg]:size-4"
+        aria-hidden
+      >
         {icon}
       </span>
       <span className="min-w-0 flex-1">
@@ -50,68 +79,101 @@ function LinkRow({ href, icon, title, hint }: { href: string; icon: ReactNode; t
 
 /** Settings > About: versions, where the code lives, credits and license. */
 export function AboutPage() {
+  const { t } = useTranslation();
   const status = useQuery({ queryKey: ['app-status'], queryFn: fetchAppStatus, staleTime: 60_000 });
   const hermes = status.data?.hermes;
-  const hermesVersion = hermes !== undefined && 'version' in hermes && hermes.version ? `v${hermes.version}` : hermes?.state ?? '…';
+  const hermesVersion =
+    hermes !== undefined && 'version' in hermes && hermes.version
+      ? `v${hermes.version}`
+      : (hermes?.state ?? '…');
   return (
-    <SettingsPage title="About" description="Hermes WebUI: a browser home for your Hermes Agent.">
-      <Section title="Versions">
+    <SettingsPage title={t('settings.about.title')} description={t('settings.about.description')}>
+      <Section title={t('settings.about.versions')}>
         <Card className="grid grid-cols-2 divide-x divide-border-subtle">
           <div className="px-4 py-3.5">
-            <p className="text-xs text-text-tertiary">Hermes WebUI</p>
-            <p className="mt-0.5 font-mono text-lg font-light text-text-primary">{status.data ? `v${status.data.version}` : '…'}</p>
+            <p className="text-xs text-text-tertiary">{t('settings.about.hermesWebui')}</p>
+            <p className="mt-0.5 font-mono text-lg font-light text-text-primary">
+              {status.data ? `v${status.data.version}` : '…'}
+            </p>
           </div>
           <div className="px-4 py-3.5">
-            <p className="text-xs text-text-tertiary">Hermes Agent</p>
+            <p className="text-xs text-text-tertiary">{t('settings.about.hermesAgent')}</p>
             <p className="mt-0.5 font-mono text-lg font-light text-text-primary">{hermesVersion}</p>
           </div>
         </Card>
       </Section>
 
-      <Section title="Source code" description="The same repository on three hosts. Issues and ideas are welcome on any of them.">
+      <Section title={t('settings.about.sourceCode')} description={t('settings.about.sourceDesc')}>
         <Card className="divide-y divide-border-subtle overflow-hidden">
           {REPOSITORIES.map((repo) => (
-            <LinkRow key={repo.name} href={repo.url} icon={repo.icon} title={repo.name} hint={repo.hint} />
+            <LinkRow
+              key={repo.name}
+              href={repo.url}
+              icon={repo.icon}
+              title={repo.name}
+              hint={repo.hint}
+            />
           ))}
         </Card>
       </Section>
 
-      <Section title="Credits">
+      <Section title={t('settings.about.credits')}>
         <Card className="divide-y divide-border-subtle overflow-hidden">
           <div className="flex items-start gap-3 px-4 py-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-chip text-accent" aria-hidden>
+            <span
+              className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-chip text-accent"
+              aria-hidden
+            >
               <Heart className="size-4" />
             </span>
             <p className="min-w-0 text-sm leading-relaxed text-text-secondary">
-              Made by <span className="text-text-primary">Yuri Cunha</span> for{' '}
-              <a className="text-link hover:underline" href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noreferrer noopener">
-                Hermes Agent
-              </a>{' '}
-              by Nous Research.
+              {t('settings.about.madeBy')}
+              <span className="text-text-primary">Yuri Cunha</span>
+              {t('settings.about.forWe')}
+              <a
+                className="text-link hover:underline"
+                href="https://github.com/NousResearch/hermes-agent"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                {t('settings.about.hermesAgentLink')}
+              </a>
+              {t('settings.about.byNous')}
             </p>
           </div>
           <div className="flex items-start gap-3 px-4 py-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-chip text-text-secondary" aria-hidden>
+            <span
+              className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-chip text-text-secondary"
+              aria-hidden
+            >
               <Palette className="size-4" />
             </span>
             <p className="min-w-0 text-sm leading-relaxed text-text-secondary">
-              <span className="text-text-primary">YuTheme</span>, the look of this app, created by Yuri Cunha.
+              {t('settings.about.yutheme')}
             </p>
           </div>
           <div className="flex items-start gap-3 px-4 py-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-chip text-[#d77757]" aria-hidden>
+            <span
+              className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-chip text-[#d77757]"
+              aria-hidden
+            >
               <SquareTerminal className="size-4" />
             </span>
             <p className="min-w-0 text-sm leading-relaxed text-text-secondary">
-              <span className="text-text-primary">YuCode</span>, the terminal-style chat and code skin (Settings &gt; Appearance), created by Yuri Cunha.
+              {t('settings.about.yucode')}
             </p>
           </div>
           <div className="flex items-start gap-3 px-4 py-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-chip text-text-secondary" aria-hidden>
+            <span
+              className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-chip text-text-secondary"
+              aria-hidden
+            >
               <Scale className="size-4" />
             </span>
             <p className="min-w-0 text-sm leading-relaxed text-text-secondary">
-              Free software under the <span className="text-text-primary">GNU AGPL v3</span>. Run it, study it, change it, share it.
+              {t('settings.about.license1')}
+              <span className="text-text-primary">GNU AGPL v3</span>
+              {t('settings.about.license2')}
             </p>
           </div>
         </Card>

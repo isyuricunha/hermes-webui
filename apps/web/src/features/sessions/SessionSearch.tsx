@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 import { Search, X } from 'lucide-react';
 import { searchSessions } from '../../lib/hx';
 import { relativeTime } from '../../lib/format';
@@ -8,7 +9,10 @@ import { SourceIcon } from './SessionItem';
 
 /** FTS snippets come back with >>>match<<< style markers; normalize and emphasize. */
 function Snippet({ text, query }: { text: string; query: string }) {
-  const clean = text.replace(/>>>|<<<|\[\[|\]\]|<\/?b>/g, '').replace(/\s+/g, ' ').trim();
+  const clean = text
+    .replace(/>>>|<<<|\[\[|\]\]|<\/?b>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
   const needle = query.trim().toLowerCase();
   if (needle === '') return <>{clean}</>;
   const parts: { text: string; hit: boolean }[] = [];
@@ -59,6 +63,7 @@ export function SessionSearch({
   onNavigate?: () => void;
 }) {
   const debounced = useDebounced(query.trim(), 250);
+  const { t } = useTranslation();
   const results = useQuery({
     queryKey: ['session-search', debounced],
     queryFn: () => searchSessions(debounced, 25),
@@ -76,12 +81,17 @@ export function SessionSearch({
           onKeyDown={(event) => {
             if (event.key === 'Escape') onQueryChange('');
           }}
-          placeholder="Search conversations"
-          aria-label="Search conversations"
+          placeholder={t('sessions.searchAria')}
+          aria-label={t('sessions.searchAria')}
           className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-tertiary"
         />
         {query !== '' ? (
-          <button type="button" aria-label="Clear search" onClick={() => onQueryChange('')} className="text-text-tertiary hover:text-text-primary">
+          <button
+            type="button"
+            aria-label={t('sessions.clearSearch')}
+            onClick={() => onQueryChange('')}
+            className="text-text-tertiary hover:text-text-primary"
+          >
             <X className="size-3.5" aria-hidden />
           </button>
         ) : null}
@@ -89,11 +99,15 @@ export function SessionSearch({
       {query.trim().length >= 2 ? (
         <div className="mt-2" aria-live="polite">
           {results.isFetching && results.data === undefined ? (
-            <p className="yu-shimmer px-2 py-2 text-[13px]">Searching…</p>
+            <p className="yu-shimmer px-2 py-2 text-[13px]">{t('sessions.searching')}</p>
           ) : results.isError ? (
-            <p className="px-2 py-2 text-[13px] text-danger">Search is unavailable: {results.error.message}</p>
+            <p className="px-2 py-2 text-[13px] text-danger">
+              {t('sessions.searchUnavailable', { message: results.error.message })}
+            </p>
           ) : (results.data?.results ?? []).length === 0 ? (
-            <p className="px-2 py-2 text-[13px] text-text-tertiary">No matches in your conversations.</p>
+            <p className="px-2 py-2 text-[13px] text-text-tertiary">
+              {t('sessions.searchNoMatches')}
+            </p>
           ) : (
             <ul className="space-y-0.5">
               {(results.data?.results ?? []).map((result) => (
@@ -107,7 +121,7 @@ export function SessionSearch({
                     <span className="flex items-center gap-2">
                       <SourceIcon source={result.source} />
                       <span className="min-w-0 flex-1 truncate text-[13px] text-text-primary">
-                        {result.title ?? 'Untitled conversation'}
+                        {result.title ?? t('sessions.untitled')}
                       </span>
                       <span className="shrink-0 font-mono text-[10px] text-text-tertiary">
                         {relativeTime(result.session_started)}

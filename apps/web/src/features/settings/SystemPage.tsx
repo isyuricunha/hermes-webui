@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, RotateCw, Stethoscope } from 'lucide-react';
 import { fetchAppStatus, fetchUpdateCheck, restartGateway, runDoctor } from '../../lib/api';
@@ -7,18 +8,36 @@ import { fetchHermesStatus, fetchSystemStats, startGateway } from '../../lib/hx'
 import { bytes, duration, relativeTime } from '../../lib/format';
 import { confirmDialog } from '../../lib/dialog';
 import { toast } from '../../lib/toast';
-import { Badge, Card, ErrorNote, Section, SkeletonRows, Stat, StatusDot } from '../../components/ui';
+import {
+  Badge,
+  Card,
+  ErrorNote,
+  Section,
+  SkeletonRows,
+  Stat,
+  StatusDot,
+} from '../../components/ui';
 import { SettingsError, SettingsPage } from './SettingsLayout';
 
 /** Usage meter: fill carries severity, the track is a lighter step. */
-function Meter({ label, percent, detail }: { label: string; percent: number | undefined; detail: string }) {
+function Meter({
+  label,
+  percent,
+  detail,
+}: {
+  label: string;
+  percent: number | undefined;
+  detail: string;
+}) {
   const value = Math.max(0, Math.min(100, percent ?? 0));
   const tone = value >= 90 ? 'bg-danger' : value >= 75 ? 'bg-warning' : 'bg-chart';
   return (
     <div className="yu-card rounded-2xl px-4 py-3.5">
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-xs text-text-tertiary">{label}</p>
-        <p className="text-[15px] text-text-primary">{percent === undefined ? '—' : `${Math.round(value)}%`}</p>
+        <p className="text-[15px] text-text-primary">
+          {percent === undefined ? '—' : `${Math.round(value)}%`}
+        </p>
       </div>
       <div
         className="mt-2 h-1.5 overflow-hidden rounded-full bg-chip"
@@ -28,7 +47,10 @@ function Meter({ label, percent, detail }: { label: string; percent: number | un
         aria-valuemax={100}
         aria-valuenow={Math.round(value)}
       >
-        <div className={['h-full rounded-full transition-[width] duration-500', tone].join(' ')} style={{ width: `${value}%` }} />
+        <div
+          className={['h-full rounded-full transition-[width] duration-500', tone].join(' ')}
+          style={{ width: `${value}%` }}
+        />
       </div>
       <p className="mt-1.5 truncate font-mono text-[11px] text-text-tertiary">{detail}</p>
     </div>
@@ -50,10 +72,23 @@ const PLATFORM_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'
  * recovery detection, doctor and updates.
  */
 export function SystemPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const statusQuery = useQuery({ queryKey: ['app-status'], queryFn: fetchAppStatus, refetchInterval: 5_000 });
-  const hermesStatus = useQuery({ queryKey: ['hermes-status'], queryFn: fetchHermesStatus, refetchInterval: 10_000 });
-  const stats = useQuery({ queryKey: ['system-stats'], queryFn: fetchSystemStats, refetchInterval: 10_000 });
+  const statusQuery = useQuery({
+    queryKey: ['app-status'],
+    queryFn: fetchAppStatus,
+    refetchInterval: 5_000,
+  });
+  const hermesStatus = useQuery({
+    queryKey: ['hermes-status'],
+    queryFn: fetchHermesStatus,
+    refetchInterval: 10_000,
+  });
+  const stats = useQuery({
+    queryKey: ['system-stats'],
+    queryFn: fetchSystemStats,
+    refetchInterval: 10_000,
+  });
   const updateQuery = useQuery({ queryKey: ['update-check'], queryFn: fetchUpdateCheck });
   const doctor = useMutation({ mutationFn: runDoctor });
 
@@ -76,7 +111,7 @@ export function SystemPage() {
       let attempts = 0;
       const giveUp = () => {
         setPhase('idle');
-        setError('Hermes did not come back within 90s. Check the logs.');
+        setError(t('settings.system.didNotComeBack'));
       };
       const poll = () => {
         attempts += 1;
@@ -84,7 +119,7 @@ export function SystemPage() {
           .then((status) => {
             if (status.hermes.state === 'connected') {
               setPhase('back');
-              toast('Hermes is back online.', 'success');
+              toast(t('settings.system.backOnline'), 'success');
               void queryClient.invalidateQueries();
             } else if (attempts < 30) {
               setTimeout(poll, 3_000);
@@ -98,32 +133,40 @@ export function SystemPage() {
     },
     onError: (restartError) => {
       setPhase('idle');
-      setError(restartError instanceof Error ? restartError.message : 'Restart failed.');
+      setError(
+        restartError instanceof Error ? restartError.message : t('settings.system.restartFailed'),
+      );
     },
   });
 
   const hermesStateLabel =
     phase === 'restarting'
-      ? 'Restarting…'
+      ? t('settings.system.stateRestarting')
       : phase === 'back'
-        ? 'Back online after restart'
+        ? t('settings.system.backAfterRestart')
         : hermes?.state === 'connected'
-          ? `Running · ${hermes.version}`
+          ? t('settings.system.runningVersion', { version: hermes.version })
           : hermes?.state === 'degraded'
-            ? 'Degraded (auth failed)'
+            ? t('settings.system.degraded')
             : hermes?.state === 'offline'
-              ? 'Offline'
-              : '…';
+              ? t('settings.system.offline')
+              : t('settings.system.dots');
   const stateTone =
-    phase === 'restarting' ? 'warning' : hermes?.state === 'connected' ? 'success' : hermes?.state === 'offline' ? 'danger' : 'warning';
+    phase === 'restarting'
+      ? 'warning'
+      : hermes?.state === 'connected'
+        ? 'success'
+        : hermes?.state === 'offline'
+          ? 'danger'
+          : 'warning';
 
   const platforms = Object.entries(hermesStatus.data?.gateway_platforms ?? {});
   const s = stats.data;
 
   return (
     <SettingsPage
-      title="System"
-      description="Health of Hermes and the machine it runs on."
+      title={t('settings.system.title')}
+      description={t('settings.system.description')}
       wide
       actions={
         <button
@@ -131,17 +174,20 @@ export function SystemPage() {
           disabled={phase === 'restarting'}
           onClick={async () => {
             const ok = await confirmDialog({
-              title: 'Restart Hermes now?',
-              description: 'Active runs on every channel (Telegram included) are interrupted. The WebUI stays up and reconnects.',
-              confirmLabel: 'Restart',
+              title: t('settings.system.restartNow'),
+              description: t('settings.system.restartDesc'),
+              confirmLabel: t('settings.system.restart'),
               tone: 'danger',
             });
             if (ok) restart.mutate();
           }}
           className="yu-btn yu-btn-secondary h-9 px-3.5 text-[13px]"
         >
-          <RotateCw className={['size-3.5', phase === 'restarting' ? 'animate-spin' : ''].join(' ')} aria-hidden />
-          Restart Hermes
+          <RotateCw
+            className={['size-3.5', phase === 'restarting' ? 'animate-spin' : ''].join(' ')}
+            aria-hidden
+          />
+          {t('settings.system.restartHermes')}
         </button>
       }
     >
@@ -162,39 +208,66 @@ export function SystemPage() {
             onClick={() =>
               void startGateway().then(
                 () => {
-                  toast('Starting Hermes…', 'success');
+                  toast(t('settings.system.startingHermes'), 'success');
                   setTimeout(() => void queryClient.invalidateQueries(), 5_000);
                 },
-                (startError: unknown) => setError(startError instanceof Error ? startError.message : 'Could not start Hermes.'),
+                (startError: unknown) =>
+                  setError(
+                    startError instanceof Error
+                      ? startError.message
+                      : t('settings.system.couldNotStart'),
+                  ),
               )
             }
             className="yu-btn yu-btn-primary h-8 rounded-lg px-3 text-xs"
           >
-            Start Hermes
+            {t('settings.system.startHermes')}
           </button>
         ) : null}
-        <span className="font-mono text-[11px] text-text-tertiary">WebUI {statusQuery.data?.version ?? '…'}</span>
+        <span className="font-mono text-[11px] text-text-tertiary">
+          {t('settings.system.webuiVersion', {
+            version: statusQuery.data?.version ?? t('settings.system.dots'),
+          })}
+        </span>
         {hermesStatus.data !== undefined ? (
           <>
             {hermesStatus.data.release_date ? (
-              <span className="font-mono text-[11px] text-text-tertiary">released {hermesStatus.data.release_date}</span>
+              <span className="font-mono text-[11px] text-text-tertiary">
+                {t('settings.system.released', { date: hermesStatus.data.release_date })}
+              </span>
             ) : null}
             {hermesStatus.data.gateway_pid ? (
-              <span className="font-mono text-[11px] text-text-tertiary">pid {hermesStatus.data.gateway_pid}</span>
+              <span className="font-mono text-[11px] text-text-tertiary">
+                {t('settings.system.pid', { pid: hermesStatus.data.gateway_pid })}
+              </span>
             ) : null}
             {typeof hermesStatus.data.active_sessions === 'number' ? (
-              <span className="font-mono text-[11px] text-text-tertiary">{hermesStatus.data.active_sessions} active sessions</span>
+              <span className="font-mono text-[11px] text-text-tertiary">
+                {t('settings.system.activeSessions', { count: hermesStatus.data.active_sessions })}
+              </span>
             ) : null}
             {hermesStatus.data.config_version !== undefined &&
             hermesStatus.data.latest_config_version !== undefined &&
             hermesStatus.data.config_version < hermesStatus.data.latest_config_version ? (
-              <Badge tone="warning">config migration pending</Badge>
+              <Badge tone="warning">{t('settings.system.configMigration')}</Badge>
             ) : null}
           </>
         ) : null}
       </Card>
 
-      <Section title="Host" description={s !== undefined ? `${s.hostname} · ${s.os} ${s.arch} · Python ${s.python_version}` : undefined}>
+      <Section
+        title={t('settings.system.host')}
+        description={
+          s !== undefined
+            ? t('settings.system.hostDesc', {
+                hostname: s.hostname,
+                os: s.os,
+                arch: s.arch,
+                version: s.python_version,
+              })
+            : undefined
+        }
+      >
         {stats.isError ? (
           <ErrorNote message={stats.error.message} />
         ) : s === undefined ? (
@@ -202,36 +275,63 @@ export function SystemPage() {
         ) : (
           <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
             <Meter
-              label="CPU"
+              label={t('settings.system.cpu')}
               percent={s.cpu_percent}
-              detail={`${s.cpu_count ?? '?'} cores · load ${(s.load_avg ?? []).map((value) => value.toFixed(2)).join(' ')}`}
+              detail={t('settings.system.cpuDetail', {
+                count: s.cpu_count ?? '?',
+                load: (s.load_avg ?? []).map((value) => value.toFixed(2)).join(' '),
+              })}
             />
             <Meter
-              label="Memory"
+              label={t('settings.system.memory')}
               percent={s.memory?.percent}
-              detail={s.memory !== undefined ? `${bytes(s.memory.used)} of ${bytes(s.memory.total)}` : '—'}
+              detail={
+                s.memory !== undefined
+                  ? t('settings.system.memDetail', {
+                      used: bytes(s.memory.used),
+                      total: bytes(s.memory.total),
+                    })
+                  : '—'
+              }
             />
             <Meter
-              label="Disk"
+              label={t('settings.system.disk')}
               percent={s.disk?.percent}
-              detail={s.disk !== undefined ? `${bytes(s.disk.free)} free of ${bytes(s.disk.total)}` : '—'}
+              detail={
+                s.disk !== undefined
+                  ? t('settings.system.diskDetail', {
+                      free: bytes(s.disk.free),
+                      total: bytes(s.disk.total),
+                    })
+                  : '—'
+              }
             />
             <Stat
-              label="Uptime"
+              label={t('settings.system.uptime')}
               value={duration(s.uptime_seconds)}
-              hint={s.process !== undefined ? `dashboard ${bytes(s.process.rss)} · ${s.process.num_threads} threads` : undefined}
+              hint={
+                s.process !== undefined
+                  ? t('settings.system.dashDetail', {
+                      rss: bytes(s.process.rss),
+                      count: s.process.num_threads,
+                    })
+                  : undefined
+              }
             />
           </div>
         )}
       </Section>
 
-      <Section title="Channels" description="Platforms the gateway is serving.">
+      <Section
+        title={t('settings.system.channels')}
+        description={t('settings.system.channelsDesc')}
+      >
         {hermesStatus.isError ? (
           <ErrorNote message={hermesStatus.error.message} />
         ) : hermesStatus.isPending ? (
           <SkeletonRows rows={2} />
         ) : platforms.length === 0 ? (
-          <p className="text-[13px] text-text-tertiary">No platform status reported.</p>
+          <p className="text-[13px] text-text-tertiary">{t('settings.system.noPlatforms')}</p>
         ) : (
           <Card>
             <ul className="divide-y divide-border-subtle">
@@ -239,27 +339,37 @@ export function SystemPage() {
                 <li key={name} className="flex items-center gap-3 px-4 py-3">
                   <StatusDot tone={PLATFORM_TONE[platform.state] ?? 'neutral'} />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm text-text-primary capitalize">{name.replace(/_/g, ' ')}</span>
+                    <span className="block text-sm text-text-primary capitalize">
+                      {name.replace(/_/g, ' ')}
+                    </span>
                     {platform.error_message ? (
-                      <span className="block truncate text-xs text-danger">{platform.error_message}</span>
+                      <span className="block truncate text-xs text-danger">
+                        {platform.error_message}
+                      </span>
                     ) : null}
                   </span>
                   <span className="font-mono text-[11px] text-text-tertiary">{platform.state}</span>
-                  <span className="hidden font-mono text-[11px] text-text-tertiary sm:inline">{relativeTime(platform.updated_at)}</span>
+                  <span className="hidden font-mono text-[11px] text-text-tertiary sm:inline">
+                    {relativeTime(platform.updated_at)}
+                  </span>
                 </li>
               ))}
             </ul>
           </Card>
         )}
         <Link to="/settings/logs" className="yu-link mt-2 inline-flex items-center gap-1 text-xs">
-          Open logs <ArrowUpRight className="size-3" aria-hidden />
+          {t('settings.system.openLogs')} <ArrowUpRight className="size-3" aria-hidden />
         </Link>
       </Section>
 
       <div className="grid gap-x-6 lg:grid-cols-2">
-        <Section title="Diagnostics">
+        <Section title={t('settings.system.diagnostics')}>
           <Card className="p-4">
-            <p className="text-[13px] text-text-secondary">Runs <code className="font-mono text-xs">hermes doctor</code> checks for config, keys and dependencies.</p>
+            <p className="text-[13px] text-text-secondary">
+              {t('settings.system.doctorDesc1')}
+              <code className="font-mono text-xs">hermes doctor</code>
+              {t('settings.system.doctorDesc2')}
+            </p>
             <button
               type="button"
               onClick={() => doctor.mutate()}
@@ -267,7 +377,9 @@ export function SystemPage() {
               className="yu-btn yu-btn-tonal mt-3 h-9 px-3.5 text-[13px]"
             >
               <Stethoscope className="size-3.5" aria-hidden />
-              {doctor.isPending ? 'Running doctor…' : 'Run doctor'}
+              {doctor.isPending
+                ? t('settings.system.runningDoctor')
+                : t('settings.system.runDoctor')}
             </button>
             {doctor.isError ? (
               <div className="mt-3">
@@ -282,27 +394,35 @@ export function SystemPage() {
           </Card>
         </Section>
 
-        <Section title="Updates">
+        <Section title={t('settings.system.updates')}>
           <Card className="p-4">
             {updateQuery.isPending ? (
-              <p className="yu-shimmer text-[13px]">Checking…</p>
+              <p className="yu-shimmer text-[13px]">{t('settings.system.checking')}</p>
             ) : updateQuery.isError ? (
               <SettingsError message={updateQuery.error.message} />
             ) : (
               <>
                 <p className="flex items-center gap-2 text-sm text-text-primary">
-                  {updateQuery.data.current_version ?? hermesStatus.data?.version ?? 'Unknown version'}
-                  {updateQuery.data.update_available ? <Badge tone="accent">update available</Badge> : <Badge tone="success">up to date</Badge>}
+                  {updateQuery.data.current_version ??
+                    hermesStatus.data?.version ??
+                    t('settings.system.unknownVersion')}
+                  {updateQuery.data.update_available ? (
+                    <Badge tone="accent">{t('settings.system.updateAvailable')}</Badge>
+                  ) : (
+                    <Badge tone="success">{t('settings.system.upToDate')}</Badge>
+                  )}
                 </p>
                 {updateQuery.data.update_available ? (
                   <>
                     <p className="mt-2 text-xs text-text-tertiary">
-                      Applying updates from the WebUI is disabled: this Hermes install carries local patches and updates through its own flow.
+                      {t('settings.system.updatesDisabled')}
                     </p>
                     {(updateQuery.data.commits?.length ?? 0) > 0 ? (
                       <details className="mt-3 text-xs">
                         <summary className="cursor-pointer text-text-secondary select-none">
-                          What’s incoming ({updateQuery.data.commits!.length} changes)
+                          {t('settings.system.whatsIncoming', {
+                            count: updateQuery.data.commits!.length,
+                          })}
                         </summary>
                         <ul className="mt-2 max-h-72 divide-y divide-border-subtle overflow-auto rounded-xl bg-surface-editor">
                           {updateQuery.data.commits!.map((commit) => (
@@ -318,7 +438,9 @@ export function SystemPage() {
                         </ul>
                       </details>
                     ) : updateQuery.data.update_command ? (
-                      <p className="mt-2 font-mono text-[11px] text-text-tertiary">{updateQuery.data.update_command}</p>
+                      <p className="mt-2 font-mono text-[11px] text-text-tertiary">
+                        {updateQuery.data.update_command}
+                      </p>
                     ) : null}
                   </>
                 ) : null}

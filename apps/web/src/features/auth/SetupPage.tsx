@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 import { storeCsrfToken } from '../../lib/auth';
 
 /**
@@ -8,6 +9,7 @@ import { storeCsrfToken } from '../../lib/auth';
  */
 
 export function SetupPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [setupToken, setSetupToken] = useState('');
   const [username, setUsername] = useState('');
@@ -21,7 +23,7 @@ export function SetupPage() {
     event.preventDefault();
     setError(null);
     if (password !== confirm) {
-      setError('Passwords do not match.');
+      setError(t('auth.setup.passwordsMismatch'));
       return;
     }
     setPending(true);
@@ -29,7 +31,12 @@ export function SetupPage() {
       const response = await fetch('/api/auth/setup', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ setupToken, username, displayName: displayName || undefined, password }),
+        body: JSON.stringify({
+          setupToken,
+          username,
+          displayName: displayName || undefined,
+          password,
+        }),
       });
       const body = (await response.json()) as {
         csrfToken?: string;
@@ -40,13 +47,13 @@ export function SetupPage() {
           window.location.assign('/login');
           return;
         }
-        setError(body.error?.message ?? 'Setup failed.');
+        setError(body.error?.message ?? t('auth.setup.failed'));
         return;
       }
       storeCsrfToken(body.csrfToken ?? null);
       window.location.assign('/');
     } catch {
-      setError('Server unavailable.');
+      setError(t('auth.serverUnavailable'));
     } finally {
       setPending(false);
     }
@@ -61,10 +68,12 @@ export function SetupPage() {
         className="w-full max-w-md rounded-2xl border border-border-subtle bg-surface p-6"
       >
         <h1 className="text-lg font-semibold tracking-tight">Hermes WebUI</h1>
-        <p className="mt-1 text-sm text-text-secondary">Set up your account</p>
+        <p className="mt-1 text-sm text-text-secondary">{t('auth.setup.title')}</p>
 
         <label className="mt-5 block">
-          <span className="mb-1 block text-xs font-medium text-text-secondary">Setup token</span>
+          <span className="mb-1 block text-xs font-medium text-text-secondary">
+            {t('auth.setup.token')}
+          </span>
           <input
             type="password"
             value={setupToken}
@@ -74,13 +83,14 @@ export function SetupPage() {
             className="h-10 w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
           />
           <span className="mt-1 block text-[11px] leading-relaxed text-text-secondary">
-            Found in <code className="font-mono">setup-token</code> inside the WebUI data directory
-            on the server. It is removed after setup.
+            {t('auth.setup.tokenHint')}
           </span>
         </label>
 
         <label className="mt-3 block">
-          <span className="mb-1 block text-xs font-medium text-text-secondary">Username</span>
+          <span className="mb-1 block text-xs font-medium text-text-secondary">
+            {t('auth.username')}
+          </span>
           <input
             value={username}
             onChange={(event) => setUsername(event.target.value)}
@@ -94,7 +104,7 @@ export function SetupPage() {
 
         <label className="mt-3 block">
           <span className="mb-1 block text-xs font-medium text-text-secondary">
-            Display name (optional)
+            {t('auth.setup.displayName')}
           </span>
           <input
             value={displayName}
@@ -105,7 +115,9 @@ export function SetupPage() {
         </label>
 
         <label className="mt-3 block">
-          <span className="mb-1 block text-xs font-medium text-text-secondary">Password</span>
+          <span className="mb-1 block text-xs font-medium text-text-secondary">
+            {t('auth.password')}
+          </span>
           <input
             type="password"
             value={password}
@@ -114,27 +126,34 @@ export function SetupPage() {
             minLength={12}
             maxLength={1024}
             autoComplete="new-password"
-            aria-label="Password"
+            aria-label={t('auth.password')}
             className="h-10 w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
           />
-          <span className="mt-1 block text-[11px] text-text-secondary">Minimum 12 characters.</span>
+          <span className="mt-1 block text-[11px] text-text-secondary">
+            {t('auth.setup.minChars')}
+          </span>
         </label>
 
         <label className="mt-3 block">
-          <span className="mb-1 block text-xs font-medium text-text-secondary">Confirm password</span>
+          <span className="mb-1 block text-xs font-medium text-text-secondary">
+            {t('auth.setup.confirmPassword')}
+          </span>
           <input
             type="password"
             value={confirm}
             onChange={(event) => setConfirm(event.target.value)}
             required
             autoComplete="new-password"
-            aria-label="Confirm password"
+            aria-label={t('auth.setup.confirmPassword')}
             className="h-10 w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm outline-none focus:border-accent"
           />
         </label>
 
         {error !== null ? (
-          <p role="alert" className="mt-3 rounded-lg border border-danger px-3 py-2 text-xs text-danger">
+          <p
+            role="alert"
+            className="mt-3 rounded-lg border border-danger px-3 py-2 text-xs text-danger"
+          >
             {error}
           </p>
         ) : null}
@@ -144,7 +163,7 @@ export function SetupPage() {
           disabled={pending}
           className="yu-btn yu-btn-primary mt-5 h-10 w-full text-sm"
         >
-          {pending ? 'Setting up…' : 'Create owner account'}
+          {pending ? t('auth.setup.working') : t('auth.setup.createOwner')}
         </button>
       </form>
     </div>

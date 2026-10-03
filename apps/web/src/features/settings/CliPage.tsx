@@ -1,21 +1,18 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import {
-  fetchCliCatalog,
-  runCliCommand,
-  runCliFreeForm,
-  type BridgeResult,
-} from '../../lib/api';
+import { useTranslation } from 'react-i18next';
+import { fetchCliCatalog, runCliCommand, runCliFreeForm, type BridgeResult } from '../../lib/api';
 import { confirmDialog } from '../../lib/dialog';
 import { SettingsError, SettingsPage } from './SettingsLayout';
 
 function ResultView({ result }: { result: BridgeResult }) {
+  const { t } = useTranslation();
   return (
     <div className="mt-3 yu-card rounded-2xl p-3 text-xs">
       <p className="mb-1 text-text-secondary">
-        exit {result.exitCode ?? '?'} · {result.durationMs} ms
-        {result.truncated ? ' · output truncated' : ''}
-        {result.redacted ? ' · credentials redacted' : ''}
+        {t('settings.cli.exit', { code: result.exitCode ?? '?', ms: result.durationMs })}
+        {result.truncated ? t('settings.cli.outputTruncated') : ''}
+        {result.redacted ? t('settings.cli.credentialsRedacted') : ''}
       </p>
       {result.stdout !== '' ? (
         <pre className="max-h-72 overflow-auto rounded-xl bg-surface-editor p-3 font-mono text-text-secondary whitespace-pre-wrap">
@@ -38,6 +35,7 @@ function ResultView({ result }: { result: BridgeResult }) {
  * never a general terminal.
  */
 export function CliPage() {
+  const { t } = useTranslation();
   const catalogQuery = useQuery({ queryKey: ['cli-catalog'], queryFn: fetchCliCatalog });
   const [commandLine, setCommandLine] = useState('hermes lsp status');
   const [result, setResult] = useState<BridgeResult | null>(null);
@@ -68,20 +66,17 @@ export function CliPage() {
   });
 
   return (
-    <SettingsPage title="Hermes CLI">
-      <p className="mb-4 text-xs text-text-secondary">
-        Restricted bridge to the Hermes binary. No shell, no arbitrary commands: argv is executed
-        directly, output is capped and secrets are redacted before they reach the browser.
-      </p>
+    <SettingsPage title={t('settings.cli.title')}>
+      <p className="mb-4 text-xs text-text-secondary">{t('settings.cli.description')}</p>
 
       {catalogQuery.isPending ? (
-        <p className="text-sm text-text-secondary">Loading commands…</p>
+        <p className="text-sm text-text-secondary">{t('settings.cli.loading')}</p>
       ) : catalogQuery.isError ? (
         <SettingsError message={catalogQuery.error.message} />
       ) : (
         <>
           <p className="mb-2 text-[13px] font-medium text-text-secondary">
-            Commands
+            {t('settings.cli.commands')}
           </p>
           <ul className="mb-6 space-y-1.5">
             {catalogQuery.data.commands.map((command) => (
@@ -100,9 +95,9 @@ export function CliPage() {
                     if (
                       command.requiresConfirmation &&
                       !(await confirmDialog({
-                        title: `Run “${command.displayName}”?`,
-                        description: 'This command changes Hermes state.',
-                        confirmLabel: 'Run',
+                        title: t('settings.cli.runTitle', { name: command.displayName }),
+                        description: t('settings.cli.runDesc'),
+                        confirmLabel: t('settings.cli.run'),
                       }))
                     ) {
                       return;
@@ -111,14 +106,14 @@ export function CliPage() {
                   }}
                   className="yu-btn yu-btn-secondary h-8 rounded-lg px-2.5 text-xs"
                 >
-                  Run
+                  {t('settings.cli.run')}
                 </button>
               </li>
             ))}
           </ul>
 
           <p className="mb-2 text-[13px] font-medium text-text-secondary">
-            Advanced
+            {t('settings.cli.advanced')}
           </p>
           <form
             className="flex gap-2"
@@ -130,7 +125,7 @@ export function CliPage() {
             <input
               value={commandLine}
               onChange={(event) => setCommandLine(event.target.value)}
-              aria-label="Hermes command"
+              aria-label={t('settings.cli.commandAria')}
               spellCheck={false}
               className="h-9 flex-1 yu-card rounded-2xl px-3 font-mono text-xs outline-none focus:border-accent"
             />
@@ -139,11 +134,11 @@ export function CliPage() {
               disabled={runFreeForm.isPending}
               className="yu-btn yu-btn-primary h-9 px-3 text-sm"
             >
-              Run
+              {t('settings.cli.run')}
             </button>
           </form>
           <details className="mt-2 text-xs text-text-secondary">
-            <summary className="cursor-pointer select-none">Allowed commands</summary>
+            <summary className="cursor-pointer select-none">{t('settings.cli.allowed')}</summary>
             <ul className="mt-1 space-y-0.5 font-mono">
               {catalogQuery.data.freeFormAllowlist.map((entry) => (
                 <li key={entry}>{entry}</li>

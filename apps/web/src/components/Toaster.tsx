@@ -1,4 +1,5 @@
 import { Check, Info, TriangleAlert, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { dismissToast, useToasts } from '../lib/toast';
 
 /**
@@ -6,6 +7,7 @@ import { dismissToast, useToasts } from '../lib/toast';
  * sits on the composer. Each toast slides in and carries its tone as an edge.
  */
 export function Toaster() {
+  const { t } = useTranslation();
   const toasts = useToasts();
   if (toasts.length === 0) return null;
   return (
@@ -52,7 +54,7 @@ export function Toaster() {
           ) : null}
           <button
             type="button"
-            aria-label="Dismiss"
+            aria-label={t('common.dismiss')}
             className="yu-btn yu-btn-ghost size-7 rounded-lg"
             onClick={() => dismissToast(item.id)}
           >

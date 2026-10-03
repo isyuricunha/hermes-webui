@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyRound, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { deleteEnv, fetchEnv, putEnv } from '../../lib/api';
 import { confirmDialog } from '../../lib/dialog';
@@ -7,7 +8,7 @@ import { toast, toastError } from '../../lib/toast';
 import { Card, ErrorNote, Segmented, SkeletonRows } from '../../components/ui';
 import { SettingsPage } from './SettingsLayout';
 
-const RESTART_NOTE = 'New conversations read it; the gateway (Telegram, cron) picks it up after a restart in Settings > System.';
+const RESTART_NOTE = 'settings.env.restartNote';
 
 function ValueForm({
   name,
@@ -20,6 +21,7 @@ function ValueForm({
   onSave: (value: string) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const [value, setValue] = useState('');
   return (
     <form
@@ -35,15 +37,24 @@ function ValueForm({
         type="password"
         autoComplete="off"
         autoFocus
-        aria-label={`New value for ${name}`}
-        placeholder="New value (the current one is never shown)"
+        aria-label={t('settings.env.newValueAria', { name })}
+        placeholder={t('settings.env.newValuePlaceholder')}
         className="yu-input h-9 min-w-0 flex-1 px-3 font-mono text-[13px]"
       />
-      <button type="button" onClick={onCancel} aria-label="Cancel" className="yu-btn yu-btn-ghost size-9 rounded-lg">
+      <button
+        type="button"
+        onClick={onCancel}
+        aria-label={t('settings.env.cancelAria')}
+        className="yu-btn yu-btn-ghost size-9 rounded-lg"
+      >
         <X className="size-4" aria-hidden />
       </button>
-      <button type="submit" disabled={busy || value === ''} className="yu-btn yu-btn-primary h-9 px-3.5 text-[13px]">
-        Save
+      <button
+        type="submit"
+        disabled={busy || value === ''}
+        className="yu-btn yu-btn-primary h-9 px-3.5 text-[13px]"
+      >
+        {t('settings.env.save')}
       </button>
     </form>
   );
@@ -54,6 +65,7 @@ function ValueForm({
  * values; editing means typing a new value, removing asks first.
  */
 export function EnvPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const envQuery = useQuery({ queryKey: ['env'], queryFn: fetchEnv });
   const [filter, setFilter] = useState('');
@@ -66,7 +78,9 @@ export function EnvPage() {
   const setVar = useMutation({
     mutationFn: ({ key, value }: { key: string; value: string }) => putEnv(key, value),
     onSuccess: (_data, { key }) => {
-      toast(`${key} saved. ${RESTART_NOTE}`, 'success', { durationMs: 7000 });
+      toast(t('settings.env.saved', { key, restartNote: t(RESTART_NOTE) }), 'success', {
+        durationMs: 7000,
+      });
       setEditing(null);
       setAdding(false);
       setNewKey('');
@@ -77,7 +91,7 @@ export function EnvPage() {
   const removeVar = useMutation({
     mutationFn: (key: string) => deleteEnv(key),
     onSuccess: (_data, key) => {
-      toast(`${key} removed.`, 'success');
+      toast(t('settings.env.removed', { key }), 'success');
       invalidate();
     },
     onError: (error) => toastError(error),
@@ -91,11 +105,15 @@ export function EnvPage() {
 
   return (
     <SettingsPage
-      title="Environment"
-      description="API keys and settings in Hermes' .env. Values are always masked; to change one, type the new value."
+      title={t('settings.env.title')}
+      description={t('settings.env.description')}
       actions={
-        <button type="button" onClick={() => setAdding(true)} className="yu-btn yu-btn-tonal h-9 gap-1.5 px-3.5 text-[13px]">
-          <Plus className="size-4" aria-hidden /> Add variable
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="yu-btn yu-btn-tonal h-9 gap-1.5 px-3.5 text-[13px]"
+        >
+          <Plus className="size-4" aria-hidden /> {t('settings.env.addVariable')}
         </button>
       }
     >
@@ -105,30 +123,34 @@ export function EnvPage() {
           <input
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            placeholder="Filter variables"
-            aria-label="Filter environment variables"
+            placeholder={t('settings.env.filter')}
+            aria-label={t('settings.env.filterAria')}
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-text-tertiary"
           />
         </label>
         <Segmented
-          label="Show"
+          label={t('settings.env.showLabel')}
           value={show}
           onChange={setShow}
           options={[
-            { value: 'set', label: 'Set' },
-            { value: 'all', label: 'All known' },
+            { value: 'set', label: t('settings.env.setOption') },
+            { value: 'all', label: t('settings.env.allKnown') },
           ]}
         />
       </div>
 
       {adding ? (
         <Card className="mb-4 p-4">
-          <p className="mb-2 text-sm font-medium text-text-primary">New variable</p>
+          <p className="mb-2 text-sm font-medium text-text-primary">
+            {t('settings.env.newVariable')}
+          </p>
           <input
             value={newKey}
-            onChange={(event) => setNewKey(event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'))}
-            placeholder="VARIABLE_NAME"
-            aria-label="Variable name"
+            onChange={(event) =>
+              setNewKey(event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'))
+            }
+            placeholder={t('settings.env.varNamePlaceholder')}
+            aria-label={t('settings.env.varNameAria')}
             className="yu-input h-9 w-full px-3 font-mono text-[13px]"
           />
           {newKey.trim() !== '' ? (
@@ -143,8 +165,12 @@ export function EnvPage() {
             />
           ) : (
             <div className="mt-2.5 flex justify-end">
-              <button type="button" onClick={() => setAdding(false)} className="yu-btn yu-btn-ghost h-8 px-3 text-xs">
-                Cancel
+              <button
+                type="button"
+                onClick={() => setAdding(false)}
+                className="yu-btn yu-btn-ghost h-8 px-3 text-xs"
+              >
+                {t('settings.env.cancel')}
               </button>
             </div>
           )}
@@ -161,11 +187,19 @@ export function EnvPage() {
             {filtered.map(([name, info]) => (
               <li key={name} className="px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <KeyRound className={['size-4 shrink-0', info.is_set ? 'text-success' : 'text-text-tertiary'].join(' ')} aria-hidden />
+                  <KeyRound
+                    className={[
+                      'size-4 shrink-0',
+                      info.is_set ? 'text-success' : 'text-text-tertiary',
+                    ].join(' ')}
+                    aria-hidden
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-mono text-[13px] text-text-primary">{name}</p>
                     <p className="truncate text-[11.5px] text-text-tertiary">
-                      {info.is_set ? (info.redacted_value ?? 'set') : 'not set'}
+                      {info.is_set
+                        ? (info.redacted_value ?? t('settings.env.setBadge'))
+                        : t('settings.env.notSet')}
                       {info.description ? ` · ${info.description}` : ''}
                     </p>
                   </div>
@@ -174,17 +208,18 @@ export function EnvPage() {
                     onClick={() => setEditing(editing === name ? null : name)}
                     className="yu-btn yu-btn-ghost h-8 gap-1.5 px-2.5 text-xs"
                   >
-                    <Pencil className="size-3.5" aria-hidden /> {info.is_set ? 'Change' : 'Set'}
+                    <Pencil className="size-3.5" aria-hidden />{' '}
+                    {info.is_set ? t('settings.env.change') : t('settings.env.set')}
                   </button>
                   {info.is_set ? (
                     <button
                       type="button"
-                      aria-label={`Remove ${name}`}
+                      aria-label={t('settings.env.removeAria', { name })}
                       onClick={async () => {
                         const ok = await confirmDialog({
-                          title: `Remove ${name}?`,
-                          description: 'The variable is deleted from the Hermes .env. Anything that needs it stops working until it is set again.',
-                          confirmLabel: 'Remove',
+                          title: t('settings.env.removeTitle', { name }),
+                          description: t('settings.env.removeDesc'),
+                          confirmLabel: t('settings.env.remove'),
                           tone: 'danger',
                         });
                         if (ok) removeVar.mutate(name);
@@ -196,11 +231,20 @@ export function EnvPage() {
                   ) : null}
                 </div>
                 {editing === name ? (
-                  <ValueForm name={name} busy={setVar.isPending} onCancel={() => setEditing(null)} onSave={(value) => setVar.mutate({ key: name, value })} />
+                  <ValueForm
+                    name={name}
+                    busy={setVar.isPending}
+                    onCancel={() => setEditing(null)}
+                    onSave={(value) => setVar.mutate({ key: name, value })}
+                  />
                 ) : null}
               </li>
             ))}
-            {filtered.length === 0 ? <li className="px-4 py-4 text-[13px] text-text-secondary">No variables match.</li> : null}
+            {filtered.length === 0 ? (
+              <li className="px-4 py-4 text-[13px] text-text-secondary">
+                {t('settings.env.noMatch')}
+              </li>
+            ) : null}
           </ul>
         </Card>
       )}
