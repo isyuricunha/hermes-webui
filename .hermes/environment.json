@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "recipe": {
+    "name": "Node.js app",
+    "kind": "node",
+    "bootstrap": [
+      "pnpm install"
+    ],
+    "build": [
+      "pnpm build",
+      "pnpm typecheck"
+    ],
+    "test": [
+      "pnpm test",
+      "pnpm lint",
+      "pnpm run test",
+      "pnpm run lint",
+      "pnpm run typecheck",
+      "pnpm run build"
+    ],
+    "start": "pnpm dev",
+    "port": 5173,
+    "readinessPath": "/",
+    "evidence": [
+      "Detected package.json",
+      "Package manager: pnpm",
+      "Scripts: dev, start, build, auth-cli, test, e2e, lint, typecheck"
+    ]
+  },
+  "updatedAt": "2026-10-04T00:31:16.705094+00:00"
+}
