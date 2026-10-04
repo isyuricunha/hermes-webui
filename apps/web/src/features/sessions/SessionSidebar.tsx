@@ -229,7 +229,7 @@ export function SessionSidebar({
             to="/"
             onClick={onNavigate}
             className="flex-1 px-1.5 text-[17px] font-medium tracking-[-0.02em] text-text-primary"
-            aria-label="Hermes WebUI home"
+            aria-label={t('shell.homeAria')}
           >
             Hermes
           </Link>

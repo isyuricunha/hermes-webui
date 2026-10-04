@@ -29,7 +29,10 @@
       "actions": "Actions"
     },
     "switchTheme": "Switch theme",
-    "themeHints": "AMOLED, Graphite, Light, System"
+    "themeHints": "AMOLED, Graphite, Light, System",
+    "paletteAria": "Command palette",
+    "searchAria": "Search commands",
+    "searchPlaceholder": "Search conversations, settings and actions…"
   },
   "modelBrowser": {
     "searchPlaceholder": "Search {{count}} models",
@@ -320,6 +323,10 @@
       }
     },
     "view": {
+      "queuedCount_one": "{{count}} message queued",
+      "queuedCount_other": "{{count}} messages queued",
+      "pendingApprovals_one": "{{count}} pending approval above.",
+      "pendingApprovals_other": "{{count}} pending approvals above.",
       "runFailed": "The run failed.",
       "stopFailed": "Stop failed.",
       "steerFailed": "Steer failed.",

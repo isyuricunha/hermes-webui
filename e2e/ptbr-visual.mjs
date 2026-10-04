@@ -10,7 +10,9 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
 
-const OUT = 'e2e-output/live-sync-ptbr';
+const LOCALE = process.env.LOCALE ?? 'pt-BR';
+const PT = LOCALE.toLowerCase().startsWith('pt');
+const OUT = `e2e-output/i18n-${LOCALE}`;
 mkdirSync(OUT, { recursive: true });
 
 const SESSION_ID = '20261002_194913_558a0930';
@@ -21,7 +23,9 @@ const rows = [
     id: 100,
     session_id: SESSION_ID,
     role: 'user',
-    content: 'Bom dia, Yuri. O deploy de ontem fechou.',
+    content: PT
+      ? 'Bom dia, Yuri. O deploy de ontem fechou.'
+      : 'Good morning, Yuri. Yesterday’s deploy landed.',
     timestamp: Date.now() / 1000 - 3600,
     reasoning: null,
     tool_calls: null,
@@ -31,7 +35,9 @@ const rows = [
     id: 101,
     session_id: SESSION_ID,
     role: 'assistant',
-    content: 'Bom dia! Fechou: sync validado, pipeline verde e deploy no ar.',
+    content: PT
+      ? 'Bom dia! Fechou: sync validado, pipeline verde e deploy no ar.'
+      : 'Morning! It landed: sync validated, pipeline green and the deploy is live.',
     timestamp: Date.now() / 1000 - 3500,
     reasoning: null,
     tool_calls: null,
@@ -156,16 +162,22 @@ try {
   const browser = await chromium.launch();
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
-    locale: 'pt-BR',
+    locale: LOCALE,
   });
   await context.addCookies(cookies);
   const page = await context.newPage();
 
   // 1) Chat view in PT-BR (fake telegram session, two bubbles).
   await page.goto(`${base}/chat/${SESSION_ID}`);
-  await page.getByText('Bom dia, Yuri. O deploy de ontem fechou.').waitFor({ timeout: 15_000 });
+  await page
+    .getByText(
+      PT
+        ? 'Bom dia, Yuri. O deploy de ontem fechou.'
+        : 'Good morning, Yuri. Yesterday’s deploy landed.',
+    )
+    .waitFor({ timeout: 15_000 });
   await sleep(400);
-  await page.screenshot({ path: `${OUT}/chat-ptbr.png` });
+  await page.screenshot({ path: `${OUT}/chat-${LOCALE}.png` });
 
   // 2) Inject a Telegram-side message while the chat is open; the poll picks it up.
   await fetch('http://127.0.0.1:8643/_ptbr/inject', {
@@ -173,24 +185,30 @@ try {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       role: 'user',
-      content: 'Enviado pelo Telegram com o chat aberto no WebUI.',
+      content: PT
+        ? 'Enviado pelo Telegram com o chat aberto no WebUI.'
+        : 'Sent from Telegram with the WebUI chat open.',
     }),
   });
   await page
-    .getByText('Enviado pelo Telegram com o chat aberto no WebUI.')
+    .getByText(
+      PT
+        ? 'Enviado pelo Telegram com o chat aberto no WebUI.'
+        : 'Sent from Telegram with the WebUI chat open.',
+    )
     .waitFor({ timeout: 8_000 });
   await sleep(300);
-  await page.screenshot({ path: `${OUT}/chat-ptbr-injected.png` });
+  await page.screenshot({ path: `${OUT}/chat-${LOCALE}-injected.png` });
 
   // 3) Models settings page in PT-BR (chrome translated; catalog errors stay honest).
   await page.goto(`${base}/settings/models`);
   await sleep(600);
-  await page.screenshot({ path: `${OUT}/settings-models-ptbr.png` });
+  await page.screenshot({ path: `${OUT}/settings-models-${LOCALE}.png` });
 
   // 4) Appearance page in PT-BR.
   await page.goto(`${base}/settings/appearance`);
   await sleep(600);
-  await page.screenshot({ path: `${OUT}/settings-appearance-ptbr.png` });
+  await page.screenshot({ path: `${OUT}/settings-appearance-${LOCALE}.png` });
 
   await browser.close();
 
@@ -198,15 +216,15 @@ try {
   const browser2 = await chromium.launch();
   const ctx2 = await browser2.newContext({
     viewport: { width: 1280, height: 800 },
-    locale: 'pt-BR',
+    locale: LOCALE,
   });
   const page2 = await ctx2.newPage();
   await page2.goto('http://100.78.106.99:51372/login');
   await sleep(800);
-  await page2.screenshot({ path: `${OUT}/deployed-login-ptbr.png` });
+  await page2.screenshot({ path: `${OUT}/deployed-login-${LOCALE}.png` });
   await browser2.close();
 
-  console.log('PT-BR visual evidence done:', OUT);
+  console.log(`i18n visual evidence done (${LOCALE}):`, OUT);
 } finally {
   server.kill();
 }

@@ -29,7 +29,10 @@
       "actions": "Ações"
     },
     "switchTheme": "Alternar tema",
-    "themeHints": "AMOLED, Grafite, Claro, Sistema"
+    "themeHints": "AMOLED, Grafite, Claro, Sistema",
+    "paletteAria": "Paleta de comandos",
+    "searchAria": "Buscar comandos",
+    "searchPlaceholder": "Buscar conversas, configurações e ações…"
   },
   "modelBrowser": {
     "searchPlaceholder": "Buscar entre {{count}} modelos",
@@ -320,6 +323,10 @@
       }
     },
     "view": {
+      "queuedCount_one": "{{count}} mensagem na fila",
+      "queuedCount_other": "{{count}} mensagens na fila",
+      "pendingApprovals_one": "{{count}} aprovação pendente acima.",
+      "pendingApprovals_other": "{{count}} aprovações pendentes acima.",
       "runFailed": "A execução falhou.",
       "stopFailed": "Falha ao parar.",
       "steerFailed": "Falha no steer.",

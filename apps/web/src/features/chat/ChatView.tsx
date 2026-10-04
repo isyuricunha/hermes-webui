@@ -1273,7 +1273,6 @@ export function ChatView({ sessionId }: { sessionId?: string }) {
         {running && pendingApprovals.length > 0 ? (
           <p className="mb-2 px-1 text-xs text-accent">
             {t('chat.view.pendingApprovals', { count: pendingApprovals.length })}
-            above.
           </p>
         ) : null}
         <Composer

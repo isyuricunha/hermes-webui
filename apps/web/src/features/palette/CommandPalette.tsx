@@ -147,7 +147,7 @@ export function CommandPalette({ onCycleTheme }: { onCycleTheme: () => void }) {
       className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-4 pt-[calc(12vh+env(safe-area-inset-top))] backdrop-blur-[2px]"
       role="dialog"
       aria-modal="true"
-      aria-label="Command palette"
+      aria-label={t('palette.paletteAria')}
       onClick={(event) => {
         if (event.target === event.currentTarget) setOpen(false);
       }}
@@ -177,9 +177,9 @@ export function CommandPalette({ onCycleTheme }: { onCycleTheme: () => void }) {
                 filtered[safeActive]?.run();
               }
             }}
-            placeholder="Search conversations, settings and actions…"
+            placeholder={t('palette.searchPlaceholder')}
             className="h-14 w-full bg-transparent text-[15px] outline-none placeholder:text-text-tertiary"
-            aria-label="Search commands"
+            aria-label={t('palette.searchAria')}
           />
           <kbd className="shrink-0 rounded-md bg-chip px-1.5 py-0.5 font-mono text-[10px] text-text-tertiary">
             Esc
