@@ -493,17 +493,21 @@ body {
   }
   .yu-prose :not(pre) > code {
     display: inline-block;
+    box-sizing: border-box;
+    min-width: 1.8em;
     font-family: var(--font-mono);
     font-size: 0.86em;
-    line-height: 1.35;
+    line-height: 1.5;
     color: var(--color-text-primary);
-    background: color-mix(in srgb, var(--color-accent) 34%, #2a2422);
-    border: 0.5px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+    background: color-mix(in srgb, var(--color-accent) 40%, #3a312e);
+    border: 0.5px solid color-mix(in srgb, var(--color-accent) 75%, white);
     border-radius: 4px;
-    padding: 0 0.45em;
-    margin: 0 0.12em;
-    vertical-align: baseline;
+    padding: 0.04em 0.55em;
+    margin: 0 0.15em;
+    vertical-align: 0.05em;
     white-space: nowrap;
+    overflow: visible;
+    text-align: center;
   }
   .yu-codeblock {
     margin-top: 0.9em;
@@ -1005,7 +1009,8 @@ body {
 }
 [data-msg] .yu-prose :not(pre) > code {
   font-size: 0.86em !important;
-  line-height: 1.35 !important;
-  padding: 0 0.45em;
+  line-height: 1.5 !important;
+  padding: 0.04em 0.55em;
+  min-width: 1.8em;
 }
 
