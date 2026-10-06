@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { buildApp } from '../src/app';
 import { loadConfig } from '../src/config';
 
@@ -17,9 +20,11 @@ function json(body: unknown, status = 200): Response {
 
 describe('dashboard settings routes', () => {
   let app: Awaited<ReturnType<typeof buildApp>>;
+  let dataDir: string;
 
   beforeEach(async () => {
     calls.length = 0;
+    dataDir = await mkdtemp(join(tmpdir(), 'hermes-webui-settings-'));
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: string | URL, init?: RequestInit) => {
@@ -29,12 +34,17 @@ describe('dashboard settings routes', () => {
       }),
     );
     app = await buildApp(
-      { disableAuth: true, config: loadConfig({ HERMES_WEBUI_AUTH_MODE: 'local', HERMES_DASHBOARD_SESSION_TOKEN: 'dash-token' }) },
+      {
+        disableAuth: true,
+        dataDir,
+        config: loadConfig({ HERMES_WEBUI_AUTH_MODE: 'local', HERMES_DASHBOARD_SESSION_TOKEN: 'dash-token' }),
+      },
     );
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllGlobals();
+    await rm(dataDir, { recursive: true, force: true });
   });
 
   it('proxies raw config reads with the dashboard session token', async () => {
@@ -52,12 +62,28 @@ describe('dashboard settings routes', () => {
     expect(headers['x-hermes-session-token']).toBe('dash-token');
   });
 
-  it('forwards raw config writes with the yaml payload', async () => {
+  it('validates and backs up raw config before writing it', async () => {
+    let currentYaml = 'model:\n  default: original-model\n';
+    let putCalls = 0;
     handler = (url, init) => {
-      expect(url.pathname).toBe('/api/config/raw');
-      expect(init?.method).toBe('PUT');
-      expect(JSON.parse(String(init?.body)).yaml_text).toContain('model:');
-      return json({ ok: true });
+      if (url.pathname === '/api/config/raw' && init?.method === 'PUT') {
+        putCalls += 1;
+        expect(JSON.parse(String(init?.body)).yaml_text).toContain('model-large');
+        currentYaml = JSON.parse(String(init?.body)).yaml_text;
+        return json({ ok: true });
+      }
+      if (url.pathname === '/api/config/raw') {
+        return json({ yaml: currentYaml, path: '/home/u/.hermes/config.yaml' });
+      }
+      if (url.pathname === '/api/config/schema') {
+        return json({
+          fields: {
+            'model.default': { type: 'string', description: 'Model', category: 'model' },
+          },
+          category_order: ['model'],
+        });
+      }
+      throw new Error('unexpected dashboard call ' + url.pathname);
     };
 
     const response = await app.inject({
@@ -66,7 +92,11 @@ describe('dashboard settings routes', () => {
       payload: { yaml_text: 'model:\n  default: model-large\n' },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ ok: true });
+    expect(response.json().ok).toBe(true);
+    expect(putCalls).toBe(1);
+
+    const backups = await readdir(join(dataDir, 'config-backups'));
+    expect(backups).toHaveLength(1);
   });
 
   it('lets the live gateway channel state win over the dashboard guess', async () => {

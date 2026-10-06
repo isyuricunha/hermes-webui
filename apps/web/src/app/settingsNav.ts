@@ -12,6 +12,7 @@ import {
   Server,
   Sparkles,
   SquareTerminal,
+  SlidersHorizontal,
   UserRound,
   Wand2,
   Webhook,
@@ -119,6 +120,12 @@ export const SETTINGS_NAV: readonly { group: string; items: readonly SettingsNav
         label: 'settings.nav.rawConfig',
         icon: FileCode,
         keywords: 'yaml',
+      },
+      {
+        to: '/settings/advanced/guided-config',
+        label: 'settings.nav.guidedConfig',
+        icon: SlidersHorizontal,
+        keywords: 'simple safe easy config settings',
       },
       {
         to: '/settings/advanced/environment',

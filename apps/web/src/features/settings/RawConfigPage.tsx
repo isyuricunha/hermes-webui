@@ -1,23 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fetchConfigRaw, putConfigRaw } from '../../lib/api';
+import { fetchConfigRaw, putConfigRaw, validateConfigRaw, type ConfigValidation } from '../../lib/api';
 import { SettingsError, SettingsPage } from './SettingsLayout';
 
-/**
- * Raw Config (PRD 31): edit the real config.yaml. The dashboard validates
- * YAML before saving (400 on invalid) and the editor shows a line diff before
- * applying. The saved file IS the Hermes file; no parallel copy (PRD 31.2).
- */
-
-/** Minimal LCS line diff for the pre-apply review (config files are small). */
 function lineDiff(
   original: string,
   edited: string,
 ): { kind: 'same' | 'add' | 'del'; text: string }[] {
   const a = original.split('\n');
   const b = edited.split('\n');
-  // LCS table: O(n*m) cells; config.yaml is a few hundred lines, fine.
   const lcs: number[][] = Array.from({ length: a.length + 1 }, () =>
     new Array(b.length + 1).fill(0),
   );
@@ -56,52 +48,129 @@ function lineDiff(
   return out;
 }
 
+function jumpToLine(
+  textarea: HTMLTextAreaElement | null,
+  text: string,
+  line: number,
+  column: number,
+) {
+  if (textarea === null) return;
+  const lines = text.split('\n');
+  const index = Math.max(0, Math.min(line - 1, lines.length - 1));
+  const offset =
+    lines.slice(0, index).reduce((sum, value) => sum + value.length + 1, 0) +
+    Math.max(0, column - 1);
+  textarea.focus();
+  textarea.setSelectionRange(offset, offset);
+}
+
+function validationState(
+  validation: ConfigValidation | null,
+  pending: boolean,
+): { label: string; tone: 'ok' | 'bad' | 'idle' } {
+  if (pending) return { label: 'checking', tone: 'idle' };
+  if (validation === null) return { label: 'unknown', tone: 'idle' };
+  if (!validation.ok) return { label: 'invalid', tone: 'bad' };
+  if (validation.warnings.length > 0) return { label: 'warning', tone: 'idle' };
+  return { label: 'valid', tone: 'ok' };
+}
+
 export function RawConfigPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const configQuery = useQuery({ queryKey: ['config-raw'], queryFn: fetchConfigRaw });
+  const query = useQuery({ queryKey: ['config-raw'], queryFn: fetchConfigRaw });
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const gutterRef = useRef<HTMLDivElement>(null);
 
-  const original = configQuery.data?.yaml ?? '';
+  const original = query.data?.yaml ?? '';
+  const originalRev = query.data?.rev ?? '';
   const [edited, setEdited] = useState<string | null>(null);
+  const [rev, setRev] = useState('');
   const [saved, setSaved] = useState(false);
-  // Adjust editor content when a different config loads (React "adjust state
-  // during render" pattern; no effect needed, PRD-lint friendly).
+  const [validation, setValidation] = useState<ConfigValidation | null>(null);
+  const [validatedText, setValidatedText] = useState<string | null>(null);
+  const [showReview, setShowReview] = useState(false);
+
+  const shown = edited ?? original;
+
   const [prevOriginal, setPrevOriginal] = useState<string | null>(null);
-  if (configQuery.data !== undefined && prevOriginal !== original) {
+  if (query.data !== undefined && prevOriginal !== original) {
     setPrevOriginal(original);
     setEdited(original);
+    setRev(originalRev);
     setSaved(false);
+    setShowReview(false);
   }
 
+  useEffect(() => {
+    if (edited === null) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void validateConfigRaw(edited)
+        .then((result) => {
+          if (!cancelled) {
+            setValidation(result);
+            setValidatedText(edited);
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            setValidation({
+              ok: false,
+              errors: [{ line: 1, column: 1, message: error instanceof Error ? error.message : 'Validation failed.' }],
+              warnings: [],
+            });
+            setValidatedText(edited);
+          }
+        });
+    }, 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [edited]);
+
   const save = useMutation({
-    mutationFn: (yamlText: string) => putConfigRaw(yamlText),
-    onSuccess: () => {
+    mutationFn: async (yamlText: string) => putConfigRaw(yamlText, rev),
+    onSuccess: async (result) => {
+      const fresh = await fetchConfigRaw();
+      queryClient.setQueryData(['config-raw'], fresh);
+      setEdited(fresh.yaml);
+      setRev(fresh.rev);
       setSaved(true);
-      setEdited(null);
-      // Raw config replaces the whole file; a restart is likely required.
+      setShowReview(false);
+      setValidation(result.validation);
       window.dispatchEvent(new CustomEvent('hermes-webui:restart-required'));
-      void queryClient.invalidateQueries({ queryKey: ['config-raw'] });
     },
   });
 
+  const validationPending = edited !== null && validatedText !== edited;
   const dirty = edited !== null && edited !== original;
   const diff = useMemo(
     () => (dirty ? lineDiff(original, edited ?? '') : []),
     [dirty, original, edited],
   );
   const changedLines = diff.filter((d) => d.kind !== 'same').length;
+  const lineCount = Math.max(1, shown.split('\n').length);
+  const state = validationState(validation, validationPending);
 
-  if (configQuery.isPending) {
+  const onScroll = () => {
+    if (textareaRef.current && gutterRef.current) {
+      gutterRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  };
+
+  if (query.isPending) {
     return (
       <SettingsPage title={t('settings.rawConfig.title')}>
         <p className="text-sm text-text-secondary">{t('settings.rawConfig.loading')}</p>
       </SettingsPage>
     );
   }
-  if (configQuery.isError) {
+  if (query.isError) {
     return (
       <SettingsPage title={t('settings.rawConfig.title')}>
-        <SettingsError message={configQuery.error.message} />
+        <SettingsError message={query.error.message} />
       </SettingsPage>
     );
   }
@@ -111,7 +180,7 @@ export function RawConfigPage() {
       title={t('settings.rawConfig.title')}
       description={
         <>
-          <span className="font-mono">{configQuery.data.path}</span>
+          <span className="font-mono">{query.data.path}</span>
           {t('settings.rawConfig.descMid')}
           <a
             href="https://hermes-agent.nousresearch.com/docs/user-guide/configuration"
@@ -135,8 +204,58 @@ export function RawConfigPage() {
         </a>
       }
     >
-      {dirty ? (
-        <details className="mb-3 yu-card rounded-2xl p-3 text-xs">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span
+          className={[
+            'rounded-full px-2.5 py-1 text-[11px] font-medium',
+            state.tone === 'ok'
+              ? 'bg-success/10 text-success'
+              : state.tone === 'bad'
+                ? 'bg-danger/10 text-danger'
+                : 'bg-chip text-text-secondary',
+          ].join(' ')}
+        >
+          {t('settings.rawConfig.status.' + state.label)}
+        </span>
+        {validation?.errors.length ? (
+          <span className="text-xs text-danger">
+            {t('settings.rawConfig.errorCount', { count: validation.errors.length })}
+          </span>
+        ) : null}
+        {validation?.warnings.length ? (
+          <span className="text-xs text-text-secondary">
+            {t('settings.rawConfig.warningCount', { count: validation.warnings.length })}
+          </span>
+        ) : null}
+        {validationPending ? (
+          <span className="text-xs text-text-tertiary">{t('settings.rawConfig.validationPending')}</span>
+        ) : null}
+      </div>
+
+      {validation && validation.errors.length > 0 ? (
+        <div className="mb-3 rounded-2xl border border-danger/30 bg-danger/5 p-3">
+          <p className="text-xs font-medium text-danger">{t('settings.rawConfig.fixErrors')}</p>
+          <div className="mt-2 space-y-1">
+            {validation.errors.slice(0, 12).map((issue, index) => (
+              <button
+                type="button"
+                key={index}
+                onClick={() => jumpToLine(textareaRef.current, shown, issue.line, issue.column)}
+                className="block w-full rounded-lg px-2 py-1.5 text-left font-mono text-[11px] text-danger hover:bg-danger/10"
+              >
+                {t('settings.rawConfig.errorAt', {
+                  line: issue.line,
+                  column: issue.column,
+                  message: issue.message,
+                })}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {showReview && dirty ? (
+        <details open className="mb-3 yu-card rounded-2xl p-3 text-xs">
           <summary className="cursor-pointer select-none font-medium">
             {t('settings.rawConfig.review', { count: changedLines })}
           </summary>
@@ -160,43 +279,80 @@ export function RawConfigPage() {
         </details>
       ) : null}
 
-      <textarea
-        value={edited ?? ''}
-        onChange={(event) => {
-          setEdited(event.target.value);
-          setSaved(false);
-        }}
-        spellCheck={false}
-        aria-label={t('settings.rawConfig.aria')}
-        className="h-[60vh] w-full resize-none yu-card rounded-2xl p-4 font-mono text-xs outline-none focus:border-accent"
-      />
+      <div className="yu-card flex min-h-0 overflow-hidden rounded-2xl">
+        <div
+          ref={gutterRef}
+          aria-hidden
+          className="hidden w-12 shrink-0 select-none overflow-hidden border-r border-border-subtle bg-surface-input py-4 text-right font-mono text-[11px] leading-5 text-text-tertiary sm:block"
+        >
+          {Array.from({ length: lineCount }, (_, index) => (
+            <div key={index} className="pr-3">
+              {index + 1}
+            </div>
+          ))}
+        </div>
+        <textarea
+          ref={textareaRef}
+          value={shown}
+          onScroll={onScroll}
+          onChange={(event) => {
+            setEdited(event.target.value);
+            setSaved(false);
+            setShowReview(false);
+            setValidation(null);
+            setValidatedText(null);
+          }}
+          spellCheck={false}
+          aria-label={t('settings.rawConfig.aria')}
+          wrap="off"
+          className="h-[62vh] min-h-[420px] w-full resize-none border-0 bg-transparent p-4 font-mono text-[12px] leading-5 outline-none focus:ring-0"
+          style={{ tabSize: 2 }}
+        />
+      </div>
 
-      <div className="mt-3 flex items-center gap-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          disabled={!dirty || save.isPending}
-          onClick={() => save.mutate(edited ?? '')}
-          className="yu-btn yu-btn-primary px-4 py-2 text-sm"
+          disabled={!dirty || save.isPending || validationPending || validation === null || !validation.ok}
+          onClick={() => setShowReview((current) => !current)}
+          className="yu-btn yu-btn-primary h-9 px-4 text-sm"
         >
-          {save.isPending ? t('settings.rawConfig.saving') : t('settings.rawConfig.saveConfig')}
+          {showReview ? t('settings.rawConfig.hideReview') : t('settings.rawConfig.reviewButton', { count: changedLines })}
         </button>
+        {showReview ? (
+          <button
+            type="button"
+            disabled={save.isPending}
+            onClick={() => save.mutate(edited ?? '')}
+            className="yu-btn yu-btn-primary h-9 px-4 text-sm"
+          >
+            {save.isPending ? t('settings.rawConfig.saving') : t('settings.rawConfig.saveConfig')}
+          </button>
+        ) : null}
         {dirty ? (
           <button
             type="button"
+            disabled={save.isPending}
             onClick={() => {
               setEdited(original);
+              setRev(originalRev);
               setSaved(false);
+              setShowReview(false);
+              setValidation(null);
+              setValidatedText(null);
             }}
             className="yu-btn yu-btn-secondary h-9 px-4 text-sm"
           >
             {t('settings.rawConfig.discard')}
           </button>
         ) : null}
-        {saved ? (
-          <span className="text-sm text-success">{t('settings.rawConfig.saved')}</span>
-        ) : null}
+        {saved ? <span className="text-sm text-success">{t('settings.rawConfig.saved')}</span> : null}
         {save.isError ? <span className="text-sm text-danger">{save.error.message}</span> : null}
       </div>
+
+      {validation && validation.warnings.length > 0 ? (
+        <p className="mt-3 text-xs text-text-secondary">{t('settings.rawConfig.warningHint')}</p>
+      ) : null}
     </SettingsPage>
   );
 }

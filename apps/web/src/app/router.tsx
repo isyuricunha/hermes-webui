@@ -21,6 +21,7 @@ import { CronPage } from '../features/settings/CronPage';
 import { MessagingPage } from '../features/settings/MessagingPage';
 import { SystemPage } from '../features/settings/SystemPage';
 import { RawConfigPage } from '../features/settings/RawConfigPage';
+import { GuidedConfigPage } from '../features/settings/GuidedConfigPage';
 import { EnvPage } from '../features/settings/EnvPage';
 import { CliPage } from '../features/settings/CliPage';
 import { FieldDetailPage } from '../features/settings/FieldDetailPage';
@@ -181,6 +182,12 @@ const rawConfigRoute = createRoute({
   component: RawConfigPage,
 });
 
+const guidedConfigRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: 'advanced/guided-config',
+  component: GuidedConfigPage,
+});
+
 const environmentRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: 'advanced/environment',
@@ -242,6 +249,7 @@ const routeTree = rootRoute.addChildren([
       messagingRoute,
       systemRoute,
       rawConfigRoute,
+      guidedConfigRoute,
       environmentRoute,
       cliRoute,
       usageRoute,

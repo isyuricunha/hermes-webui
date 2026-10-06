@@ -323,10 +323,10 @@
       }
     },
     "view": {
-      "queuedCount_one": "{{count}} message queued",
-      "queuedCount_other": "{{count}} messages queued",
-      "pendingApprovals_one": "{{count}} pending approval above.",
-      "pendingApprovals_other": "{{count}} pending approvals above.",
+      "queuedCount_one": "{{count}} message queued for when Hermes finishes.",
+      "queuedCount_other": "{{count}} messages queued for when Hermes finishes.",
+      "pendingApprovals_one": "{{count}} approval waiting",
+      "pendingApprovals_other": "{{count}} approvals waiting",
       "runFailed": "The run failed.",
       "stopFailed": "Stop failed.",
       "steerFailed": "Steer failed.",
@@ -419,11 +419,7 @@
       "contextCompress": "Hermes compresses older turns when the window gets close to full; /compress does it now.",
       "modelHintLocked": "{{model}}: picked for this chat only. Click to change.",
       "modelHintDefault": "{{model}}: Hermes' default model (Settings > Models). Click to pick another one for this chat only.",
-      "modelHintNone": "Change the model for this chat",
-      "queuedCount_one": "{{count}} message queued for when Hermes finishes.",
-      "queuedCount_other": "{{count}} messages queued for when Hermes finishes.",
-      "pendingApprovals_one": "{{count}} approval waiting",
-      "pendingApprovals_other": "{{count}} approvals waiting"
+      "modelHintNone": "Change the model for this chat"
     }
   },
   "settings": {
@@ -520,7 +516,8 @@
       "about": "About",
       "rawConfig": "Raw Config",
       "environment": "Environment",
-      "cli": "Hermes CLI"
+      "cli": "Hermes CLI",
+      "guidedConfig": "Guided Config"
     },
     "models": {
       "title": "Models",
@@ -1143,7 +1140,22 @@
       "saving": "Saving…",
       "saveConfig": "Save config",
       "discard": "Discard",
-      "saved": "Saved."
+      "saved": "Saved.",
+      "status": {
+        "checking": "Checking…",
+        "unknown": "Not checked",
+        "invalid": "Invalid",
+        "warning": "Valid with notes",
+        "valid": "Valid"
+      },
+      "errorCount": "{{count}} blocking error(s)",
+      "warningCount": "{{count}} warning(s)",
+      "validationPending": "Checking the config against Hermes' schema…",
+      "fixErrors": "Fix these errors before saving.",
+      "errorAt": "Line {{line}}, column {{column}} — {{message}}",
+      "hideReview": "Hide review",
+      "reviewButton": "Review {{count}} changed line(s)",
+      "warningHint": "The validator also checks known setting types and select options. Unknown future keys are left alone for Raw Config."
     },
     "fieldDetail": {
       "loading": "Loading…",
@@ -1371,6 +1383,37 @@
       "rejectAll": "Reject all",
       "awaiting": "Waiting for your approval.",
       "noLongerPending": "No longer pending (approved or rejected)."
+    },
+    "guidedConfig": {
+      "title": "Guided Config",
+      "description": "Safe controls for the everyday Hermes settings. No YAML required.",
+      "rawLink": "Raw Config",
+      "loading": "Loading guided settings…",
+      "loadFailed": "Could not load guided settings.",
+      "howItWorksTitle": "Change settings without touching YAML",
+      "howItWorks": "Choose a value below. Saving writes only the changed scalar settings back into Hermes' real config.yaml. Reset removes your override and returns the setting to Hermes' default. Changes marked for confirmation affect model, execution, channel or other important behavior.",
+      "hidden": "{{count}} advanced settings are hidden here because they are lists/maps, credentials, generated values or otherwise Raw Config only.",
+      "searchPlaceholder": "Search settings or paths…",
+      "searchAria": "Search guided settings",
+      "overriddenOnly": "Only settings I changed",
+      "pending": "{{count}} unsaved change(s)",
+      "confirmPending": "{{count}} change(s) need an explicit review",
+      "cancelReview": "Cancel",
+      "apply": "Apply changes",
+      "review": "Review changes",
+      "reviewTitle": "Review before applying",
+      "reviewDescription": "This list is the exact set of config mutations that will be written. Reset means the key will be removed from config.yaml so Hermes uses its default again.",
+      "confirmBadge": "Review",
+      "safeBadge": "Safe",
+      "overriddenBadge": "Overridden",
+      "resetAction": "reset to default",
+      "noMatches": "No settings match this search.",
+      "defaultLabel": "Default: {{value}}",
+      "notAvailable": "not available",
+      "reset": "Reset to default",
+      "resetAria": "Reset {{path}} to default",
+      "secretsNote": "Credentials and secret-like settings are never exposed in this editor.",
+      "saveFailed": "Could not save the guided settings."
     }
   }
 }

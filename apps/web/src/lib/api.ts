@@ -1,5 +1,11 @@
 import type { StoredImage } from '../features/chat/history';
-import type { AppStatus, NormalizedCommand } from '@hermes-webui/shared';
+import type {
+  AppStatus,
+  GuidedConfigOp,
+  GuidedConfigResult,
+  GuidedConfigState,
+  NormalizedCommand,
+} from '@hermes-webui/shared';
 import { getCsrfToken, notifyAuthRequired } from './auth';
 
 /**
@@ -295,16 +301,60 @@ export function deleteCronJob(jobId: string): Promise<unknown> {
 export interface RawConfig {
   yaml: string;
   path: string;
+  rev: string;
+}
+
+export interface ConfigValidationIssue {
+  line: number;
+  message: string;
+}
+
+export interface ConfigValidationError extends ConfigValidationIssue {
+  column: number;
+}
+
+export interface ConfigValidationWarning extends ConfigValidationIssue {
+  path: string;
+}
+
+export interface ConfigValidation {
+  ok: boolean;
+  errors: ConfigValidationError[];
+  warnings: ConfigValidationWarning[];
 }
 
 export function fetchConfigRaw(): Promise<RawConfig> {
   return requestJson<RawConfig>('/api/settings/config/raw');
 }
 
-export function putConfigRaw(yamlText: string): Promise<{ ok: boolean }> {
-  return requestJson<{ ok: boolean }>('/api/settings/config/raw', {
-    method: 'PUT',
+export function validateConfigRaw(yamlText: string): Promise<ConfigValidation> {
+  return requestJson<ConfigValidation>('/api/settings/config/raw/validate', {
+    method: 'POST',
     body: JSON.stringify({ yaml_text: yamlText }),
+  });
+}
+
+export function putConfigRaw(
+  yamlText: string,
+  baseRev?: string,
+): Promise<{ ok: boolean; rev: string; validation: ConfigValidation }> {
+  return requestJson('/api/settings/config/raw', {
+    method: 'PUT',
+    body: JSON.stringify({ yaml_text: yamlText, ...(baseRev ? { base_rev: baseRev } : {}) }),
+  });
+}
+
+export function fetchGuidedConfig(): Promise<GuidedConfigState> {
+  return requestJson<GuidedConfigState>('/api/settings/config/guided');
+}
+
+export function putGuidedConfig(
+  rev: string,
+  ops: GuidedConfigOp[],
+): Promise<GuidedConfigResult & { state: GuidedConfigState }> {
+  return requestJson('/api/settings/config/guided', {
+    method: 'PUT',
+    body: JSON.stringify({ rev, ops }),
   });
 }
 

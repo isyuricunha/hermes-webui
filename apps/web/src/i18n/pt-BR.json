@@ -323,10 +323,10 @@
       }
     },
     "view": {
-      "queuedCount_one": "{{count}} mensagem na fila",
-      "queuedCount_other": "{{count}} mensagens na fila",
-      "pendingApprovals_one": "{{count}} aprovação pendente acima.",
-      "pendingApprovals_other": "{{count}} aprovações pendentes acima.",
+      "queuedCount_one": "{{count}} mensagem na fila até o Hermes terminar.",
+      "queuedCount_other": "{{count}} mensagens na fila até o Hermes terminar.",
+      "pendingApprovals_one": "{{count}} aprovação esperando",
+      "pendingApprovals_other": "{{count}} aprovações esperando",
       "runFailed": "A execução falhou.",
       "stopFailed": "Falha ao parar.",
       "steerFailed": "Falha no steer.",
@@ -419,11 +419,7 @@
       "contextCompress": "O Hermes comprime turnos antigos quando a janela chega perto do limite; o /compress faz isso agora.",
       "modelHintLocked": "{{model}}: escolhido só para este chat. Clique para mudar.",
       "modelHintDefault": "{{model}}: modelo padrão do Hermes (Configurações > Modelos). Clique para escolher outro somente para este chat.",
-      "modelHintNone": "Mudar o modelo deste chat",
-      "queuedCount_one": "{{count}} mensagem na fila até o Hermes terminar.",
-      "queuedCount_other": "{{count}} mensagens na fila até o Hermes terminar.",
-      "pendingApprovals_one": "{{count}} aprovação esperando",
-      "pendingApprovals_other": "{{count}} aprovações esperando"
+      "modelHintNone": "Mudar o modelo deste chat"
     }
   },
   "settings": {
@@ -520,7 +516,8 @@
       "about": "Sobre",
       "rawConfig": "Config bruta",
       "environment": "Ambiente",
-      "cli": "CLI do Hermes"
+      "cli": "CLI do Hermes",
+      "guidedConfig": "Configuração guiada"
     },
     "models": {
       "title": "Modelos",
@@ -1143,7 +1140,22 @@
       "saving": "Salvando…",
       "saveConfig": "Salvar config",
       "discard": "Descartar",
-      "saved": "Salvo."
+      "saved": "Salvo.",
+      "status": {
+        "checking": "Validando…",
+        "unknown": "Não validado",
+        "invalid": "Inválido",
+        "warning": "Válido com avisos",
+        "valid": "Válido"
+      },
+      "errorCount": "{{count}} erro(s) bloqueante(s)",
+      "warningCount": "{{count}} aviso(s)",
+      "validationPending": "Conferindo a config contra o schema do Hermes…",
+      "fixErrors": "Corrija estes erros antes de salvar.",
+      "errorAt": "Linha {{line}}, coluna {{column}} — {{message}}",
+      "hideReview": "Ocultar revisão",
+      "reviewButton": "Revisar {{count}} linha(s) alterada(s)",
+      "warningHint": "O validador também confere os tipos conhecidos e as opções dos selects. Chaves futuras desconhecidas ficam por conta da Config Raw."
     },
     "fieldDetail": {
       "loading": "Carregando…",
@@ -1371,6 +1383,37 @@
       "rejectAll": "Rejeitar todas",
       "awaiting": "Aguardando sua aprovação.",
       "noLongerPending": "Não está mais pendente (aprovado ou rejeitado)."
+    },
+    "guidedConfig": {
+      "title": "Configuração guiada",
+      "description": "Controles seguros para as configurações comuns do Hermes. Sem precisar editar YAML.",
+      "rawLink": "Config Raw",
+      "loading": "Carregando configurações guiadas…",
+      "loadFailed": "Não foi possível carregar as configurações guiadas.",
+      "howItWorksTitle": "Mude configurações sem tocar no YAML",
+      "howItWorks": "Escolha um valor abaixo. Ao salvar, apenas as configurações escalares alteradas voltam para o config.yaml real do Hermes. Restaurar remove o override e faz o Hermes voltar ao padrão. Ajustes marcados para revisão mudam comportamento importante, como modelo, execução ou canais.",
+      "hidden": "{{count}} configurações avançadas ficam ocultas aqui porque são listas/mapas, credenciais, valores gerados ou só podem ser editadas na Config Raw.",
+      "searchPlaceholder": "Pesquisar configurações ou caminhos…",
+      "searchAria": "Pesquisar configurações guiadas",
+      "overriddenOnly": "Só configurações que alterei",
+      "pending": "{{count}} alteração(ões) não salvas",
+      "confirmPending": "{{count}} alteração(ões) precisam de revisão explícita",
+      "cancelReview": "Cancelar",
+      "apply": "Aplicar alterações",
+      "review": "Revisar alterações",
+      "reviewTitle": "Revise antes de aplicar",
+      "reviewDescription": "Esta lista é exatamente o conjunto de alterações que será gravado. Restaurar significa remover a chave do config.yaml para que o Hermes use o padrão novamente.",
+      "confirmBadge": "Revisar",
+      "safeBadge": "Seguro",
+      "overriddenBadge": "Alterado",
+      "resetAction": "voltar ao padrão",
+      "noMatches": "Nenhuma configuração corresponde à busca.",
+      "defaultLabel": "Padrão: {{value}}",
+      "notAvailable": "indisponível",
+      "reset": "Voltar ao padrão",
+      "resetAria": "Voltar {{path}} ao padrão",
+      "secretsNote": "Credenciais e configurações que parecem conter segredos nunca são expostas aqui.",
+      "saveFailed": "Não foi possível salvar as configurações guiadas."
     }
   }
 }

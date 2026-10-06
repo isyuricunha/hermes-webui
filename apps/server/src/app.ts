@@ -221,7 +221,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   await app.register(sessionRoutes, { client: hermes, images });
   await app.register(runRoutes, { client: hermes, images });
   await app.register(cronRoutes, { client: hermes });
-  await app.register(settingsRoutes, { dashboard, gateway: hermes });
+  await app.register(settingsRoutes, { dashboard, gateway: hermes, dataDir });
   await app.register(hermesProxyRoutes, { dashboard });
   await app.register(sessionContextRoutes, { dashboard });
   await app.register(uploadRoutes, {

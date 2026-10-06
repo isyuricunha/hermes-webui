@@ -1,7 +1,32 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
+import type { GuidedConfigOp } from '@hermes-webui/shared';
 import type { HermesClient } from '../hermes/client';
 import type { HermesDashboardClient } from '../hermes/dashboard';
+import {
+  ConfigEditError,
+  applyConfigOps,
+  backupConfigText,
+  buildGuidedState,
+  configRevision,
+  toSchemaFields,
+  validateConfigYaml,
+  verifyApplied,
+  type SchemaFields,
+} from '../hermes/config-edit';
 import { sendHermesError } from '../hermes/errors';
+
+/** Config-edit failures keep their own code and status; anything else is a Hermes error. */
+function sendConfigError(reply: FastifyReply, requestId: string, error: unknown): FastifyReply {
+  if (error instanceof ConfigEditError) {
+    return reply.status(error.status).send({ error: { code: error.code, message: error.message }, requestId });
+  }
+  return sendHermesError(reply, requestId, error);
+}
+
+const CONFIG_CHANGED_MESSAGE =
+  'config.yaml was changed by something else since you opened it. Reload it so you do not overwrite that change.';
+
+const SCHEMA_CACHE_MS = 60_000;
 
 /**
  * Settings workspace routes (PRD 19-32, Phase 3). Everything here proxies the
@@ -15,19 +40,71 @@ import { sendHermesError } from '../hermes/errors';
  */
 export async function settingsRoutes(
   app: FastifyInstance,
-  opts: { dashboard: HermesDashboardClient; gateway?: HermesClient },
+  opts: { dashboard: HermesDashboardClient; gateway?: HermesClient; dataDir: string },
 ): Promise<void> {
-  const { dashboard, gateway } = opts;
+  const { dashboard, gateway, dataDir } = opts;
+
+  // The schema is large and rarely changes; validating while someone types
+  // must not refetch it on every pause.
+  let configWriteTail = Promise.resolve();
+
+  async function withConfigWriteLock<T>(fn: () => Promise<T>): Promise<T> {
+    const previous = configWriteTail;
+    let release!: () => void;
+    configWriteTail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
+  }
+
+  let schemaCache: { at: number; fields: SchemaFields; categoryOrder: string[] } | null = null;
+  async function loadSchema(): Promise<{ fields: SchemaFields; categoryOrder: string[] }> {
+    if (schemaCache !== null && Date.now() - schemaCache.at < SCHEMA_CACHE_MS) {
+      return schemaCache;
+    }
+    const schema = await dashboard.getSchema();
+    schemaCache = { at: Date.now(), fields: toSchemaFields(schema.fields), categoryOrder: schema.category_order };
+    return schemaCache;
+  }
 
   // -- Config -----------------------------------------------------------------
 
   app.get('/api/settings/config/raw', async (request, reply) => {
     try {
-      return await reply.send(await dashboard.getConfigRaw());
+      const raw = await dashboard.getConfigRaw();
+      return await reply.send({ ...raw, rev: configRevision(raw.yaml) });
     } catch (error) {
       return sendHermesError(reply, request.id, error);
     }
   });
+
+  app.post(
+    '/api/settings/config/raw/validate',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['yaml_text'],
+          properties: { yaml_text: { type: 'string', maxLength: 2_000_000 } },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { yaml_text } = request.body as { yaml_text: string };
+        const schema = await loadSchema();
+        return await reply.send(validateConfigYaml(yaml_text, schema.fields));
+      } catch (error) {
+        return sendConfigError(reply, request.id, error);
+      }
+    },
+  );
 
   app.put(
     '/api/settings/config/raw',
@@ -36,17 +113,154 @@ export async function settingsRoutes(
         body: {
           type: 'object',
           required: ['yaml_text'],
-          properties: { yaml_text: { type: 'string' } },
+          properties: {
+            yaml_text: { type: 'string', maxLength: 2_000_000 },
+            base_rev: { type: 'string', minLength: 1, maxLength: 64 },
+          },
           additionalProperties: false,
         },
       },
     },
     async (request, reply) => {
       try {
-        const { yaml_text } = request.body as { yaml_text: string };
-        return await reply.send(await dashboard.putConfigRaw(yaml_text));
+        return await withConfigWriteLock(async () => {
+          const { yaml_text, base_rev } = request.body as { yaml_text: string; base_rev?: string };
+          const [current, schema] = await Promise.all([dashboard.getConfigRaw(), loadSchema()]);
+        if (base_rev !== undefined && configRevision(current.yaml) !== base_rev) {
+          throw new ConfigEditError('CONFIG_CHANGED', CONFIG_CHANGED_MESSAGE, 409);
+        }
+        const validation = validateConfigYaml(yaml_text, schema.fields);
+        if (!validation.ok) {
+          throw new ConfigEditError(
+            'CONFIG_VALIDATION_FAILED',
+            'config.yaml has blocking validation errors. Fix them before saving.',
+            400,
+          );
+        }
+
+        const latest = await dashboard.getConfigRaw();
+        if (configRevision(latest.yaml) !== configRevision(current.yaml)) {
+          throw new ConfigEditError('CONFIG_CHANGED', CONFIG_CHANGED_MESSAGE, 409);
+        }
+
+        if (yaml_text === latest.yaml) {
+          return await reply.send({ ok: true, rev: configRevision(latest.yaml), validation });
+        }
+
+        await backupConfigText(dataDir, latest.yaml, 'raw');
+        const written = await dashboard.putConfigRaw(yaml_text);
+        const fresh = await dashboard.getConfigRaw();
+          return await reply.send({ ...written, rev: configRevision(fresh.yaml), validation });
+        });
       } catch (error) {
-        return sendHermesError(reply, request.id, error);
+        return sendConfigError(reply, request.id, error);
+      }
+    },
+  );
+
+  app.get('/api/settings/config/guided', async (request, reply) => {
+    try {
+      const [raw, schema, config, defaults] = await Promise.all([
+        dashboard.getConfigRaw(),
+        loadSchema(),
+        dashboard.getConfig(),
+        dashboard.getDefaults(),
+      ]);
+      return await reply.send(buildGuidedState({ raw, schema, config, defaults }));
+    } catch (error) {
+      return sendConfigError(reply, request.id, error);
+    }
+  });
+
+  app.put(
+    '/api/settings/config/guided',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['rev', 'ops'],
+          properties: {
+            rev: { type: 'string', minLength: 1, maxLength: 64 },
+            ops: {
+              type: 'array',
+              minItems: 1,
+              maxItems: 100,
+              items: {
+                type: 'object',
+                required: ['op', 'path'],
+                properties: {
+                  op: { enum: ['set', 'unset'] },
+                  path: { type: 'string', minLength: 1, maxLength: 512 },
+                  value: {},
+                  confirm: { type: 'boolean' },
+                },
+                additionalProperties: false,
+              },
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return await withConfigWriteLock(async () => {
+          const { rev, ops } = request.body as { rev: string; ops: GuidedConfigOp[] };
+          const schema = await loadSchema();
+          const current = await dashboard.getConfigRaw();
+
+        if (configRevision(current.yaml) !== rev) {
+          throw new ConfigEditError('CONFIG_CHANGED', CONFIG_CHANGED_MESSAGE, 409);
+        }
+
+        const defaults = await dashboard.getDefaults();
+        const planned = applyConfigOps(current.yaml, ops, schema.fields, defaults);
+        if (planned.applied.length === 0) {
+          const [freshRaw, freshConfig] = await Promise.all([dashboard.getConfigRaw(), dashboard.getConfig()]);
+          return await reply.send({
+            ok: true,
+            applied: [],
+            skipped: planned.skipped,
+            verified: true,
+            mismatches: [],
+            rev: configRevision(freshRaw.yaml),
+            state: buildGuidedState({ raw: freshRaw, schema, config: freshConfig, defaults }),
+          });
+        }
+
+        const latest = await dashboard.getConfigRaw();
+        if (configRevision(latest.yaml) !== rev) {
+          throw new ConfigEditError('CONFIG_CHANGED', CONFIG_CHANGED_MESSAGE, 409);
+        }
+
+        await backupConfigText(dataDir, latest.yaml, 'guided');
+        await dashboard.putConfigRaw(planned.yaml);
+
+        const [freshRaw, freshConfig] = await Promise.all([
+          dashboard.getConfigRaw(),
+          dashboard.getConfig(),
+        ]);
+        const mismatches = verifyApplied(planned.applied, ops, freshRaw.yaml, freshConfig);
+        if (mismatches.length > 0) {
+          throw new ConfigEditError(
+            'CONFIG_VERIFY_FAILED',
+            'Hermes reread the config but these changes did not land: ' + mismatches.join(', '),
+            502,
+          );
+        }
+
+          return await reply.send({
+            ok: true,
+            applied: planned.applied,
+            skipped: planned.skipped,
+            verified: true,
+            mismatches: [],
+            rev: configRevision(freshRaw.yaml),
+            state: buildGuidedState({ raw: freshRaw, schema, config: freshConfig, defaults }),
+          });
+        });
+      } catch (error) {
+        return sendConfigError(reply, request.id, error);
       }
     },
   );
