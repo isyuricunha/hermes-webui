@@ -34,19 +34,24 @@ export function ModelBrowser({
     [providers],
   );
 
-  const selectedMeta = useMemo(() => {
-    if (selected === null || selected.model === '') return null;
+  let selectedMeta: {
+    provider: CatalogProvider | null;
+    model: { id: string; label: string };
+  } | null = null;
+  if (selected !== null && selected.model !== '') {
+    selectedMeta = {
+      provider: null,
+      model: { id: selected.model, label: selected.model },
+    };
     for (const provider of providers) {
       if (selected.provider && selected.provider !== provider.slug) continue;
       const model = provider.models.find((entry) => entry.id === selected.model);
-      if (model) return { provider, model };
+      if (model) {
+        selectedMeta = { provider, model };
+        break;
+      }
     }
-    // Custom / unknown id still selected
-    return {
-      provider: null as CatalogProvider | null,
-      model: { id: selected.model, label: selected.model },
-    };
-  }, [providers, selected]);
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

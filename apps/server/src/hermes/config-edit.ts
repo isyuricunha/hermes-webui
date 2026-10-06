@@ -385,7 +385,7 @@ export function buildGuidedState(input: {
     try {
       isSet = doc.hasIn(fieldPath.split('.'));
     } catch {
-      isSet = false;
+      // path may sit under a non-map node; treat as unset
     }
     const row: GuidedConfigRow = {
       path: fieldPath,

@@ -337,7 +337,7 @@ export function GuidedConfigPage() {
         help.includes(q)
       );
     });
-  }, [drafts, rows, search, showOverriddenOnly]);
+  }, [drafts, rows, search, showOverriddenOnly, t]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, GuidedConfigRow[]>();
