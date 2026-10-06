@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, ChevronDown, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, ChevronDown, CircleHelp, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
 import {
   fetchGuidedConfig,
   fetchModelOptions,
@@ -15,6 +15,36 @@ import { SettingsError, SettingsPage } from './SettingsLayout';
 
 function helpKeyForPath(path: string): string {
   return 'settings.guidedConfig.help.' + path.replace(/\./g, '_');
+}
+
+function tipKeyForPath(path: string): string {
+  return 'settings.guidedConfig.tip.' + path.replace(/\./g, '_');
+}
+
+function fieldHelpText(
+  path: string,
+  fallback: string | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  return t(helpKeyForPath(path), { defaultValue: fallback ?? '' });
+}
+
+function fieldTipText(
+  path: string,
+  help: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const tip = t(tipKeyForPath(path), { defaultValue: '' });
+  return tip || help;
+}
+
+function clampNumber(value: number, row: GuidedConfigRow): number {
+  let next = value;
+  if (!Number.isFinite(next)) return next;
+  if (row.integer === true) next = Math.round(next);
+  if (row.min !== undefined) next = Math.max(row.min, next);
+  if (row.max !== undefined) next = Math.min(row.max, next);
+  return next;
 }
 
 type DraftValue = string | number | boolean | null;
@@ -119,24 +149,42 @@ function Control({
 
   if (row.type === 'boolean') {
     const checked = value === true;
+    const onLabel = t('settings.guidedConfig.booleanOn');
+    const offLabel = t('settings.guidedConfig.booleanOff');
     return (
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={[
-          'flex h-9 w-16 items-center rounded-full border px-1 transition-colors',
-          checked ? 'border-accent bg-accent' : 'border-border-strong bg-surface-input',
-        ].join(' ')}
-      >
-        <span
-          className={[
-            'size-7 rounded-full bg-background shadow-sm transition-transform',
-            checked ? 'translate-x-7' : 'translate-x-0',
-          ].join(' ')}
-        />
-      </button>
+      <div className="flex w-full max-w-md flex-col gap-1.5">
+        <div className="flex items-center gap-3">
+          <span className={['text-[12px]', checked ? 'text-text-tertiary' : 'font-medium text-text-primary'].join(' ')}>
+            {offLabel}
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            aria-label={checked ? onLabel : offLabel}
+            onClick={() => onChange(!checked)}
+            className={[
+              'flex h-9 w-14 shrink-0 items-center rounded-full border px-1 transition-colors',
+              checked ? 'border-accent bg-accent' : 'border-border-strong bg-surface-input',
+            ].join(' ')}
+          >
+            <span
+              className={[
+                'size-7 rounded-full bg-background shadow-sm transition-transform',
+                checked ? 'translate-x-5' : 'translate-x-0',
+              ].join(' ')}
+            />
+          </button>
+          <span className={['text-[12px]', checked ? 'font-medium text-text-primary' : 'text-text-tertiary'].join(' ')}>
+            {onLabel}
+          </span>
+        </div>
+        <p className="text-[11px] leading-4 text-text-tertiary">
+          {checked
+            ? t('settings.guidedConfig.booleanOnHint')
+            : t('settings.guidedConfig.booleanOffHint')}
+        </p>
+      </div>
     );
   }
 
@@ -182,6 +230,15 @@ function Control({
   }
 
   if (row.type === 'number') {
+    const hasBounds = row.min !== undefined || row.max !== undefined;
+    const rangeLabel =
+      row.min !== undefined && row.max !== undefined
+        ? t('settings.guidedConfig.rangeBoth', { min: row.min, max: row.max })
+        : row.min !== undefined
+          ? t('settings.guidedConfig.rangeMin', { min: row.min })
+          : row.max !== undefined
+            ? t('settings.guidedConfig.rangeMax', { max: row.max })
+            : t('settings.guidedConfig.rangeOpen');
     return (
       <div className="flex w-full max-w-md flex-col gap-1">
         <input
@@ -192,27 +249,31 @@ function Control({
           step={row.integer === true ? 1 : 'any'}
           onChange={(event) => {
             const raw = event.target.value;
-            onChange(raw === '' ? null : Number(raw));
+            if (raw === '') {
+              onChange(null);
+              return;
+            }
+            const parsed = Number(raw);
+            if (!Number.isFinite(parsed)) return;
+            onChange(parsed);
+          }}
+          onBlur={() => {
+            if (typeof value !== 'number' || !Number.isFinite(value)) return;
+            const clamped = clampNumber(value, row);
+            if (clamped !== value) onChange(clamped);
           }}
           className={inputClass}
           spellCheck={false}
         />
-        {row.min !== undefined || row.max !== undefined || row.boundNote ? (
-          <p className="text-[11px] leading-4 text-text-tertiary">
-            {row.min !== undefined && row.max !== undefined
-              ? `${row.min} – ${row.max}`
-              : row.min !== undefined
-                ? `≥ ${row.min}`
-                : row.max !== undefined
-                  ? `≤ ${row.max}`
-                  : null}
-            {row.boundNote ? (
-              <span className={row.min !== undefined || row.max !== undefined ? 'ml-1.5' : undefined}>
-                {row.boundNote}
-              </span>
-            ) : null}
-          </p>
-        ) : null}
+        <p className="text-[11px] leading-4 text-text-tertiary">
+          {rangeLabel}
+          {row.integer === true ? (
+            <span className="ml-1.5">{t('settings.guidedConfig.integerOnly')}</span>
+          ) : null}
+          {hasBounds ? (
+            <span className="ml-1.5">{t('settings.guidedConfig.rangeEnforced')}</span>
+          ) : null}
+        </p>
       </div>
     );
   }
@@ -541,6 +602,22 @@ export function GuidedConfigPage() {
                           <div className={isModelField ? 'min-w-0' : 'min-w-0 lg:max-w-[52%]'}>
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-[13px] font-medium text-text-primary">{row.description}</p>
+                              {(() => {
+                                const help = fieldHelpText(row.path, row.help, t);
+                                const tip = fieldTipText(row.path, help, t);
+                                if (!tip) return null;
+                                return (
+                                  <button
+                                    type="button"
+                                    className="inline-flex size-5 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-chip hover:text-text-secondary"
+                                    data-tip={tip}
+                                    data-tip-wide
+                                    aria-label={t('settings.guidedConfig.helpAria', { field: row.description })}
+                                  >
+                                    <CircleHelp className="size-3.5" aria-hidden />
+                                  </button>
+                                );
+                              })()}
                               {row.tier === 'confirm' ? (
                                 <span className="rounded-full bg-warning/10 px-2 py-1 text-[10px] font-medium text-warning">
                                   {t('settings.guidedConfig.confirmBadge')}
@@ -557,9 +634,7 @@ export function GuidedConfigPage() {
                               ) : null}
                             </div>
                             {(() => {
-                              const localized = t(helpKeyForPath(row.path), {
-                                defaultValue: row.help ?? '',
-                              });
+                              const localized = fieldHelpText(row.path, row.help, t);
                               return localized ? (
                                 <p className="mt-1 text-xs leading-5 text-text-secondary">{localized}</p>
                               ) : null;
