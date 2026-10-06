@@ -423,7 +423,15 @@
       "modelHintDefault": "{{model}}: Hermes' default model (Settings > Models). Click to pick another one for this chat only.",
       "modelHintNone": "Change the model for this chat"
     },
-    "goalContinuation": "Goal continuation"
+    "goalContinuation": "Goal continuation",
+    "injected": {
+      "goal": "Goal continuation",
+      "kanban": "Kanban judge",
+      "cron": "Cron",
+      "delegation": "Delegation",
+      "process": "Background process",
+      "agent": "Agent message"
+    }
   },
   "settings": {
     "appearance": {

@@ -969,3 +969,8 @@ body {
     font-size: max(16px, 1em) !important;
   }
 }
+
+[data-msg] {
+  font-size: var(--chat-font-size, 15px);
+  line-height: var(--chat-leading, 1.55);
+}

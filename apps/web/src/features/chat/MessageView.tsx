@@ -232,10 +232,14 @@ function Attachments({ items }: { items: NonNullable<TranscriptMessage['attachme
   );
 }
 
-function nativeSender(content: string): 'goal' | null {
+function nativeSender(content: string): 'goal' | 'kanban' | 'cron' | 'delegation' | 'process' | 'agent' | null {
   const text = content.trimStart();
   if (text.startsWith('[Continuing toward your standing goal]')) return 'goal';
-  if (text.startsWith('[Continuing toward goal')) return 'goal';
+  if (text.startsWith('[Continuing toward this kanban task')) return 'kanban';
+  if (text.startsWith('[Cron delivery:') || text.startsWith('[Cronjob ')) return 'cron';
+  if (text.startsWith('[ASYNC DELEGATION')) return 'delegation';
+  if (text.startsWith('[Background process') || text.startsWith('[IMPORTANT: Background process')) return 'process';
+  if (text.startsWith('[Message from agent') || text.startsWith('Message from ')) return 'agent';
   return null;
 }
 
@@ -250,11 +254,12 @@ export function UserMessage({
   if (item.content === '' && (item.attachments ?? []).length === 0) {
     return null;
   }
-  if (nativeSender(item.content) === 'goal') {
+  const injected = nativeSender(item.content);
+  if (injected !== null) {
     return (
       <article data-msg="goal" className="mx-auto w-full max-w-3xl px-4 py-2">
         <p className="mb-1.5 text-[11px] font-medium tracking-wide text-agent-soft uppercase">
-          {t('chat.goalContinuation')}
+          {t(`chat.injected.${injected}`)}
         </p>
         <div className="rounded-2xl rounded-bl-md border border-agent/30 bg-agent-soft/10 px-4 py-2.5 text-text-secondary" style={{ fontSize: 'var(--chat-font-size, 15px)', lineHeight: 'var(--chat-leading, 1.55)' }}>
           <p className="whitespace-pre-wrap break-words">{item.content}</p>
