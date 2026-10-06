@@ -439,10 +439,11 @@ body {
   .yu-prose h1,
   .yu-prose h2,
   .yu-prose h3 {
-    font-weight: 500;
+    font-weight: 650;
     letter-spacing: -0.015em;
     line-height: 1.3;
     margin-top: 1.25em;
+    color: var(--color-text-primary);
   }
   .yu-prose h1 {
     font-size: 1.35em;
@@ -475,7 +476,11 @@ body {
     color: var(--color-text-tertiary);
   }
   .yu-prose strong {
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+  .yu-prose em {
+    font-style: italic;
   }
   .yu-prose blockquote {
     border-left: 2px solid var(--color-border-strong);
@@ -489,7 +494,8 @@ body {
   .yu-prose :not(pre) > code {
     font-family: var(--font-mono);
     font-size: 0.86em;
-    background: var(--color-chip);
+    background: color-mix(in srgb, var(--color-accent) 16%, var(--color-chip));
+    border: 0.5px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
     border-radius: 6px;
     padding: 0.1em 0.4em;
   }
