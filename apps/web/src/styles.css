@@ -492,16 +492,17 @@ body {
     border-top: 0.5px solid var(--color-border-strong);
   }
   .yu-prose :not(pre) > code {
+    display: inline-block;
     font-family: var(--font-mono);
     font-size: 0.86em;
-    line-height: 1.45;
+    line-height: 1.35;
     color: var(--color-text-primary);
-    background: color-mix(in srgb, var(--color-accent) 28%, var(--color-surface-input));
-    border: 0.5px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
-    border-radius: 5px;
-    padding: 0.12em 0.42em;
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
+    background: color-mix(in srgb, var(--color-accent) 34%, #2a2422);
+    border: 0.5px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+    border-radius: 4px;
+    padding: 0 0.45em;
+    margin: 0 0.12em;
+    vertical-align: baseline;
     white-space: nowrap;
   }
   .yu-codeblock {
@@ -1004,7 +1005,7 @@ body {
 }
 [data-msg] .yu-prose :not(pre) > code {
   font-size: 0.86em !important;
-  line-height: 1.45 !important;
-  padding: 0.12em 0.42em;
+  line-height: 1.35 !important;
+  padding: 0 0.45em;
 }
 
