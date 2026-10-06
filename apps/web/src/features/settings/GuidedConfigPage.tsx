@@ -468,8 +468,11 @@ export function GuidedConfigPage() {
                                 </span>
                               ) : null}
                             </div>
+                            {row.help ? (
+                              <p className="mt-1 text-xs leading-5 text-text-secondary">{row.help}</p>
+                            ) : null}
                             <p className="mt-1 break-all font-mono text-[10.5px] text-text-tertiary">{row.path}</p>
-                            <p className="mt-1 text-xs text-text-secondary">
+                            <p className="mt-1 text-xs text-text-tertiary">
                               {t('settings.guidedConfig.defaultLabel', { value: rowDefaultLabel(row, t) })}
                             </p>
                           </div>

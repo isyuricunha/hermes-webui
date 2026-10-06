@@ -4,3 +4,4 @@ export * from './commands';
 export * from './media';
 export * from './configSafety';
 export * from './configBounds';
+export * from './configHelp';

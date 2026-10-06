@@ -6,6 +6,8 @@ import {
   checkConfigBound,
   classifyConfigPath,
   getConfigBound,
+  getConfigHelp,
+  getConfigTitle,
   isGuidedEditableType,
   isSecretLikePath,
   type ConfigValidation,
@@ -374,10 +376,11 @@ export function buildGuidedState(input: {
       continue;
     }
     const masked = isSecretLikePath(fieldPath);
+    const schemaDescription = field.description;
     const row: GuidedConfigRow = {
       path: fieldPath,
       type: field.type,
-      description: field.description ?? fieldPath,
+      description: getConfigTitle(fieldPath, schemaDescription),
       category: field.category ?? 'general',
       tier,
       editable: true,
@@ -386,6 +389,8 @@ export function buildGuidedState(input: {
       defaultValue: masked ? null : toScalar(getByPath(input.defaults, fieldPath)),
       isSet: doc.hasIn(fieldPath.split('.')),
     };
+    const help = getConfigHelp(fieldPath, schemaDescription);
+    if (help !== undefined) row.help = help;
     if (field.options !== undefined) row.options = field.options;
     if (field.searchable === true) row.searchable = true;
     if (field.clearable === true) row.clearable = true;

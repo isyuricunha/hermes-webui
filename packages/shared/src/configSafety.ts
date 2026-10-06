@@ -126,8 +126,10 @@ export interface ConfigValidation {
 export interface GuidedConfigRow {
   path: string;
   type: string;
-  /** Human label (the schema description). */
+  /** Short title for the row (path leaf or hand-written schema label). */
   description: string;
+  /** Longer explanation of what the setting does, when available. */
+  help?: string;
   category: string;
   tier: ConfigTier;
   /** False for locked tiers and for types the guided editor cannot write. */
