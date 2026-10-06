@@ -425,12 +425,23 @@ export function GuidedConfigPage() {
           {categories.map((category) => {
             const categoryRows = grouped.get(category);
             if (categoryRows === undefined || categoryRows.length === 0) return null;
+            const titleKey = `settings.guidedConfig.categories.${category}.title`;
+            const descKey = `settings.guidedConfig.categories.${category}.description`;
+            const categoryTitle = t(titleKey, { defaultValue: category });
+            const categoryDescription = t(descKey, { defaultValue: '' });
             return (
               <details key={category} open={search.trim() !== ''} className="yu-card overflow-hidden rounded-2xl">
-                <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3">
-                  <ChevronDown className="size-4 text-text-tertiary transition-transform group-open:rotate-180" aria-hidden />
-                  <span className="text-sm font-medium text-text-primary">{category}</span>
-                  <span className="ml-auto text-xs text-text-tertiary">{categoryRows.length}</span>
+                <summary className="flex cursor-pointer list-none items-start gap-2 px-4 py-3">
+                  <ChevronDown className="mt-0.5 size-4 shrink-0 text-text-tertiary transition-transform group-open:rotate-180" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-text-primary">{categoryTitle}</span>
+                      <span className="text-xs text-text-tertiary">{categoryRows.length}</span>
+                    </div>
+                    {categoryDescription ? (
+                      <p className="mt-1 text-xs leading-5 text-text-secondary">{categoryDescription}</p>
+                    ) : null}
+                  </div>
                 </summary>
                 <div className="divide-y divide-border-subtle border-t border-border-subtle">
                   {categoryRows.map((row) => {

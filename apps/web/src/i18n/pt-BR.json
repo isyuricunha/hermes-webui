@@ -1413,7 +1413,85 @@
       "reset": "Voltar ao padrão",
       "resetAria": "Voltar {{path}} ao padrão",
       "secretsNote": "Credenciais e configurações que parecem conter segredos nunca são expostas aqui.",
-      "saveFailed": "Não foi possível salvar as configurações guiadas."
+      "saveFailed": "Não foi possível salvar as configurações guiadas.",
+      "categories": {
+        "general": {
+          "title": "Geral",
+          "description": "Modelo padrão, tamanho de contexto e opções globais do agente."
+        },
+        "agent": {
+          "title": "Agente",
+          "description": "Loop de turns, timeouts, cache, checkpoints e comportamento do runtime."
+        },
+        "terminal": {
+          "title": "Terminal",
+          "description": "Backend de execução, timeouts de comando e ambiente do shell."
+        },
+        "display": {
+          "title": "Exibição",
+          "description": "Aparência da interface do Hermes (tema, apelido, dashboard)."
+        },
+        "delegation": {
+          "title": "Delegação",
+          "description": "Sub-agentes: profundidade, concorrência, timeouts e resumos."
+        },
+        "memory": {
+          "title": "Memória",
+          "description": "Limites de perfil do usuário e notas persistentes do agente."
+        },
+        "compression": {
+          "title": "Compressão",
+          "description": "Quando e como o contexto longo é resumido para caber na janela do modelo."
+        },
+        "security": {
+          "title": "Segurança",
+          "description": "Aprovações de comandos, timeouts e políticas de risco."
+        },
+        "browser": {
+          "title": "Navegador",
+          "description": "Automação web: timeouts, snapshots e inatividade."
+        },
+        "voice": {
+          "title": "Voz",
+          "description": "Entrada e saída de voz quando o pipeline de voice está ativo."
+        },
+        "tts": {
+          "title": "TTS",
+          "description": "Text-to-speech: provedor, velocidade e vozes."
+        },
+        "stt": {
+          "title": "STT",
+          "description": "Speech-to-text: provedor e modelos de transcrição."
+        },
+        "logging": {
+          "title": "Logs",
+          "description": "Nível e retenção de logs do agente e do gateway."
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Limites e comportamento do adaptador Discord."
+        },
+        "auxiliary": {
+          "title": "Auxiliar",
+          "description": "Modelos e timeouts das tarefas auxiliares (título, compressão, visão, etc.)."
+        },
+        "curator": {
+          "title": "Curador",
+          "description": "Arquivamento e limpeza periódica de memória e estado."
+        },
+        "desktop": {
+          "title": "Desktop",
+          "description": "App desktop: auto-continue, memória do renderer e idle."
+        },
+        "bedrock": {
+          "title": "Bedrock",
+          "description": "Descoberta e refresh de modelos na AWS Bedrock."
+        },
+        "bot_desktop": {
+          "title": "Bot desktop",
+          "description": "Parada por ociosidade e limites de memória do bot desktop."
+        }
+      }
     }
   }
 }

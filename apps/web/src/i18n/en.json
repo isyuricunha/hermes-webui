@@ -1413,7 +1413,85 @@
       "reset": "Reset to default",
       "resetAria": "Reset {{path}} to default",
       "secretsNote": "Credentials and secret-like settings are never exposed in this editor.",
-      "saveFailed": "Could not save the guided settings."
+      "saveFailed": "Could not save the guided settings.",
+      "categories": {
+        "general": {
+          "title": "General",
+          "description": "Default model, context size, and global agent options."
+        },
+        "agent": {
+          "title": "Agent",
+          "description": "Turn loop, timeouts, cache, checkpoints, and runtime behavior."
+        },
+        "terminal": {
+          "title": "Terminal",
+          "description": "Execution backend, command timeouts, and shell environment."
+        },
+        "display": {
+          "title": "Display",
+          "description": "Hermes UI appearance (theme, nickname, dashboard)."
+        },
+        "delegation": {
+          "title": "Delegation",
+          "description": "Sub-agents: depth, concurrency, timeouts, and summaries."
+        },
+        "memory": {
+          "title": "Memory",
+          "description": "User profile and persistent agent note size limits."
+        },
+        "compression": {
+          "title": "Compression",
+          "description": "When and how long context is summarized to fit the model window."
+        },
+        "security": {
+          "title": "Security",
+          "description": "Command approvals, timeouts, and risk policy."
+        },
+        "browser": {
+          "title": "Browser",
+          "description": "Web automation: timeouts, snapshots, and inactivity."
+        },
+        "voice": {
+          "title": "Voice",
+          "description": "Voice input and output when the voice pipeline is enabled."
+        },
+        "tts": {
+          "title": "TTS",
+          "description": "Text-to-speech: provider, speed, and voices."
+        },
+        "stt": {
+          "title": "STT",
+          "description": "Speech-to-text: provider and transcription models."
+        },
+        "logging": {
+          "title": "Logging",
+          "description": "Agent and gateway log level and retention."
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Discord adapter limits and behavior."
+        },
+        "auxiliary": {
+          "title": "Auxiliary",
+          "description": "Models and timeouts for helper tasks (titles, compression, vision, etc.)."
+        },
+        "curator": {
+          "title": "Curator",
+          "description": "Periodic archival and cleanup of memory and state."
+        },
+        "desktop": {
+          "title": "Desktop",
+          "description": "Desktop app: auto-continue, renderer memory, and idle."
+        },
+        "bedrock": {
+          "title": "Bedrock",
+          "description": "AWS Bedrock model discovery and refresh."
+        },
+        "bot_desktop": {
+          "title": "Bot desktop",
+          "description": "Idle stop and memory limits for the desktop bot."
+        }
+      }
     }
   }
 }
