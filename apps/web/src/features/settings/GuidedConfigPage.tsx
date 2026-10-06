@@ -616,10 +616,10 @@ export function GuidedConfigPage() {
                           className={
                             isModelField
                               ? 'flex flex-col gap-3'
-                              : 'flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'
+                              : 'flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between'
                           }
                         >
-                          <div className={isModelField ? 'min-w-0' : 'min-w-0 lg:max-w-[52%]'}>
+                          <div className={isModelField ? 'min-w-0' : 'min-w-0 flex-1 lg:max-w-[58%]'}>
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-[13px] font-medium text-text-primary">{title}</p>
                               {(() => {

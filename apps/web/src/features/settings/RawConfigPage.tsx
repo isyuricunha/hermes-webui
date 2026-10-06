@@ -330,7 +330,7 @@ export function RawConfigPage() {
           }}
           spellCheck={false}
           aria-label={t('settings.rawConfig.aria')}
-          wrap="off"
+          wrap="soft"
           className="h-full min-h-0 w-full resize-none border-0 bg-transparent p-4 font-mono text-[12px] leading-5 outline-none focus:ring-0"
           style={{ tabSize: 2 }}
         />
