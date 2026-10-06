@@ -135,6 +135,14 @@ export interface GuidedConfigRow {
   options?: string[];
   searchable?: boolean;
   clearable?: boolean;
+  /** Inclusive lower bound when curated for this path (numbers only). */
+  min?: number;
+  /** Inclusive upper bound when curated for this path (numbers only). */
+  max?: number;
+  /** Prefer whole numbers in the control. */
+  integer?: boolean;
+  /** Optional short range/help note from curated bounds. */
+  boundNote?: string;
   /** Effective value (config.yaml over defaults). null when masked. */
   value: string | number | boolean | null;
   /** True when the value is withheld because the key looks like a credential. */

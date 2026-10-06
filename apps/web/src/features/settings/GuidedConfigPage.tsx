@@ -103,16 +103,49 @@ function Control({
     );
   }
 
+  if (row.type === 'number') {
+    return (
+      <div className="flex w-full max-w-md flex-col gap-1">
+        <input
+          type="number"
+          value={value === null ? '' : String(value)}
+          min={row.min}
+          max={row.max}
+          step={row.integer === true ? 1 : 'any'}
+          onChange={(event) => {
+            const raw = event.target.value;
+            onChange(raw === '' ? null : Number(raw));
+          }}
+          className={inputClass}
+          spellCheck={false}
+        />
+        {row.min !== undefined || row.max !== undefined || row.boundNote ? (
+          <p className="text-[11px] leading-4 text-text-tertiary">
+            {row.min !== undefined && row.max !== undefined
+              ? `${row.min} – ${row.max}`
+              : row.min !== undefined
+                ? `≥ ${row.min}`
+                : row.max !== undefined
+                  ? `≤ ${row.max}`
+                  : null}
+            {row.boundNote ? (
+              <span className={row.min !== undefined || row.max !== undefined ? 'ml-1.5' : undefined}>
+                {row.boundNote}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <input
-      type={row.type === 'number' ? 'number' : 'text'}
+      type="text"
       value={value === null ? '' : String(value)}
-      onChange={(event) => {
-        const raw = event.target.value;
-        onChange(row.type === 'number' ? (raw === '' ? null : Number(raw)) : raw);
-      }}
+      onChange={(event) => onChange(event.target.value)}
       className={inputClass}
-      spellCheck={row.type !== 'number'}
+      spellCheck
     />
   );
 }

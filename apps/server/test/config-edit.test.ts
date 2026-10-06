@@ -6,7 +6,7 @@ import {
   validateConfigYaml,
   type SchemaFields,
 } from '../src/hermes/config-edit';
-import { classifyConfigPath } from '@hermes-webui/shared';
+import { checkConfigBound, classifyConfigPath } from '@hermes-webui/shared';
 
 const fields: SchemaFields = {
   'display.nickname': { type: 'string', category: 'display' },
@@ -94,6 +94,24 @@ describe('config-edit safety and YAML handling', () => {
     expect(result.yaml).toContain('other: true');
 
     expect(configRevision(raw)).not.toBe(configRevision(result.yaml));
+  });
+
+  it('rejects guided number edits outside curated Hermes bounds', () => {
+    expect(checkConfigBound('delegation.max_spawn_depth', 4)).toMatch(/≤ 3/);
+    expect(checkConfigBound('delegation.max_spawn_depth', 2)).toBeNull();
+
+    const fieldsWithDepth: SchemaFields = {
+      ...fields,
+      'delegation.max_spawn_depth': { type: 'number', category: 'delegation' },
+    };
+    expect(() =>
+      applyConfigOps(
+        'delegation:\n  max_spawn_depth: 1\n',
+        [{ op: 'set', path: 'delegation.max_spawn_depth', value: 9, confirm: true }],
+        fieldsWithDepth,
+        { delegation: { max_spawn_depth: 1 } },
+      ),
+    ).toThrow(/≤ 3/);
   });
 
   it('hides locked fields from the guided state', () => {

@@ -3,7 +3,9 @@ import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { LineCounter, isCollection, isMap, isScalar, parseDocument, type Document } from 'yaml';
 import {
+  checkConfigBound,
   classifyConfigPath,
+  getConfigBound,
   isGuidedEditableType,
   isSecretLikePath,
   type ConfigValidation,
@@ -189,6 +191,10 @@ function checkValue(fieldPath: string, field: SchemaField, value: unknown, defau
       if (typeof value !== 'number' || !Number.isFinite(value)) fail('expects a number');
       if (typeof defaultValue === 'number' && Number.isInteger(defaultValue) && !Number.isInteger(value as number)) {
         fail('expects a whole number');
+      }
+      {
+        const boundError = checkConfigBound(fieldPath, value as number);
+        if (boundError !== null) fail(boundError);
       }
       return;
     case 'string':
@@ -383,6 +389,13 @@ export function buildGuidedState(input: {
     if (field.options !== undefined) row.options = field.options;
     if (field.searchable === true) row.searchable = true;
     if (field.clearable === true) row.clearable = true;
+    const bound = getConfigBound(fieldPath);
+    if (bound !== undefined) {
+      if (bound.min !== undefined) row.min = bound.min;
+      if (bound.max !== undefined) row.max = bound.max;
+      if (bound.integer === true) row.integer = true;
+      if (bound.note !== undefined) row.boundNote = bound.note;
+    }
     rows.push(row);
   }
 
