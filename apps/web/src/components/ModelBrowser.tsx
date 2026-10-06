@@ -57,8 +57,8 @@ export function ModelBrowser({
   const totalModels = providers.reduce((sum, provider) => sum + provider.models.length, 0);
 
   return (
-    <div className="flex min-h-0 flex-col">
-      <label className="yu-input mb-2 flex h-9 shrink-0 items-center gap-2 rounded-xl px-3">
+    <div className="flex min-h-0 w-full min-w-0 flex-col">
+      <label className="yu-input mb-2 flex h-9 w-full shrink-0 items-center gap-2 rounded-xl px-3">
         <Search className="size-3.5 shrink-0 text-text-tertiary" aria-hidden />
         <input
           value={query}
@@ -69,7 +69,7 @@ export function ModelBrowser({
         />
       </label>
       {providers.length > 1 ? (
-        <div className="mb-2 flex shrink-0 gap-1.5 overflow-x-auto pb-0.5" role="radiogroup" aria-label={t('modelBrowser.filterAria')}>
+        <div className="mb-2 flex w-full shrink-0 flex-wrap gap-1.5 pb-0.5 sm:flex-nowrap sm:overflow-x-auto" role="radiogroup" aria-label={t('modelBrowser.filterAria')}>
           {[{ slug: null, name: t('modelBrowser.allChip'), count: totalModels, ready: true }, ...providers.map((provider) => ({ slug: provider.slug, name: provider.name, count: provider.models.length, ready: provider.ready }))].map(
             (chip) => {
               const active = only === chip.slug;

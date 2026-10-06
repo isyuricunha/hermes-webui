@@ -33,7 +33,7 @@ export function PageHeader({
 
 export function Page({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
-    <div className={['yu-rise mx-auto w-full px-4 pt-5 pb-10 md:px-8 md:py-8', wide ? 'max-w-5xl' : 'max-w-3xl'].join(' ')}>
+    <div className={['yu-rise mx-auto w-full px-4 pt-5 pb-10 md:px-8 md:py-8', wide ? 'max-w-6xl' : 'max-w-3xl'].join(' ')}>
       {children}
     </div>
   );

@@ -55,7 +55,7 @@ function ModelFieldControl({
   const current = value === null || value === undefined ? '' : String(value);
 
   return (
-    <div className="w-full max-w-xl rounded-2xl border border-border-subtle bg-surface-elevated/40 p-3">
+    <div className="w-full min-w-0 max-w-3xl rounded-2xl border border-border-subtle bg-surface-elevated/40 p-3 sm:p-4">
       {options.isPending ? (
         <p className="text-xs text-text-tertiary">{t('settings.guidedConfig.modelLoading')}</p>
       ) : options.isError ? (
@@ -353,6 +353,7 @@ export function GuidedConfigPage() {
     <SettingsPage
       title={t('settings.guidedConfig.title')}
       description={t('settings.guidedConfig.description')}
+      wide
       actions={
         <div className="flex items-center gap-2">
           <Link to="/settings/advanced/config" className="yu-btn yu-btn-tonal h-9 px-3.5 text-[13px]">

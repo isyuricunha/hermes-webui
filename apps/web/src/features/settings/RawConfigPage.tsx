@@ -178,6 +178,7 @@ export function RawConfigPage() {
   return (
     <SettingsPage
       title={t('settings.rawConfig.title')}
+      wide
       description={
         <>
           <span className="font-mono">{query.data.path}</span>

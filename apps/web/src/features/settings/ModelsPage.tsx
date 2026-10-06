@@ -86,7 +86,7 @@ export function ModelsPage() {
   const usedModels = (usage.data?.models ?? []).filter((row) => row.sessions > 0).slice(0, 6);
 
   return (
-    <SettingsPage title={t('settings.models.title')} description={t('settings.models.description')}>
+    <SettingsPage title={t('settings.models.title')} description={t('settings.models.description')} wide>
       {info.isError ? (
         <ErrorNote message={info.error.message} onRetry={() => void info.refetch()} />
       ) : info.isPending ? (
