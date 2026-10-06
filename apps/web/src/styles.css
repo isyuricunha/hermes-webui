@@ -470,10 +470,10 @@ body {
     padding-left: 1.25em;
   }
   .yu-prose li + li {
-    margin-top: 0.25em;
+    margin-top: 0.55em;
   }
   .yu-prose li::marker {
-    color: var(--color-text-tertiary);
+    color: var(--color-text-secondary);
   }
   .yu-prose strong {
     font-weight: 700;
@@ -494,10 +494,11 @@ body {
   .yu-prose :not(pre) > code {
     font-family: var(--font-mono);
     font-size: 0.86em;
-    background: color-mix(in srgb, var(--color-accent) 16%, var(--color-chip));
-    border: 0.5px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+    color: var(--color-text-primary);
+    background: color-mix(in srgb, var(--color-accent) 28%, var(--color-surface-input));
+    border: 0.5px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
     border-radius: 6px;
-    padding: 0.1em 0.4em;
+    padding: 0.05em 0.35em;
   }
   .yu-codeblock {
     margin-top: 0.9em;
