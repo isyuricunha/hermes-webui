@@ -502,7 +502,21 @@
         "default": "Default",
         "comfortable": "Comfortable"
       },
-      "typePreview": "This line uses the chat size. If it does not grow, the control is not applied."
+      "typePreview": "This line uses the chat size. If it does not grow, the control is not applied.",
+      "fonts": "Fonts",
+      "fontsDesc": "Text font for the chat. Code font for blocks and ids. On this device.",
+      "textFont": "Text",
+      "codeFont": "Code",
+      "font": {
+        "geist": "Geist",
+        "inter": "Inter",
+        "atkinson": "Atkinson Hyperlegible",
+        "plex": "IBM Plex Sans",
+        "geist-mono": "Geist Mono",
+        "jetbrains": "JetBrains Mono",
+        "fira": "Fira Code",
+        "plex-mono": "IBM Plex Mono"
+      }
     },
     "title": "Settings",
     "searchPlaceholder": "Search settings…",

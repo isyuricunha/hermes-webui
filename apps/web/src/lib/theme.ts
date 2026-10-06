@@ -287,3 +287,59 @@ export function useChatType(): {
     },
   };
 }
+
+export type TextFont = 'geist' | 'inter' | 'atkinson' | 'plex';
+export type CodeFont = 'geist-mono' | 'jetbrains' | 'fira' | 'plex-mono';
+const TEXT_FONT_KEY = 'hermes.textFont';
+const CODE_FONT_KEY = 'hermes.codeFont';
+const TEXT_STACK: Record<TextFont, string> = {
+  geist: "'Geist Variable', 'Geist', ui-sans-serif, system-ui, sans-serif",
+  inter: "'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif",
+  atkinson: "'Atkinson Hyperlegible', ui-sans-serif, system-ui, sans-serif",
+  plex: "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif",
+};
+const CODE_STACK: Record<CodeFont, string> = {
+  'geist-mono': "'Geist Mono', ui-monospace, monospace",
+  jetbrains: "'JetBrains Mono', ui-monospace, monospace",
+  fira: "'Fira Code', ui-monospace, monospace",
+  'plex-mono': "'IBM Plex Mono', ui-monospace, monospace",
+};
+
+export function applyChatFonts(text: TextFont, code: CodeFont): void {
+  const root = document.documentElement;
+  root.style.setProperty('--font-sans', TEXT_STACK[text]);
+  root.style.setProperty('--font-mono', CODE_STACK[code]);
+}
+
+export function useChatFonts(): {
+  textFont: TextFont;
+  codeFont: CodeFont;
+  setTextFont: (font: TextFont) => void;
+  setCodeFont: (font: CodeFont) => void;
+} {
+  const [textFont, setTextState] = useState<TextFont>(() => {
+    const raw = localStorage.getItem(TEXT_FONT_KEY);
+    return raw === 'inter' || raw === 'atkinson' || raw === 'plex' ? raw : 'geist';
+  });
+  const [codeFont, setCodeState] = useState<CodeFont>(() => {
+    const raw = localStorage.getItem(CODE_FONT_KEY);
+    return raw === 'jetbrains' || raw === 'fira' || raw === 'plex-mono' ? raw : 'geist-mono';
+  });
+  useEffect(() => {
+    applyChatFonts(textFont, codeFont);
+  }, [textFont, codeFont]);
+  return {
+    textFont,
+    codeFont,
+    setTextFont: (next) => {
+      localStorage.setItem(TEXT_FONT_KEY, next);
+      setTextState(next);
+      applyChatFonts(next, codeFont);
+    },
+    setCodeFont: (next) => {
+      localStorage.setItem(CODE_FONT_KEY, next);
+      setCodeState(next);
+      applyChatFonts(textFont, next);
+    },
+  };
+}

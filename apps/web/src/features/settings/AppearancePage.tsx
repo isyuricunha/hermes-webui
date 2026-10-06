@@ -6,6 +6,7 @@ import {
   useAccent,
   useChatStyle,
   useChatType,
+  useChatFonts,
   THEME_OPTIONS,
   ACCENT_OPTIONS,
   CHAT_STYLE_OPTIONS,
@@ -39,6 +40,7 @@ interface InstallPromptEvent extends Event {
  */
 export function AppearancePage() {
   const type = useChatType();
+  const fonts = useChatFonts();
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
@@ -189,6 +191,25 @@ export function AppearancePage() {
               </button>
             );
           })}
+        </div>
+      </Section>
+
+      <Section title={t('settings.appearance.fonts')} description={t('settings.appearance.fontsDesc')}>
+        <p className="mb-2 text-[12px] text-text-tertiary">{t('settings.appearance.textFont')}</p>
+        <div className="flex flex-wrap gap-2">
+          {(['geist', 'inter', 'atkinson', 'plex'] as const).map((id) => (
+            <button key={id} type="button" aria-pressed={fonts.textFont === id} onClick={() => fonts.setTextFont(id)} className={['yu-card rounded-xl px-3 py-2 text-[12px]', fonts.textFont === id ? 'ring-1 ring-accent/50' : ''].join(' ')}>
+              {t(`settings.appearance.font.${id}`)}
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 mb-2 text-[12px] text-text-tertiary">{t('settings.appearance.codeFont')}</p>
+        <div className="flex flex-wrap gap-2">
+          {(['geist-mono', 'jetbrains', 'fira', 'plex-mono'] as const).map((id) => (
+            <button key={id} type="button" aria-pressed={fonts.codeFont === id} onClick={() => fonts.setCodeFont(id)} className={['yu-card rounded-xl px-3 py-2 text-[12px]', fonts.codeFont === id ? 'ring-1 ring-accent/50' : ''].join(' ')} style={{ fontFamily: 'var(--font-mono)' }}>
+              {t(`settings.appearance.font.${id}`)}
+            </button>
+          ))}
         </div>
       </Section>
 
