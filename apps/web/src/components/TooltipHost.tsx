@@ -122,7 +122,7 @@ export function TooltipHost() {
   }, []);
 
   if (tip === null) return null;
-  const maxWidth = tip.wide ? 300 : 240;
+  const maxWidth = tip.wide ? 420 : 260;
   const left = Math.min(Math.max(tip.left, maxWidth / 2 + 8), window.innerWidth - maxWidth / 2 - 8);
   return createPortal(
     <div
@@ -131,7 +131,7 @@ export function TooltipHost() {
     >
       <div
         role="tooltip"
-        className="yu-pop yu-pop-in rounded-lg px-2.5 py-1.5 text-[12px] leading-snug whitespace-pre-line text-text-primary"
+        className="yu-pop yu-pop-in rounded-lg px-2.5 py-1.5 text-[12px] leading-snug whitespace-pre-line break-words text-text-primary [overflow-wrap:anywhere]"
       >
         {tip.text}
       </div>

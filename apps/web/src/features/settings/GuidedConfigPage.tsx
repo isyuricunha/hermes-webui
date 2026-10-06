@@ -600,7 +600,7 @@ export function GuidedConfigPage() {
                       <span className="text-xs text-text-tertiary">{categoryRows.length}</span>
                     </div>
                     {categoryDescription ? (
-                      <p className="mt-1 text-xs leading-5 text-text-secondary">{categoryDescription}</p>
+                      <p className="mt-1 whitespace-pre-line break-words text-xs leading-5 text-text-secondary">{categoryDescription}</p>
                     ) : null}
                   </div>
                 </summary>
@@ -656,7 +656,7 @@ export function GuidedConfigPage() {
                             {(() => {
                               const localized = fieldHelpText(row.path, row.help, t);
                               return localized ? (
-                                <p className="mt-1 text-xs leading-5 text-text-secondary">{localized}</p>
+                                <p className="mt-1 whitespace-pre-line break-words text-xs leading-5 text-text-secondary [overflow-wrap:anywhere]">{localized}</p>
                               ) : null;
                             })()}
                             <p className="mt-1 break-all font-mono text-[10.5px] text-text-tertiary">{row.path}</p>
