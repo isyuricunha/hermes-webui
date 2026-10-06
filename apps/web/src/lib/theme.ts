@@ -245,3 +245,45 @@ export function useChatStyle(): { chatStyle: ChatStyle; setChatStyle: (style: Ch
 
   return { chatStyle, setChatStyle };
 }
+
+export type ChatDensity = 'compact' | 'default' | 'comfortable';
+const TYPE_SIZE_KEY = 'hermes.chatFontSize';
+const TYPE_DENSITY_KEY = 'hermes.chatDensity';
+
+export function applyChatType(size: number, density: ChatDensity): void {
+  const root = document.documentElement;
+  root.style.setProperty('--chat-font-size', `${size}px`);
+  root.style.setProperty('--chat-leading', density === 'compact' ? '1.35' : density === 'comfortable' ? '1.7' : '1.55');
+}
+
+export function useChatType(): {
+  size: number;
+  density: ChatDensity;
+  setSize: (size: number) => void;
+  setDensity: (density: ChatDensity) => void;
+} {
+  const [size, setSizeState] = useState(() => {
+    const raw = Number(localStorage.getItem(TYPE_SIZE_KEY));
+    return raw >= 13 && raw <= 18 ? raw : 15;
+  });
+  const [density, setDensityState] = useState<ChatDensity>(() => {
+    const raw = localStorage.getItem(TYPE_DENSITY_KEY);
+    return raw === 'compact' || raw === 'comfortable' ? raw : 'default';
+  });
+  useEffect(() => {
+    applyChatType(size, density);
+  }, [size, density]);
+  return {
+    size,
+    density,
+    setSize: (next) => {
+      const value = Math.min(18, Math.max(13, next));
+      localStorage.setItem(TYPE_SIZE_KEY, String(value));
+      setSizeState(value);
+    },
+    setDensity: (next) => {
+      localStorage.setItem(TYPE_DENSITY_KEY, next);
+      setDensityState(next);
+    },
+  };
+}

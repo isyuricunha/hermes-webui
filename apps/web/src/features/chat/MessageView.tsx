@@ -232,6 +232,13 @@ function Attachments({ items }: { items: NonNullable<TranscriptMessage['attachme
   );
 }
 
+function nativeSender(content: string): 'goal' | null {
+  const text = content.trimStart();
+  if (text.startsWith('[Continuing toward your standing goal]')) return 'goal';
+  if (text.startsWith('[Continuing toward goal')) return 'goal';
+  return null;
+}
+
 export function UserMessage({
   item,
   onEdit,
@@ -242,6 +249,18 @@ export function UserMessage({
   const { t } = useTranslation();
   if (item.content === '' && (item.attachments ?? []).length === 0) {
     return null;
+  }
+  if (nativeSender(item.content) === 'goal') {
+    return (
+      <article data-msg="goal" className="mx-auto w-full max-w-3xl px-4 py-2">
+        <p className="mb-1.5 text-[11px] font-medium tracking-wide text-agent-soft uppercase">
+          {t('chat.goalContinuation')}
+        </p>
+        <div className="rounded-2xl rounded-bl-md border border-agent/30 bg-agent-soft/10 px-4 py-2.5 text-text-secondary" style={{ fontSize: 'var(--chat-font-size, 15px)', lineHeight: 'var(--chat-leading, 1.55)' }}>
+          <p className="whitespace-pre-wrap break-words">{item.content}</p>
+        </div>
+      </article>
+    );
   }
   return (
     <article
@@ -264,9 +283,10 @@ export function UserMessage({
         <div
           data-msg-bubble
           className={[
-            'max-w-[85%] rounded-2xl rounded-br-md bg-chip px-4 py-2.5 text-[15px] leading-relaxed text-text-primary shadow-[var(--yu-highlight)]',
+            'max-w-[85%] rounded-2xl rounded-br-md bg-chip px-4 py-2.5 text-text-primary shadow-[var(--yu-highlight)]',
             item.steer === true ? 'ring-1 ring-agent/35' : '',
           ].join(' ')}
+          style={{ fontSize: 'var(--chat-font-size, 15px)', lineHeight: 'var(--chat-leading, 1.55)' }}
         >
           <p className="whitespace-pre-wrap break-words">{item.content}</p>
         </div>

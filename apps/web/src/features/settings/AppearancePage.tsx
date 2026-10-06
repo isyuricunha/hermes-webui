@@ -5,6 +5,7 @@ import {
   useTheme,
   useAccent,
   useChatStyle,
+  useChatType,
   THEME_OPTIONS,
   ACCENT_OPTIONS,
   CHAT_STYLE_OPTIONS,
@@ -37,6 +38,7 @@ interface InstallPromptEvent extends Event {
  * data-accent on <html>; language applies instantly via i18next.
  */
 export function AppearancePage() {
+  const type = useChatType();
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
@@ -187,6 +189,33 @@ export function AppearancePage() {
               </button>
             );
           })}
+        </div>
+      </Section>
+
+      <Section title={t('settings.appearance.typography')} description={t('settings.appearance.typographyDesc')}>
+        <label className="flex items-center justify-between gap-3 text-[13px] text-text-primary">
+          <span>{t('settings.appearance.messageSize')}</span>
+          <input
+            type="range"
+            min={13}
+            max={18}
+            value={type.size}
+            onChange={(event) => type.setSize(Number(event.target.value))}
+            aria-label={t('settings.appearance.messageSize')}
+          />
+        </label>
+        <div className="mt-3 flex gap-2">
+          {(['compact', 'default', 'comfortable'] as const).map((id) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={type.density === id}
+              onClick={() => type.setDensity(id)}
+              className={['yu-card rounded-xl px-3 py-2 text-[12px]', type.density === id ? 'ring-1 ring-accent/50' : ''].join(' ')}
+            >
+              {t(`settings.appearance.density.${id}`)}
+            </button>
+          ))}
         </div>
       </Section>
 

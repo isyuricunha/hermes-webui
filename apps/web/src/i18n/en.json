@@ -422,7 +422,8 @@
       "modelHintLocked": "{{model}}: picked for this chat only. Click to change.",
       "modelHintDefault": "{{model}}: Hermes' default model (Settings > Models). Click to pick another one for this chat only.",
       "modelHintNone": "Change the model for this chat"
-    }
+    },
+    "goalContinuation": "Goal continuation"
   },
   "settings": {
     "appearance": {
@@ -484,7 +485,15 @@
       "installAppBrowserHint": "Use your browser menu: “Install app” or “Add to Home Screen” (needs HTTPS).",
       "install": "Install",
       "keyboardShortcuts": "Keyboard shortcuts",
-      "keyboardShortcutsHint": "Press ? anywhere to see them."
+      "keyboardShortcutsHint": "Press ? anywhere to see them.",
+      "typography": "Typography",
+      "typographyDesc": "Message size and line spacing on this device.",
+      "messageSize": "Message size",
+      "density": {
+        "compact": "Compact",
+        "default": "Default",
+        "comfortable": "Comfortable"
+      }
     },
     "title": "Settings",
     "searchPlaceholder": "Search settings…",
