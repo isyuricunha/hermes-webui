@@ -216,7 +216,9 @@ export function RawConfigPage() {
                 : 'bg-chip text-text-secondary',
           ].join(' ')}
         >
-          {t('settings.rawConfig.status.' + state.label)}
+          {t(`settings.rawConfig.status.${state.label}`, {
+            defaultValue: state.label,
+          })}
         </span>
         {validation?.errors.length ? (
           <span className="text-xs text-danger">
