@@ -202,6 +202,10 @@ function checkValue(fieldPath: string, field: SchemaField, value: unknown, defau
     case 'string':
       if (typeof value !== 'string') fail('expects text');
       if ((value as string).includes('\u0000')) fail('contains a NUL character');
+      // Bare YAML tokens that would round-trip as NaN/Inf floats if written unquoted.
+      if (/^[-+]?\.(nan|inf|NaN|Inf|Infinity)$/i.test((value as string).trim())) {
+        fail('that text would be parsed as a non-finite number in YAML; quote it differently or use another value');
+      }
       return;
     case 'select': {
       if (typeof value !== 'string') fail('expects one of the listed options');

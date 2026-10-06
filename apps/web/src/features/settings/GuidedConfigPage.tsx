@@ -258,6 +258,8 @@ function Control({
               return;
             }
             const parsed = Number(raw);
+            // Never push NaN/Infinity into drafts — those become `.nan` in YAML
+            // and break the Hermes dashboard JSON API.
             if (!Number.isFinite(parsed)) return;
             onChange(parsed);
           }}
