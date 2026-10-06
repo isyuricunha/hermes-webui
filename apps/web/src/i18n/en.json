@@ -1154,7 +1154,9 @@
       "warningCount": "{{count}} warning(s)",
       "validationPending": "Checking the config against Hermes' schema…",
       "fixErrors": "Fix these errors before saving.",
+      "listWarnings": "Schema warnings (do not block save):",
       "errorAt": "Line {{line}}, column {{column}} — {{message}}",
+      "warningAt": "Line {{line}} · {{path}} — {{message}}",
       "hideReview": "Hide review",
       "reviewButton": "Review {{count}} changed line(s)",
       "warningHint": "The validator also checks known setting types and select options. Unknown future keys are left alone for Raw Config."

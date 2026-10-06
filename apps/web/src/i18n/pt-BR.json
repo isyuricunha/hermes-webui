@@ -1154,7 +1154,9 @@
       "warningCount": "{{count}} aviso(s)",
       "validationPending": "Conferindo a config contra o schema do Hermes…",
       "fixErrors": "Corrija estes erros antes de salvar.",
+      "listWarnings": "Avisos do schema (não bloqueiam o salvamento):",
       "errorAt": "Linha {{line}}, coluna {{column}} — {{message}}",
+      "warningAt": "Linha {{line}} · {{path}} — {{message}}",
       "hideReview": "Ocultar revisão",
       "reviewButton": "Revisar {{count}} linha(s) alterada(s)",
       "warningHint": "O validador também confere os tipos conhecidos e as opções dos selects. Chaves futuras desconhecidas ficam por conta da Config Raw."

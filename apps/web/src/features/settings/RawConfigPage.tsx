@@ -257,6 +257,29 @@ export function RawConfigPage() {
         </div>
       ) : null}
 
+      {validation && validation.ok && validation.warnings.length > 0 ? (
+        <div className="mb-3 rounded-2xl border border-warning/30 bg-warning/5 p-3">
+          <p className="text-xs font-medium text-warning">{t('settings.rawConfig.listWarnings')}</p>
+          <p className="mt-1 text-[11px] text-text-secondary">{t('settings.rawConfig.warningHint')}</p>
+          <div className="mt-2 max-h-48 space-y-1 overflow-auto">
+            {validation.warnings.slice(0, 40).map((issue, index) => (
+              <button
+                type="button"
+                key={`${issue.path}-${issue.line}-${index}`}
+                onClick={() => jumpToLine(textareaRef.current, shown, issue.line, 1)}
+                className="block w-full rounded-lg px-2 py-1.5 text-left font-mono text-[11px] text-text-secondary hover:bg-warning/10"
+              >
+                {t('settings.rawConfig.warningAt', {
+                  line: issue.line,
+                  path: issue.path,
+                  message: issue.message,
+                })}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {showReview && dirty ? (
         <details open className="mb-3 yu-card rounded-2xl p-3 text-xs">
           <summary className="cursor-pointer select-none font-medium">
@@ -353,9 +376,7 @@ export function RawConfigPage() {
         {save.isError ? <span className="text-sm text-danger">{save.error.message}</span> : null}
       </div>
 
-      {validation && validation.warnings.length > 0 ? (
-        <p className="mt-3 text-xs text-text-secondary">{t('settings.rawConfig.warningHint')}</p>
-      ) : null}
+
     </SettingsPage>
   );
 }
