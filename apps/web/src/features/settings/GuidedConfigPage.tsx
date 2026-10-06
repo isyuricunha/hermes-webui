@@ -17,6 +17,18 @@ function helpKeyForPath(path: string): string {
   return 'settings.guidedConfig.help.' + path.replace(/\./g, '_');
 }
 
+function fieldTitleKeyForPath(path: string): string {
+  return 'settings.guidedConfig.fieldTitle.' + path.replace(/\./g, '_');
+}
+
+function fieldTitleText(
+  path: string,
+  fallback: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  return t(fieldTitleKeyForPath(path), { defaultValue: fallback });
+}
+
 function tipKeyForPath(path: string): string {
   return 'settings.guidedConfig.tip.' + path.replace(/\./g, '_');
 }
@@ -319,6 +331,7 @@ export function GuidedConfigPage() {
       const help = (row.help ?? '').toLowerCase();
       return (
         row.path.toLowerCase().includes(q) ||
+        fieldTitleText(row.path, row.description, t).toLowerCase().includes(q) ||
         row.description.toLowerCase().includes(q) ||
         row.category.toLowerCase().includes(q) ||
         help.includes(q)
@@ -533,7 +546,7 @@ export function GuidedConfigPage() {
                 <div key={op.path} className="rounded-xl bg-surface-input px-3 py-2.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[13px] font-medium text-text-primary">{row.description}</p>
+                      <p className="text-[13px] font-medium text-text-primary">{fieldTitleText(row.path, row.description, t)}</p>
                       <p className="mt-0.5 break-all font-mono text-[10.5px] text-text-tertiary">{row.path}</p>
                     </div>
                     {row.tier === 'confirm' ? (
@@ -596,6 +609,7 @@ export function GuidedConfigPage() {
                     const value = valueFor(row, drafts);
                     const dirty = isDirty(row, drafts);
                     const isModelField = row.path === 'model' || row.path === 'model.default';
+                    const title = fieldTitleText(row.path, row.description, t);
                     return (
                       <div key={row.path} className={['p-4', dirty ? 'bg-accent/5' : ''].join(' ')}>
                         <div
@@ -607,7 +621,7 @@ export function GuidedConfigPage() {
                         >
                           <div className={isModelField ? 'min-w-0' : 'min-w-0 lg:max-w-[52%]'}>
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-[13px] font-medium text-text-primary">{row.description}</p>
+                              <p className="text-[13px] font-medium text-text-primary">{title}</p>
                               {(() => {
                                 const help = fieldHelpText(row.path, row.help, t);
                                 const tip = fieldTipText(row.path, help, t);
@@ -618,7 +632,7 @@ export function GuidedConfigPage() {
                                     className="inline-flex size-5 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-chip hover:text-text-secondary"
                                     data-tip={tip}
                                     data-tip-wide
-                                    aria-label={t('settings.guidedConfig.helpAria', { field: row.description })}
+                                    aria-label={t('settings.guidedConfig.helpAria', { field: title })}
                                   >
                                     <CircleHelp className="size-3.5" aria-hidden />
                                   </button>
