@@ -26,7 +26,11 @@ function fieldHelpText(
   fallback: string | undefined,
   t: (key: string, options?: Record<string, unknown>) => string,
 ): string {
-  return t(helpKeyForPath(path), { defaultValue: fallback ?? '' });
+  const localized = t(helpKeyForPath(path), { defaultValue: '' });
+  if (localized) return localized;
+  if (fallback && fallback.trim()) return fallback;
+  // Soft fallback so no row looks “empty” while curated copy is still growing.
+  return t('settings.guidedConfig.fallbackHelp', { path });
 }
 
 function fieldTipText(
