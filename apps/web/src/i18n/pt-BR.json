@@ -1402,6 +1402,7 @@
       "confirmPending": "{{count}} alteração(ões) precisam de revisão explícita",
       "cancelReview": "Cancelar",
       "apply": "Aplicar alterações",
+      "saving": "Salvando…",
       "review": "Revisar alterações",
       "reviewTitle": "Revise antes de aplicar",
       "reviewDescription": "Esta lista é exatamente o conjunto de alterações que será gravado. Restaurar significa remover a chave do config.yaml para que o Hermes use o padrão novamente.",

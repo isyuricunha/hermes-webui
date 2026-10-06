@@ -1402,6 +1402,7 @@
       "confirmPending": "{{count}} change(s) need an explicit review",
       "cancelReview": "Cancel",
       "apply": "Apply changes",
+      "saving": "Saving…",
       "review": "Review changes",
       "reviewTitle": "Review before applying",
       "reviewDescription": "This list is the exact set of config mutations that will be written. Reset means the key will be removed from config.yaml so Hermes uses its default again.",
