@@ -128,8 +128,12 @@ function describeTypeProblem(node: unknown, field: SchemaField): string | null {
 }
 
 /**
- * Checks a config.yaml text the way Hermes will read it. Errors block saving
- * when syntax, duplicate keys, or known-field types/options are invalid.
+ * Checks a config.yaml text the way Hermes will read it.
+ *
+ * Blocking errors: YAML syntax, duplicate keys, non-mapping top level.
+ * Schema type/option mismatches are warnings only — Hermes often accepts
+ * values the dashboard schema does not list (custom skins, models, numeric
+ * strings), and Raw Config must not refuse to save a file that already runs.
  */
 export function validateConfigYaml(text: string, fields: SchemaFields): ConfigValidation {
   const lineCounter = new LineCounter();
@@ -159,10 +163,10 @@ export function validateConfigYaml(text: string, fields: SchemaFields): ConfigVa
       const problem = describeTypeProblem(node, field);
       if (problem === null) continue;
       const offset = (node as { range?: [number, number, number] | null }).range?.[0] ?? 0;
-      errors.push({
+      warnings.push({
         line: lineCounter.linePos(offset).line,
-        column: lineCounter.linePos(offset).col,
         message: fieldPath + ' ' + problem,
+        path: fieldPath,
       });
     }
   }

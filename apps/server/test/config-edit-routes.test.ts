@@ -147,8 +147,8 @@ describe('config settings mutations', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json().ok).toBe(false);
-      expect(response.json().errors[0].message).toContain('expects true or false');
+      expect(response.json().ok).toBe(true);
+      expect(response.json().warnings[0].message).toContain('expects true or false');
     } finally {
       await rm(dataDir, { recursive: true, force: true });
     }

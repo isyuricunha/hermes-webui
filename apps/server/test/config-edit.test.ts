@@ -17,7 +17,7 @@ const fields: SchemaFields = {
 };
 
 describe('config-edit safety and YAML handling', () => {
-  it('blocks YAML syntax errors, duplicate keys and known type errors', () => {
+  it('blocks YAML syntax errors and duplicate keys; schema type mismatches are warnings', () => {
     const syntax = validateConfigYaml('display:\n  nickname: [\n', fields);
     expect(syntax.ok).toBe(false);
     expect(syntax.errors.length).toBeGreaterThan(0);
@@ -27,8 +27,8 @@ describe('config-edit safety and YAML handling', () => {
     expect(duplicate.errors.some((item) => item.message.includes('Duplicate key'))).toBe(true);
 
     const wrongType = validateConfigYaml('display:\n  enabled: "yes"\n', fields);
-    expect(wrongType.ok).toBe(false);
-    expect(wrongType.errors.some((item) => item.message.includes('expects true or false'))).toBe(true);
+    expect(wrongType.ok).toBe(true);
+    expect(wrongType.warnings.some((item) => item.message.includes('expects true or false'))).toBe(true);
   });
 
   it('applies a typed edit without discarding existing comments or unrelated keys', () => {

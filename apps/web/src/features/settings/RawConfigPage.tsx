@@ -279,11 +279,11 @@ export function RawConfigPage() {
         </details>
       ) : null}
 
-      <div className="yu-card flex min-h-0 overflow-hidden rounded-2xl">
+      <div className="yu-card flex h-[62vh] min-h-[420px] overflow-hidden rounded-2xl">
         <div
           ref={gutterRef}
           aria-hidden
-          className="hidden w-12 shrink-0 select-none overflow-hidden border-r border-border-subtle bg-surface-input py-4 text-right font-mono text-[11px] leading-5 text-text-tertiary sm:block"
+          className="hidden h-full w-12 shrink-0 select-none overflow-hidden border-r border-border-subtle bg-surface-input py-4 text-right font-mono text-[11px] leading-5 text-text-tertiary sm:block"
         >
           {Array.from({ length: lineCount }, (_, index) => (
             <div key={index} className="pr-3">
@@ -305,7 +305,7 @@ export function RawConfigPage() {
           spellCheck={false}
           aria-label={t('settings.rawConfig.aria')}
           wrap="off"
-          className="h-[62vh] min-h-[420px] w-full resize-none border-0 bg-transparent p-4 font-mono text-[12px] leading-5 outline-none focus:ring-0"
+          className="h-full min-h-0 w-full resize-none border-0 bg-transparent p-4 font-mono text-[12px] leading-5 outline-none focus:ring-0"
           style={{ tabSize: 2 }}
         />
       </div>
