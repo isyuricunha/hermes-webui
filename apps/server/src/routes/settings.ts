@@ -68,7 +68,17 @@ export async function settingsRoutes(
       return schemaCache;
     }
     const schema = await dashboard.getSchema();
-    schemaCache = { at: Date.now(), fields: toSchemaFields(schema.fields), categoryOrder: schema.category_order };
+    const schemaAny = schema as { category_order?: string[]; categoryOrder?: string[]; fields?: unknown };
+    const categoryOrder = Array.isArray(schemaAny.category_order)
+      ? schemaAny.category_order
+      : Array.isArray(schemaAny.categoryOrder)
+        ? schemaAny.categoryOrder
+        : [];
+    schemaCache = {
+      at: Date.now(),
+      fields: toSchemaFields((schemaAny.fields as Record<string, unknown>) ?? {}),
+      categoryOrder,
+    };
     return schemaCache;
   }
 
@@ -168,6 +178,7 @@ export async function settingsRoutes(
       ]);
       return await reply.send(buildGuidedState({ raw, schema, config, defaults }));
     } catch (error) {
+      request.log.error({ err: error }, 'guided config state failed');
       return sendConfigError(reply, request.id, error);
     }
   });

@@ -377,6 +377,12 @@ export function buildGuidedState(input: {
     }
     const masked = isSecretLikePath(fieldPath);
     const schemaDescription = field.description;
+    let isSet = false;
+    try {
+      isSet = doc.hasIn(fieldPath.split('.'));
+    } catch {
+      isSet = false;
+    }
     const row: GuidedConfigRow = {
       path: fieldPath,
       type: field.type,
@@ -387,7 +393,7 @@ export function buildGuidedState(input: {
       value: masked ? null : toScalar(getByPath(input.config, fieldPath)),
       masked,
       defaultValue: masked ? null : toScalar(getByPath(input.defaults, fieldPath)),
-      isSet: doc.hasIn(fieldPath.split('.')),
+      isSet,
     };
     const help = getConfigHelp(fieldPath, schemaDescription);
     if (help !== undefined) row.help = help;
@@ -404,7 +410,8 @@ export function buildGuidedState(input: {
     rows.push(row);
   }
 
-  const order = new Map(input.schema.categoryOrder.map((category, index) => [category, index] as const));
+  const categoryOrder = Array.isArray(input.schema.categoryOrder) ? input.schema.categoryOrder : [];
+  const order = new Map(categoryOrder.map((category, index) => [category, index] as const));
   rows.sort(
     (a, b) =>
       (order.get(a.category) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.category) ?? Number.MAX_SAFE_INTEGER) ||
@@ -413,7 +420,7 @@ export function buildGuidedState(input: {
 
   return {
     rows,
-    categoryOrder: input.schema.categoryOrder,
+    categoryOrder,
     path: input.raw.path,
     rev: configRevision(input.raw.yaml),
     hiddenCount,
