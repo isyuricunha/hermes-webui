@@ -4230,7 +4230,10 @@
         "local_runtime_backend": "Backend",
         "local_runtime_models_max": "Models Max",
         "local_runtime_port": "Port"
-      }
+      },
+      "confirmTip": "Sensitive change. The WebUI asks before saving.",
+      "safeTip": "Safe to change. Hermes accepts this value without an extra confirm.",
+      "overriddenTip": "This value differs from the Hermes default."
     }
   }
 }

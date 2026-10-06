@@ -628,34 +628,53 @@ export function GuidedConfigPage() {
                         >
                           <div className={isModelField ? 'min-w-0' : 'min-w-0 flex-1 lg:max-w-[58%]'}>
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-[13px] font-medium text-text-primary">{title}</p>
                               {(() => {
                                 const help = fieldHelpText(row.path, row.help, t);
                                 const tip = fieldTipText(row.path, help, t);
-                                if (!tip) return null;
                                 return (
-                                  <button
-                                    type="button"
-                                    className="inline-flex size-5 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-chip hover:text-text-secondary"
-                                    data-tip={tip}
-                                    data-tip-wide
-                                    aria-label={t('settings.guidedConfig.helpAria', { field: title })}
-                                  >
-                                    <CircleHelp className="size-3.5" aria-hidden />
-                                  </button>
+                                  <>
+                                    <p
+                                      className="cursor-help text-[13px] font-medium text-text-primary underline decoration-dotted decoration-border-subtle underline-offset-4"
+                                      data-tip={tip || help}
+                                      data-tip-wide
+                                    >
+                                      {title}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      className="inline-flex size-5 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-chip hover:text-text-secondary"
+                                      data-tip={tip || help}
+                                      data-tip-wide
+                                      aria-label={t('settings.guidedConfig.helpAria', { field: title })}
+                                    >
+                                      <CircleHelp className="size-3.5" aria-hidden />
+                                    </button>
+                                  </>
                                 );
                               })()}
                               {row.tier === 'confirm' ? (
-                                <span className="rounded-full bg-warning/10 px-2 py-1 text-[10px] font-medium text-warning">
+                                <span
+                                  className="cursor-help rounded-full bg-warning/10 px-2 py-1 text-[10px] font-medium text-warning"
+                                  data-tip={t('settings.guidedConfig.confirmTip')}
+                                  data-tip-wide
+                                >
                                   {t('settings.guidedConfig.confirmBadge')}
                                 </span>
                               ) : (
-                                <span className="rounded-full bg-chip px-2 py-1 text-[10px] text-text-tertiary">
+                                <span
+                                  className="cursor-help rounded-full bg-chip px-2 py-1 text-[10px] text-text-tertiary"
+                                  data-tip={t('settings.guidedConfig.safeTip')}
+                                  data-tip-wide
+                                >
                                   {t('settings.guidedConfig.safeBadge')}
                                 </span>
                               )}
                               {row.isSet ? (
-                                <span className="rounded-full bg-accent/10 px-2 py-1 text-[10px] font-medium text-accent">
+                                <span
+                                  className="cursor-help rounded-full bg-accent/10 px-2 py-1 text-[10px] font-medium text-accent"
+                                  data-tip={t('settings.guidedConfig.overriddenTip')}
+                                  data-tip-wide
+                                >
                                   {t('settings.guidedConfig.overriddenBadge')}
                                 </span>
                               ) : null}
