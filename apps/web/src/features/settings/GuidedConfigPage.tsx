@@ -53,36 +53,50 @@ function ModelFieldControl({
     [options.data],
   );
   const current = value === null || value === undefined ? '' : String(value);
+  const [showCustom, setShowCustom] = useState(false);
 
   return (
-    <div className="w-full min-w-0 max-w-3xl rounded-2xl border border-border-subtle bg-surface-elevated/40 p-3 sm:p-4">
+    <div className="w-full min-w-0 max-w-3xl">
       {options.isPending ? (
         <p className="text-xs text-text-tertiary">{t('settings.guidedConfig.modelLoading')}</p>
       ) : options.isError ? (
-        <p className="text-xs text-danger">{t('settings.guidedConfig.modelLoadFailed')}</p>
-      ) : providers.length === 0 ? (
-        <p className="text-xs text-text-tertiary">{t('settings.guidedConfig.modelEmpty')}</p>
-      ) : (
+        <p className="mb-2 text-xs text-danger">{t('settings.guidedConfig.modelLoadFailed')}</p>
+      ) : null}
+
+      {!options.isPending && !options.isError && providers.length === 0 ? (
+        <p className="mb-2 text-xs text-text-tertiary">{t('settings.guidedConfig.modelEmpty')}</p>
+      ) : null}
+
+      {providers.length > 0 ? (
         <ModelBrowser
           providers={providers}
           selected={current ? { provider: '', model: current } : null}
           onPick={(_provider, model) => onChange(model)}
-          maxHeight="max-h-64"
+          maxHeight="max-h-72"
         />
-      )}
-      <label className="mt-3 block">
-        <span className="mb-1 block text-[11px] font-medium text-text-tertiary">
-          {t('settings.guidedConfig.modelCustomLabel')}
-        </span>
-        <input
-          type="text"
-          value={current}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={t('settings.guidedConfig.modelCustomPlaceholder')}
-          spellCheck={false}
-          className="yu-input h-9 w-full rounded-xl px-3 font-mono text-[12.5px]"
-        />
-      </label>
+      ) : null}
+
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={() => setShowCustom((open) => !open)}
+          className="text-[12px] text-text-tertiary underline-offset-2 hover:text-text-secondary hover:underline"
+        >
+          {showCustom
+            ? t('settings.guidedConfig.modelCustomHide')
+            : t('settings.guidedConfig.modelCustomShow')}
+        </button>
+        {showCustom || providers.length === 0 ? (
+          <input
+            type="text"
+            value={current}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder={t('settings.guidedConfig.modelCustomPlaceholder')}
+            spellCheck={false}
+            className="yu-input mt-2 h-10 w-full rounded-xl px-3 font-mono text-[12.5px]"
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -150,11 +150,13 @@ export function getConfigHelp(path: string, schemaDescription?: string): string 
 }
 
 export function getConfigTitle(path: string, schemaDescription?: string): string {
-  // Prefer a short hand-written schema title when it is not the arrow auto form.
+  // Prefer a short hand-written schema title when it is not the arrow auto form
+  // and not an example-style prompt ("Default model (e.g. …)").
   if (schemaDescription && !isAutoSchemaDescription(schemaDescription, path)) {
-    // If it is already a short phrase, use it as the title.
-    if (schemaDescription.length <= 48 && !schemaDescription.endsWith('.')) {
-      return schemaDescription.trim();
+    const trimmed = schemaDescription.trim();
+    const looksLikeExample = /\be\.g\.\b|\beg\b|\(/i.test(trimmed);
+    if (!looksLikeExample && trimmed.length <= 48 && !trimmed.endsWith('.')) {
+      return trimmed;
     }
   }
   return titleFromConfigPath(path);

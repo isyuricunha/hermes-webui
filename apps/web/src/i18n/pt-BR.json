@@ -42,7 +42,9 @@
     "noCredentialTip": "{{name}} ainda não tem credencial no Hermes",
     "noMatch": "Nenhum modelo corresponde a “{{query}}”.",
     "defaultChip": "padrão",
-    "holdsSelected": "Guarda o modelo selecionado"
+    "holdsSelected": "Guarda o modelo selecionado",
+    "matchCount": "{{count}} modelo(s)",
+    "customModel": "id personalizado"
   },
   "shell": {
     "openConversations": "Abrir conversas",
@@ -1421,6 +1423,8 @@
       "modelEmpty": "Nenhum modelo autenticado no catálogo. Digite um id abaixo ou configure um provedor em Modelos.",
       "modelCustomLabel": "Modelo atual (editável)",
       "modelCustomPlaceholder": "provider/modelo ou id customizado",
+      "modelCustomShow": "Digitar id de modelo manualmente",
+      "modelCustomHide": "Ocultar campo manual",
       "help": {
         "model": "Modelo padrão das conversas novas (id do provedor/modelo). Pode ser sobrescrito por sessão ou pela CLI.",
         "model_context_length": "Sobrescreve a janela de contexto do modelo em tokens. 0 = detectar automaticamente pelos metadados.",

@@ -42,7 +42,9 @@
     "noCredentialTip": "{{name}} has no credential in Hermes yet",
     "noMatch": "No model matches “{{query}}”.",
     "defaultChip": "default",
-    "holdsSelected": "Holds the selected model"
+    "holdsSelected": "Holds the selected model",
+    "matchCount": "{{count}} model(s)",
+    "customModel": "custom id"
   },
   "shell": {
     "openConversations": "Open conversations",
@@ -1421,6 +1423,8 @@
       "modelEmpty": "No authenticated models in the catalog. Type an id below or configure a provider under Models.",
       "modelCustomLabel": "Current model (editable)",
       "modelCustomPlaceholder": "provider/model or custom id",
+      "modelCustomShow": "Type a model id manually",
+      "modelCustomHide": "Hide manual field",
       "help": {
         "model": "Default model for new conversations (provider/model id). Can be overridden per session or via the CLI.",
         "model_context_length": "Override the model context window in tokens. 0 means auto-detect from model metadata.",
