@@ -5,10 +5,17 @@ import { useTranslation } from 'react-i18next';
 import { AlertTriangle, ChevronDown, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
 import {
   fetchGuidedConfig,
+  fetchModelOptions,
   putGuidedConfig,
 } from '../../lib/api';
+import { normalizeCatalog, pickableProviders } from '../../lib/modelCatalog';
+import { ModelBrowser } from '../../components/ModelBrowser';
 import type { GuidedConfigOp, GuidedConfigRow } from '@hermes-webui/shared';
 import { SettingsError, SettingsPage } from './SettingsLayout';
+
+function helpKeyForPath(path: string): string {
+  return 'settings.guidedConfig.help.' + path.replace(/\./g, '_');
+}
 
 type DraftValue = string | number | boolean | null;
 
@@ -32,6 +39,54 @@ function isDirty(row: GuidedConfigRow, drafts: Record<string, DraftValue>): bool
   return Object.prototype.hasOwnProperty.call(drafts, row.path) && valueFor(row, drafts) !== row.value;
 }
 
+function ModelFieldControl({
+  value,
+  onChange,
+}: {
+  value: DraftValue;
+  onChange: (value: DraftValue) => void;
+}) {
+  const { t } = useTranslation();
+  const options = useQuery({ queryKey: ['model-options'], queryFn: fetchModelOptions, staleTime: 60_000 });
+  const providers = useMemo(
+    () => pickableProviders(normalizeCatalog(options.data)),
+    [options.data],
+  );
+  const current = value === null || value === undefined ? '' : String(value);
+
+  return (
+    <div className="w-full max-w-xl rounded-2xl border border-border-subtle bg-surface-elevated/40 p-3">
+      {options.isPending ? (
+        <p className="text-xs text-text-tertiary">{t('settings.guidedConfig.modelLoading')}</p>
+      ) : options.isError ? (
+        <p className="text-xs text-danger">{t('settings.guidedConfig.modelLoadFailed')}</p>
+      ) : providers.length === 0 ? (
+        <p className="text-xs text-text-tertiary">{t('settings.guidedConfig.modelEmpty')}</p>
+      ) : (
+        <ModelBrowser
+          providers={providers}
+          selected={current ? { provider: '', model: current } : null}
+          onPick={(_provider, model) => onChange(model)}
+          maxHeight="max-h-64"
+        />
+      )}
+      <label className="mt-3 block">
+        <span className="mb-1 block text-[11px] font-medium text-text-tertiary">
+          {t('settings.guidedConfig.modelCustomLabel')}
+        </span>
+        <input
+          type="text"
+          value={current}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={t('settings.guidedConfig.modelCustomPlaceholder')}
+          spellCheck={false}
+          className="yu-input h-9 w-full rounded-xl px-3 font-mono text-[12.5px]"
+        />
+      </label>
+    </div>
+  );
+}
+
 function Control({
   row,
   value,
@@ -41,7 +96,12 @@ function Control({
   value: DraftValue;
   onChange: (value: DraftValue) => void;
 }) {
+  const { t } = useTranslation();
   const inputClass = 'yu-input h-9 w-full max-w-md rounded-xl px-3 text-[13px]';
+
+  if (row.path === 'model' || row.path === 'model.default') {
+    return <ModelFieldControl value={value} onChange={onChange} />;
+  }
 
   if (row.type === 'boolean') {
     const checked = value === true;
@@ -66,40 +126,44 @@ function Control({
     );
   }
 
-  if (row.type === 'select' && row.options && row.options.length > 0 && row.options.length <= 80) {
+  if (row.type === 'select' && row.options && row.options.length > 0) {
+    const useSearchable = row.searchable === true || row.options.length > 12;
+    if (useSearchable) {
+      const listId = 'guided-options-' + row.path.replace(/[^A-Za-z0-9_-]/g, '-');
+      return (
+        <div className="w-full max-w-md">
+          <input
+            value={value === null ? '' : String(value)}
+            onChange={(event) => onChange(event.target.value)}
+            list={listId}
+            className={inputClass}
+            spellCheck={false}
+            placeholder={t('settings.guidedConfig.selectSearchPlaceholder')}
+          />
+          <datalist id={listId}>
+            {row.clearable ? <option value="" /> : null}
+            {row.options.map((option) => (
+              <option key={option} value={option} />
+            ))}
+          </datalist>
+        </div>
+      );
+    }
     return (
       <select
         value={value === null ? '' : String(value)}
         onChange={(event) => onChange(event.target.value)}
         className={inputClass}
       >
-        {row.clearable ? <option value="">Default / automatic</option> : null}
+        {row.clearable ? (
+          <option value="">{t('settings.guidedConfig.selectDefault')}</option>
+        ) : null}
         {row.options.map((option) => (
           <option key={option} value={option}>
-            {option || 'Default / automatic'}
+            {option || t('settings.guidedConfig.selectDefault')}
           </option>
         ))}
       </select>
-    );
-  }
-
-  if (row.type === 'select' && row.options && row.options.length > 80) {
-    const listId = 'guided-options-' + row.path.replace(/[^A-Za-z0-9_-]/g, '-');
-    return (
-      <>
-        <input
-          value={value === null ? '' : String(value)}
-          onChange={(event) => onChange(event.target.value)}
-          list={listId}
-          className={inputClass}
-          spellCheck={false}
-        />
-        <datalist id={listId}>
-          {row.options.map((option) => (
-            <option key={option} value={option} />
-          ))}
-        </datalist>
-      </>
     );
   }
 
@@ -171,10 +235,12 @@ export function GuidedConfigPage() {
     return rows.filter((row) => {
       if (showOverriddenOnly && !row.isSet && !isDirty(row, drafts)) return false;
       if (!q) return true;
+      const help = (row.help ?? '').toLowerCase();
       return (
         row.path.toLowerCase().includes(q) ||
         row.description.toLowerCase().includes(q) ||
-        row.category.toLowerCase().includes(q)
+        row.category.toLowerCase().includes(q) ||
+        help.includes(q)
       );
     });
   }, [drafts, rows, search, showOverriddenOnly]);
@@ -447,10 +513,17 @@ export function GuidedConfigPage() {
                   {categoryRows.map((row) => {
                     const value = valueFor(row, drafts);
                     const dirty = isDirty(row, drafts);
+                    const isModelField = row.path === 'model' || row.path === 'model.default';
                     return (
                       <div key={row.path} className={['p-4', dirty ? 'bg-accent/5' : ''].join(' ')}>
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                          <div className="min-w-0 lg:max-w-[52%]">
+                        <div
+                          className={
+                            isModelField
+                              ? 'flex flex-col gap-3'
+                              : 'flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'
+                          }
+                        >
+                          <div className={isModelField ? 'min-w-0' : 'min-w-0 lg:max-w-[52%]'}>
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-[13px] font-medium text-text-primary">{row.description}</p>
                               {row.tier === 'confirm' ? (
@@ -468,15 +541,20 @@ export function GuidedConfigPage() {
                                 </span>
                               ) : null}
                             </div>
-                            {row.help ? (
-                              <p className="mt-1 text-xs leading-5 text-text-secondary">{row.help}</p>
-                            ) : null}
+                            {(() => {
+                              const localized = t(helpKeyForPath(row.path), {
+                                defaultValue: row.help ?? '',
+                              });
+                              return localized ? (
+                                <p className="mt-1 text-xs leading-5 text-text-secondary">{localized}</p>
+                              ) : null;
+                            })()}
                             <p className="mt-1 break-all font-mono text-[10.5px] text-text-tertiary">{row.path}</p>
                             <p className="mt-1 text-xs text-text-tertiary">
                               {t('settings.guidedConfig.defaultLabel', { value: rowDefaultLabel(row, t) })}
                             </p>
                           </div>
-                          <div className="flex min-w-0 items-center gap-2 lg:w-[44%]">
+                          <div className={isModelField ? 'flex min-w-0 items-start gap-2' : 'flex min-w-0 items-center gap-2 lg:w-[44%]'}> 
                             <div className="min-w-0 flex-1">
                               <Control row={row} value={value} onChange={(next) => setDraft(row, next)} />
                             </div>
