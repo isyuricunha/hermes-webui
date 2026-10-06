@@ -1439,6 +1439,7 @@
       "rangeEnforced": "Out-of-range values are corrected when you leave the field.",
       "integerOnly": "Whole numbers only.",
       "helpAria": "Help: {{field}}",
+      "officialDocs": "Official docs",
       "fallbackHelp": "Setting at {{path}}. If this help text is still generic, use Raw Config or Hermes docs for exact behavior.",
       "tip": {
         "model": "Default model for new chats. Overridable per session or CLI.",

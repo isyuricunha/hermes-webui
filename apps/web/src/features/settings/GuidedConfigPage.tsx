@@ -13,6 +13,13 @@ import { ModelBrowser } from '../../components/ModelBrowser';
 import type { GuidedConfigOp, GuidedConfigRow } from '@hermes-webui/shared';
 import { SettingsError, SettingsPage } from './SettingsLayout';
 
+function docsUrlForPath(path: string): string {
+  const base = 'https://hermes-agent.nousresearch.com/docs/user-guide/configuration';
+  const root = path.split('.')[0] || 'configuration';
+  const section = root.replace(/_/g, '-');
+  return `${base}#${section}`;
+}
+
 function helpKeyForPath(path: string): string {
   return 'settings.guidedConfig.help.' + path.replace(/\./g, '_');
 }
@@ -660,6 +667,14 @@ export function GuidedConfigPage() {
                               ) : null;
                             })()}
                             <p className="mt-1 break-all font-mono text-[10.5px] text-text-tertiary">{row.path}</p>
+                            <a
+                              href={docsUrlForPath(row.path)}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="mt-1 inline-flex text-[11px] text-accent hover:underline"
+                            >
+                              {t('settings.guidedConfig.officialDocs')}
+                            </a>
                             <p className="mt-1 text-xs text-text-tertiary">
                               {t('settings.guidedConfig.defaultLabel', { value: rowDefaultLabel(row, t) })}
                             </p>

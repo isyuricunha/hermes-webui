@@ -1439,6 +1439,7 @@
       "rangeEnforced": "Valores fora da faixa são corrigidos ao sair do campo.",
       "integerOnly": "Somente números inteiros.",
       "helpAria": "Ajuda: {{field}}",
+      "officialDocs": "Documentação oficial",
       "fallbackHelp": "Configuração em {{path}}. Se esta ajuda ainda for genérica, use a Config Raw ou a documentação do Hermes para o significado exato.",
       "tip": {
         "model": "Modelo das conversas novas. Trocar aqui não muda uma conversa já aberta.",
