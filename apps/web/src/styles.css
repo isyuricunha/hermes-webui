@@ -970,7 +970,12 @@ body {
   }
 }
 
-[data-msg] {
-  font-size: var(--chat-font-size, 15px);
-  line-height: var(--chat-leading, 1.55);
+[data-msg],
+[data-msg] .yu-prose,
+[data-msg] .yu-prose p,
+[data-msg] .yu-prose li,
+[data-msg] [data-msg-bubble],
+[data-msg] [data-msg-bubble] p {
+  font-size: var(--chat-font-size, 15px) !important;
+  line-height: var(--chat-leading, 1.55) !important;
 }

@@ -152,3 +152,17 @@ The same repository lives on three hosts:
 Made by **Yuri Cunha**. YuTheme and YuCode are his designs. Hermes Agent is by Nous Research.
 
 [AGPL-3.0](LICENSE): run it, study it, change it, share it.
+
+## Chat cards and type
+
+Hermes injects some user-role messages. The web chat does not paint those as you.
+
+- Goal continuation: `[Continuing toward your standing goal]`
+- Kanban judge: `[Continuing toward this kanban task`
+- Cron: `[Cron delivery:` and `[Cronjob`
+- Delegation: `[ASYNC DELEGATION`
+- Background, watch, MCP reload: `[IMPORTANT:` and `[Background process`
+- Out of band: `[OUT-OF-BAND` and `[Planning state preserved`
+- Agent delivery: `Message from`
+
+Settings, Appearance, Typography sets message size (13 to 18) and density on this device. It applies to the chat body, including assistant prose.

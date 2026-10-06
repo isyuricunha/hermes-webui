@@ -238,7 +238,8 @@ function nativeSender(content: string): 'goal' | 'kanban' | 'cron' | 'delegation
   if (text.startsWith('[Continuing toward this kanban task')) return 'kanban';
   if (text.startsWith('[Cron delivery:') || text.startsWith('[Cronjob ')) return 'cron';
   if (text.startsWith('[ASYNC DELEGATION')) return 'delegation';
-  if (text.startsWith('[Background process') || text.startsWith('[IMPORTANT: Background process')) return 'process';
+  if (text.startsWith('[Background process') || text.startsWith('[IMPORTANT:')) return 'process';
+  if (text.startsWith('[OUT-OF-BAND') || text.startsWith('[Planning state preserved')) return 'process';
   if (text.startsWith('[Message from agent') || text.startsWith('Message from ')) return 'agent';
   return null;
 }

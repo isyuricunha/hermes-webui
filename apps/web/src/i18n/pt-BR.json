@@ -501,7 +501,8 @@
         "compact": "Compacto",
         "default": "Padrão",
         "comfortable": "Confortável"
-      }
+      },
+      "typePreview": "Esta linha usa o tamanho do chat. Se ela não crescer, o controle não aplicou."
     },
     "title": "Configurações",
     "searchPlaceholder": "Buscar configurações…",

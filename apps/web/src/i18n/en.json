@@ -501,7 +501,8 @@
         "compact": "Compact",
         "default": "Default",
         "comfortable": "Comfortable"
-      }
+      },
+      "typePreview": "This line uses the chat size. If it does not grow, the control is not applied."
     },
     "title": "Settings",
     "searchPlaceholder": "Search settings…",

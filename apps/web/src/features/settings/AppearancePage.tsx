@@ -217,6 +217,9 @@ export function AppearancePage() {
             </button>
           ))}
         </div>
+        <p className="mt-3 rounded-xl bg-chip px-3 py-2 text-text-primary" style={{ fontSize: 'var(--chat-font-size, 15px)', lineHeight: 'var(--chat-leading, 1.55)' }}>
+          {t('settings.appearance.typePreview')}
+        </p>
       </Section>
 
       <Section
